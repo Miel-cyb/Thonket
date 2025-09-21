@@ -1,0 +1,92 @@
+[
+  {
+    "orderId": "ORD-001",
+    "customer": "James Owusu",
+    "location": "Accra",
+    "items": [
+      {
+        "product": "Tomato Paste Box",
+        "quantity": 41,
+        "costPrice": 50,
+        "sellingPrice": 70
+      }
+    ],
+    "status": "Confirmed",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-11",
+    "driver": "Kwame Mensah",
+    "priority": "High"
+  },
+  {
+    "orderId": "ORD-002",
+    "customer": "Ama Serwaa",
+    "location": "Kumasi",
+    "items": [
+      {
+        "product": "Rice Bag",
+        "quantity": 20,
+        "costPrice": 200,
+        "sellingPrice": 260
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Unpaid",
+    "orderDate": "2025-09-12",
+    "driver": "Kojo Asante",
+    "priority": "Low"
+  },
+  {
+    "orderId": "ORD-003",
+    "customer": "Kwesi Boateng",
+    "location": "Takoradi",
+    "items": [
+      {
+        "product": "Cooking Oil Gallon",
+        "quantity": 10,
+        "costPrice": 120,
+        "sellingPrice": 150
+      }
+    ],
+    "status": "Confirmed",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-12",
+    "driver": "Yaw Mensah",
+    "priority": "High"
+  },
+  {
+    "orderId": "ORD-004",
+    "customer": "Akosua Dede",
+    "location": "Cape Coast",
+    "items": [
+      {
+        "product": "Sugar Bag",
+        "quantity": 15,
+        "costPrice": 90,
+        "sellingPrice": 120
+      }
+    ],
+    "status": "Shipped",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-13",
+    "driver": "Kwame Mensah",
+    "priority": "Low"
+  },
+  {
+    "orderId": "ORD-005",
+    "customer": "Kojo Kumi",
+    "location": "Tamale",
+    "items": [
+      {
+        "product": "Flour Bag",
+        "quantity": 25,
+        "costPrice": 70,
+        "sellingPrice": 95
+      }
+    ],
+    "status": "Confirmed",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-14",
+    "driver": "Kojo Asante",
+    "priority": "High"
+  }
+]

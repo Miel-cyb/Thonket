@@ -12,6 +12,7 @@ const SignIn = () => {
     Sales: "/orders",
     Operations: "/operations",
     Inventory: "/inventory",
+    CEO: 'ceo-analytics',
   };
 
   const handleSignIn = () => {
@@ -46,6 +47,7 @@ const SignIn = () => {
             >
               <option value="">-- Choose Role --</option>
               <option value="Warehouse">Warehouse</option>
+              <option value="CEO">    CEO</option>
               <option value="Sales">Sales</option>
               <option value="Operations">Operations</option>
               <option value="Inventory">Inventory</option>

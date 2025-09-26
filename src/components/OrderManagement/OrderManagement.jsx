@@ -3,11 +3,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import PicklistModal from "./PicklistModal";
 import allordersData from "@/data/allordersData";
 
 const OrderManagement = () => {
   const [filter, setFilter] = useState("All");
   const [orderManagementData, setOrderManagementData] = useState(allordersData);
+  const [selectedOrderForPicklist, setSelectedOrderForPicklist] = useState(null);
 
   // Automatically flag delays if ETA is past current time
   useEffect(() => {
@@ -77,13 +79,22 @@ const OrderManagement = () => {
     );
   };
 
-  const generatePicklist = () => {
+  const showPicklistForOrder = (order) => {
+    console.log("Selected order for picklist:", order); // Debug log
+    setSelectedOrderForPicklist(order);
+  };
+
+  const closePicklistModal = () => {
+    setSelectedOrderForPicklist(null);
+  };
+
+  const generateBulkPicklist = () => {
     const picklist = orderManagementData.map((order) => ({
       orderId: order.id,
       items: order.items,
     }));
-    console.log("Picklist generated:", picklist);
-    alert("Picklist generated! Check console for details.");
+    console.log("Bulk Picklist generated:", picklist);
+    alert("Bulk Picklist generated! Check console for details.");
   };
   // ---------------------
 
@@ -120,7 +131,7 @@ const OrderManagement = () => {
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <Button
           variant={filter === "All" ? "default" : "outline"}
           onClick={() => setFilter("All")}
@@ -146,8 +157,8 @@ const OrderManagement = () => {
           Dispatched
         </Button>
 
-        <Button variant="secondary" onClick={generatePicklist}>
-          Generate Picklist
+        <Button variant="secondary" onClick={generateBulkPicklist}>
+          Generate Bulk Picklist
         </Button>
       </div>
 
@@ -187,32 +198,50 @@ const OrderManagement = () => {
                 <td className="px-4 py-2">{order.assignedDriver}</td>
                 <td className="px-4 py-2">{order.notes}</td>
                 <td className="px-4 py-2">{order.eta}</td>
-                <td className="px-4 py-2 flex gap-2">
-                  {order.status === "Pending" && (
-                    <Button size="sm" onClick={() => confirmOrder(order.id)}>
-                      Confirm
-                    </Button>
-                  )}
-                  {order.status === "Confirmed" && (
-                    <Button size="sm" onClick={() => markReadyForDispatch(order.id)}>
-                      Mark Ready
-                    </Button>
-                  )}
-                  {order.status === "Ready for Dispatch" && (
+                <td className="px-4 py-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {order.status === "Pending" && (
+                      <Button size="sm" onClick={() => confirmOrder(order.id)}>
+                        Confirm
+                      </Button>
+                    )}
+                    {order.status === "Confirmed" && (
+                      <Button size="sm" onClick={() => markReadyForDispatch(order.id)}>
+                        Mark Ready
+                      </Button>
+                    )}
+                    {order.status === "Ready for Dispatch" && (
+                      <Button
+                        size="sm"
+                        variant={order.delay ? "destructive" : "outline"}
+                        onClick={() => toggleDelay(order.id)}
+                      >
+                        {order.delay ? "Clear Delay" : "Flag Delay"}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
-                      variant={order.delay ? "destructive" : "outline"}
-                      onClick={() => toggleDelay(order.id)}
+                      variant="secondary"
+                      onClick={() => showPicklistForOrder(order)}
+                      className="bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
                     >
-                      {order.delay ? "Clear Delay" : "Flag Delay"}
+                      Picklist
                     </Button>
-                  )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Picklist Modal */}
+      {selectedOrderForPicklist && (
+        <PicklistModal
+          order={selectedOrderForPicklist}
+          onClose={closePicklistModal}
+        />
+      )}
     </div>
   );
 };

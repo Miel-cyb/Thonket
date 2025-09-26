@@ -4,6 +4,7 @@ import StockoutRisks from "./StockoutRisks";
 import InventoryValuation from "./InventoryValuation";
 import FulfillmentPerformance from "./FulfillmentPerformance";
 import ReturnsAnalysis from "./ReturnsAnalysis";
+import DemandForecasting from "./DemandForecast";
 
 const InventoryMonitoring = () => {
   return (
@@ -19,6 +20,7 @@ const InventoryMonitoring = () => {
       <div className="space-y-8">
         <StockOverview />
         <ReorderAlerts />
+        <DemandForecasting/>
         <StockoutRisks />
         
         <FulfillmentPerformance />

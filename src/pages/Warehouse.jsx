@@ -25,7 +25,7 @@ const WarehouseManagerDashboard = () => {
     setSelectedOrder(null)
     setPackingNotes("")
     setEstimatedDelivery("")
-  }
+    }
 
   return (
     <div className="space-y-6">

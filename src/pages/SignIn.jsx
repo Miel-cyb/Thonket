@@ -11,6 +11,7 @@ const SignIn = () => {
     Warehouse: "/warehouse",
     Sales: "/orders",
     Operations: "/operations",
+    Inventory: "/inventory",
   };
 
   const handleSignIn = () => {
@@ -47,6 +48,7 @@ const SignIn = () => {
               <option value="Warehouse">Warehouse</option>
               <option value="Sales">Sales</option>
               <option value="Operations">Operations</option>
+              <option value="Inventory">Inventory</option>
             </select>
           </div>
           <button

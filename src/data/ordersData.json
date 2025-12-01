@@ -1,0 +1,228 @@
+{
+  "orders": [
+    {
+      "id": 1,
+      "orderId": "ORD-001",
+      "customer": "Kwadwo Manu",
+      "priority": "High",
+      "receivedDate": "2025-07-28T10:00:00.000Z",
+      "location": "Adum",
+      "items": [
+        { "productId": 1, "product": "50kg Rice Bag", "quantity": 2, "price": 400 },
+        { "productId": 3, "product": "5L Cooking Oil", "quantity": 1, "price": 150 }
+      ]
+    },
+    {
+      "id": 2,
+      "orderId": "ORD-002",
+      "customer": "Adwoa Yeboah",
+      "priority": "Medium",
+      "receivedDate": "2025-07-29T14:30:00.000Z",
+      "location": "Gyinase",
+      "items": [
+        { "productId": 2, "product": "25kg Sugar Bag", "quantity": 3, "price": 350 }
+      ]
+    },
+    {
+      "id": 3,
+      "orderId": "ORD-003",
+      "customer": "Femi Adebayo",
+      "priority": "Low",
+      "receivedDate": "2025-07-29T18:45:00.000Z",
+      "location": "Oforikrom",
+      "items": [
+        { "productId": 4, "product": "25L Vegetable Oil", "quantity": 1, "price": 250 },
+        { "productId": 5, "product": "20kg Salt Bag", "quantity": 5, "price": 100 }
+      ]
+    },
+    {
+      "id": 4,
+      "orderId": "ORD-004",
+      "customer": "Ngozi Okonjo",
+      "priority": "High",
+      "receivedDate": "2025-07-30T09:15:00.000Z",
+      "location": "Amakom",
+      "items": [
+        { "productId": 7, "product": "10kg Milk Powder", "quantity": 4, "price": 450 }
+      ]
+    },
+    {
+      "id": 5,
+      "orderId": "ORD-005",
+      "customer": "John Doe",
+      "priority": "Medium",
+      "receivedDate": "2025-07-30T11:00:00.000Z",
+      "location": "KNUST",
+      "items": [
+        { "productId": 9, "product": "Milo (Carton)", "quantity": 2, "price": 600 }
+      ]
+    },
+    {
+      "id": 6,
+      "orderId": "ORD-006",
+      "customer": "Jane Smith",
+      "priority": "High",
+      "receivedDate": "2025-07-31T08:30:00.000Z",
+      "location": "Santasi",
+      "items": [
+        { "productId": 1, "product": "50kg Rice Bag", "quantity": 10, "price": 400 }
+      ]
+    },
+    {
+      "id": 7,
+      "orderId": "ORD-007",
+      "customer": "Peter Jones",
+      "priority": "Low",
+      "receivedDate": "2025-07-31T12:00:00.000Z",
+      "location": "Tech Junction",
+      "items": [
+        { "productId": 6, "product": "Carton of Milk", "quantity": 8, "price": 200 }
+      ]
+    },
+    {
+      "id": 8,
+      "orderId": "ORD-008",
+      "customer": "Mary Williams",
+      "priority": "High",
+      "receivedDate": "2025-08-01T10:00:00.000Z",
+      "location": "Ayigya",
+      "items": [
+        { "productId": 8, "product": "Box of Tea Bags", "quantity": 10, "price": 50 }
+      ]
+    },
+    {
+      "id": 9,
+      "orderId": "ORD-009",
+      "customer": "David Brown",
+      "priority": "Medium",
+      "receivedDate": "2025-08-01T14:30:00.000Z",
+      "location": "Bomso",
+      "items": [
+        { "productId": 10, "product": "Crate of Eggs", "quantity": 12, "price": 70 }
+      ]
+    },
+    {
+      "id": 10,
+      "orderId": "ORD-010",
+      "customer": "Susan Davis",
+      "priority": "Low",
+      "receivedDate": "2025-08-02T09:00:00.000Z",
+      "location": "Kotei",
+      "items": [
+        { "productId": 3, "product": "5L Cooking Oil", "quantity": 6, "price": 150 }
+      ]
+    },
+    {
+      "id": 11,
+      "orderId": "ORD-011",
+      "customer": "Michael Miller",
+      "priority": "High",
+      "receivedDate": "2025-08-02T11:30:00.000Z",
+      "location": "Emina",
+      "items": [
+        { "productId": 1, "product": "50kg Rice Bag", "quantity": 4, "price": 400 },
+        { "productId": 2, "product": "25kg Sugar Bag", "quantity": 4, "price": 350 }
+      ]
+    },
+    {
+      "id": 12,
+      "orderId": "ORD-012",
+      "customer": "Linda Wilson",
+      "priority": "Medium",
+      "receivedDate": "2025-08-03T13:45:00.000Z",
+      "location": "Atonsu",
+      "items": [
+        { "productId": 7, "product": "10kg Milk Powder", "quantity": 2, "price": 450 }
+      ]
+    },
+    {
+      "id": 13,
+      "orderId": "ORD-013",
+      "customer": "Robert Moore",
+      "priority": "Low",
+      "receivedDate": "2025-08-03T16:00:00.000Z",
+      "location": "Asafo",
+      "items": [
+        { "productId": 5, "product": "20kg Salt Bag", "quantity": 10, "price": 100 }
+      ]
+    },
+    {
+      "id": 14,
+      "orderId": "ORD-014",
+      "customer": "Patricia Taylor",
+      "priority": "High",
+      "receivedDate": "2025-08-04T09:30:00.000Z",
+      "location": "Danyame",
+      "items": [
+        { "productId": 9, "product": "Milo (Carton)", "quantity": 5, "price": 600 }
+      ]
+    },
+    {
+      "id": 15,
+      "orderId": "ORD-015",
+      "customer": "James Anderson",
+      "priority": "Medium",
+      "receivedDate": "2025-08-04T12:15:00.000Z",
+      "location": "Nhyiaeso",
+      "items": [
+        { "productId": 4, "product": "25L Vegetable Oil", "quantity": 2, "price": 250 }
+      ]
+    },
+    {
+      "id": 16,
+      "orderId": "ORD-016",
+      "customer": "Barbara Thomas",
+      "priority": "High",
+      "receivedDate": "2025-08-05T10:00:00.000Z",
+      "location": "Kejetia",
+      "items": [
+        { "productId": 1, "product": "50kg Rice Bag", "quantity": 20, "price": 400 }
+      ]
+    },
+    {
+      "id": 17,
+      "orderId": "ORD-017",
+      "customer": "Paul Jackson",
+      "priority": "Low",
+      "receivedDate": "2025-08-05T14:00:00.000Z",
+      "location": "Tafo",
+      "items": [
+        { "productId": 2, "product": "25kg Sugar Bag", "quantity": 15, "price": 350 }
+      ]
+    },
+    {
+      "id": 18,
+      "orderId": "ORD-018",
+      "customer": "Karen White",
+      "priority": "Medium",
+      "receivedDate": "2025-08-06T11:00:00.000Z",
+      "location": "Krofrom",
+      "items": [
+        { "productId": 3, "product": "5L Cooking Oil", "quantity": 10, "price": 150 }
+      ]
+    },
+    {
+      "id": 19,
+      "orderId": "ORD-019",
+      "customer": "Donald Harris",
+      "priority": "High",
+      "receivedDate": "2025-08-06T15:30:00.000Z",
+      "location": "Suame",
+      "items": [
+        { "productId": 6, "product": "Carton of Milk", "quantity": 12, "price": 200 }
+      ]
+    },
+    {
+      "id": 20,
+      "orderId": "ORD-020",
+      "customer": "Sarah Martin",
+      "priority": "Low",
+      "receivedDate": "2025-08-07T09:00:00.000Z",
+      "location": "Bantama",
+      "items": [
+        { "productId": 10, "product": "Crate of Eggs", "quantity": 20, "price": 70 }
+      ]
+    }
+  ],
+  "warehouse": []
+}

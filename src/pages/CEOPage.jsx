@@ -1,5 +1,5 @@
 // pages/CEODashboard.jsx
-import Alerts from "@/components/Analytics/AlertExceptions";
+import Alerts from "@/components/OperationsDashboard/Alerts";
 import Customers from "@/components/Analytics/Customers";
 import Forecasting from "@/components/Analytics/ForecastingPerformance";
 import Insights from "@/components/Analytics/Insights";

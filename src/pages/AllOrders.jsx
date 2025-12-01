@@ -1,16 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
-import BookOrderDialog from "@/components/Book"
-import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 // Expanded Products JSON
 const productsJSON = [
@@ -280,9 +270,12 @@ const AllOrders = () => {
                 onChange={e => setSearchText(e.target.value)}
                 className="px-3 py-2 border rounded-md"
               />
-              <Button className="bg-cyan-700 hover:bg-cyan-800 text-white" onClick={() => navigate("/book-order")}>
+              <button 
+                className="bg-cyan-700 hover:bg-cyan-800 text-white py-2 px-4 rounded-md font-semibold"
+                onClick={() => navigate("/book-order")}
+              >
                 + Book New Order
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -290,18 +283,16 @@ const AllOrders = () => {
         {/* Filters */}
         <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
           <div className="flex items-center gap-3">
-            <Select onValueChange={val => setHistoryFilter(val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                {historyOptions.map(option => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              onChange={e => setHistoryFilter(e.target.value)}
+              className="p-2 border border-gray-300 rounded-md"
+            >
+              {historyOptions.map(option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
             <div className="text-sm text-gray-600">
               Showing {filteredOrders.length} orders
             </div>

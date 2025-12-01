@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { ordersData as initialOrders } from "@/data/ordersData";
 
 const getStatusStyle = (status) => {
@@ -128,14 +127,20 @@ const OrdersTable = ({ onApprove }) => {
               <td className="px-4 py-3">{getCountdown(order.createdAt)}</td>
               <td className="px-4 py-3 space-y-1">
                 {order.status === "Pending" && (
-                  <Button size="sm" onClick={() => onApprove(order)}>
+                  <button 
+                    onClick={() => onApprove(order)}
+                    className="py-1 px-3 rounded-md font-semibold bg-purple-600 text-white hover:bg-purple-700 text-xs"
+                  >
                     Approve
-                  </Button>
+                  </button>
                 )}
                 {order.status === "Approved" && (
-                  <Button size="sm" variant="outline" disabled>
+                  <button 
+                    disabled
+                    className="py-1 px-3 rounded-md font-semibold border border-gray-300 bg-white text-gray-700 text-xs cursor-not-allowed opacity-50"
+                  >
                     Ready
-                  </Button>
+                  </button>
                 )}
               </td>
             </tr>

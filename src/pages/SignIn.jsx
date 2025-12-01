@@ -8,7 +8,6 @@ const SignIn = () => {
   
 
   const rolePages = {
-    Warehouse: "/warehouse",
     Sales: "/orders",
     Operations: "/operations",
     Inventory: "/inventory",
@@ -24,7 +23,7 @@ const SignIn = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left side - brand + image */}
-      <div className="w-1/2 bg-cyan-950 text-white flex flex-col justify-center items-center p-12">
+      <div className="w-1/2 bg-[#4400A5] text-white flex flex-col justify-center items-center p-12">
         <h1 className="text-5xl font-bold mb-6">Thonket</h1>
         <p className="text-lg mb-8">Manage your orders, inventory, and operations seamlessly</p>
         <img
@@ -43,11 +42,10 @@ const SignIn = () => {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">-- Choose Role --</option>
-              <option value="Warehouse">Warehouse</option>
-              <option value="CEO">    CEO</option>
+              <option value="CEO"> CEO</option>
               <option value="Sales">Sales</option>
               <option value="Operations">Operations</option>
               <option value="Inventory">Inventory</option>
@@ -55,7 +53,7 @@ const SignIn = () => {
           </div>
           <button
             onClick={handleSignIn}
-            className="w-full bg-cyan-950 text-white py-2 px-4 rounded-lg hover:bg-cyan-700 transition-colors"
+            className="w-full bg-[#6B22A5] text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
           >
             Sign In
           </button>

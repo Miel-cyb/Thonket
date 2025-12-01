@@ -1,6 +1,6 @@
 // components/Alerts.jsx
 import React from "react";
-import KPISection from "./KPISection";
+import KPISection from "@/components/Analytics/KPISection";
 
 const criticalIssues = [
     "Stock-out: Oil & Fat in Suame Warehouse",

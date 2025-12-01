@@ -1,22 +1,11 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from 'react';
 
 export default function SupportPage() {
   const [reports, setReports] = useState([]);
-  const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
 
   const handleSubmit = (e) => {
@@ -32,74 +21,72 @@ export default function SupportPage() {
     };
 
     setReports([newReport, ...reports]);
-    setCategory("");
-    setDescription("");
+    setCategory('');
+    setDescription('');
     setFile(null);
   };
 
   return (
     <div className="w-full min-h-screen bg-gray-50 p-10">
-      {/* Header */}
       <h2 className="text-2xl font-semibold text-gray-800 mb-6">
         Support: Report Damages & Stockouts
       </h2>
 
-      {/* Report Form */}
-      <Card className="mb-8 shadow-md rounded-2xl">
-        <CardContent className="p-6">
+      <div className="mb-8 shadow-md rounded-2xl bg-white">
+        <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Category */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700">
                 Issue Type
               </label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select issue type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Damage">Damage</SelectItem>
-                  <SelectItem value="Stockout">Stockout</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="" disabled>Select issue type</option>
+                <option value="Damage">Damage</option>
+                <option value="Stockout">Stockout</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
-            {/* Description */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700">
                 Description
               </label>
-              <Textarea
+              <textarea
                 placeholder="Describe the issue..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
+                className="w-full p-2 border border-gray-300 rounded-md"
               />
             </div>
 
-            {/* File Upload */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700">
                 Attach File (Optional)
               </label>
-              <Input
+              <input
                 type="file"
                 onChange={(e) => setFile(e.target.files[0])}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
               />
             </div>
 
-            {/* Submit Button */}
             <div className="pt-4">
-              <Button type="submit" className="w-full">
+              <button
+                type="submit"
+                className="w-full py-2 px-4 rounded-md font-semibold bg-purple-600 text-white hover:bg-purple-700"
+              >
                 Submit Report
-              </Button>
+              </button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Report History */}
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
         Previous Reports
       </h3>
@@ -108,8 +95,8 @@ export default function SupportPage() {
           <p className="text-gray-500">No reports submitted yet.</p>
         ) : (
           reports.map((report) => (
-            <Card key={report.id} className="shadow-sm rounded-xl">
-              <CardContent className="p-4">
+            <div key={report.id} className="shadow-sm rounded-xl bg-white">
+              <div className="p-4">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-sm text-gray-500">{report.date}</p>
@@ -124,8 +111,8 @@ export default function SupportPage() {
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))
         )}
       </div>

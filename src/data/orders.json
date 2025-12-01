@@ -1,7 +1,7 @@
 [
   {
     "orderId": "ORD-001",
-    "customer": "James Owusu",
+    "customerName": "James Owusu",
     "location": "Accra",
     "items": [
       {
@@ -11,15 +11,13 @@
         "sellingPrice": 70
       }
     ],
-    "status": "Confirmed",
+    "status": "Pending",
     "paymentStatus": "Paid",
-    "orderDate": "2025-09-11",
-    "driver": "Kwame Mensah",
-    "priority": "High"
+    "orderDate": "2025-09-11"
   },
   {
     "orderId": "ORD-002",
-    "customer": "Ama Serwaa",
+    "customerName": "Ama Serwaa",
     "location": "Kumasi",
     "items": [
       {
@@ -31,13 +29,11 @@
     ],
     "status": "Pending",
     "paymentStatus": "Unpaid",
-    "orderDate": "2025-09-12",
-    "driver": "Kojo Asante",
-    "priority": "Low"
+    "orderDate": "2025-09-12"
   },
   {
     "orderId": "ORD-003",
-    "customer": "Kwesi Boateng",
+    "customerName": "Kwesi Boateng",
     "location": "Takoradi",
     "items": [
       {
@@ -47,15 +43,13 @@
         "sellingPrice": 150
       }
     ],
-    "status": "Confirmed",
+    "status": "Pending",
     "paymentStatus": "Paid",
-    "orderDate": "2025-09-12",
-    "driver": "Yaw Mensah",
-    "priority": "High"
+    "orderDate": "2025-09-12"
   },
   {
     "orderId": "ORD-004",
-    "customer": "Akosua Dede",
+    "customerName": "Akosua Dede",
     "location": "Cape Coast",
     "items": [
       {
@@ -65,15 +59,13 @@
         "sellingPrice": 120
       }
     ],
-    "status": "Shipped",
+    "status": "Pending",
     "paymentStatus": "Paid",
-    "orderDate": "2025-09-13",
-    "driver": "Kwame Mensah",
-    "priority": "Low"
+    "orderDate": "2025-09-13"
   },
   {
     "orderId": "ORD-005",
-    "customer": "Kojo Kumi",
+    "customerName": "Kojo Kumi",
     "location": "Tamale",
     "items": [
       {
@@ -83,10 +75,248 @@
         "sellingPrice": 95
       }
     ],
-    "status": "Confirmed",
+    "status": "Pending",
     "paymentStatus": "Paid",
-    "orderDate": "2025-09-14",
-    "driver": "Kojo Asante",
-    "priority": "High"
+    "orderDate": "2025-09-14"
+  },
+  {
+    "orderId": "ORD-006",
+    "customerName": "Yaa Asantewaa",
+    "location": "Sunyani",
+    "items": [
+      {
+        "product": "Milk Carton",
+        "quantity": 30,
+        "costPrice": 15,
+        "sellingPrice": 25
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-15"
+  },
+  {
+    "orderId": "ORD-007",
+    "customerName": "Kwabena Poku",
+    "location": "Ho",
+    "items": [
+      {
+        "product": "Bread Loaf",
+        "quantity": 50,
+        "costPrice": 5,
+        "sellingPrice": 8
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-16"
+  },
+  {
+    "orderId": "ORD-008",
+    "customerName": "Adwoa Mansa",
+    "location": "Koforidua",
+    "items": [
+      {
+        "product": "Egg Crate",
+        "quantity": 20,
+        "costPrice": 20,
+        "sellingPrice": 30
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-17"
+  },
+  {
+    "orderId": "ORD-009",
+    "customerName": "Kofi Annan",
+    "location": "Bolgatanga",
+    "items": [
+      {
+        "product": "Sardine Can",
+        "quantity": 100,
+        "costPrice": 3,
+        "sellingPrice": 5
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-18"
+  },
+  {
+    "orderId": "ORD-010",
+    "customerName": "Efua Sutherland",
+    "location": "Wa",
+    "items": [
+      {
+        "product": "Noodle Pack",
+        "quantity": 80,
+        "costPrice": 2,
+        "sellingPrice": 4
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-19"
+  },
+  {
+    "orderId": "ORD-011",
+    "customerName": "Ama Ata Aidoo",
+    "location": "Tema",
+    "items": [
+      {
+        "product": "Soap Bar",
+        "quantity": 60,
+        "costPrice": 4,
+        "sellingPrice": 6
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-20"
+  },
+  {
+    "orderId": "ORD-012",
+    "customerName": "Ayi Kwei Armah",
+    "location": "Teshie",
+    "items": [
+      {
+        "product": "Detergent Box",
+        "quantity": 40,
+        "costPrice": 25,
+        "sellingPrice": 35
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-21"
+  },
+  {
+    "orderId": "ORD-013",
+    "customerName": "Kojo Laing",
+    "location": "Nungua",
+    "items": [
+      {
+        "product": "Bleach Bottle",
+        "quantity": 30,
+        "costPrice": 10,
+        "sellingPrice": 15
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-22"
+  },
+  {
+    "orderId": "ORD-014",
+    "customerName": "Buchi Emecheta",
+    "location": "Lashibi",
+    "items": [
+      {
+        "product": "Toilet Paper Pack",
+        "quantity": 50,
+        "costPrice": 30,
+        "sellingPrice": 40
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-23"
+  },
+  {
+    "orderId": "ORD-015",
+    "customerName": "Chinua Achebe",
+    "location": "Spintex",
+    "items": [
+      {
+        "product": "Trash Bag Roll",
+        "quantity": 100,
+        "costPrice": 12,
+        "sellingPrice": 18
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-24"
+  },
+  {
+    "orderId": "ORD-016",
+    "customerName": "Wole Soyinka",
+    "location": "East Legon",
+    "items": [
+      {
+        "product": "Air Freshener",
+        "quantity": 20,
+        "costPrice": 8,
+        "sellingPrice": 12
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-25"
+  },
+  {
+    "orderId": "ORD-017",
+    "customerName": "Ngugi wa Thiong'o",
+    "location": "Adenta",
+    "items": [
+      {
+        "product": "Insecticide Spray",
+        "quantity": 30,
+        "costPrice": 15,
+        "sellingPrice": 22
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-26"
+  },
+  {
+    "orderId": "ORD-018",
+    "customerName": "Mariama Ba",
+    "location": "Madina",
+    "items": [
+      {
+        "product": "Mouthwash Bottle",
+        "quantity": 40,
+        "costPrice": 20,
+        "sellingPrice": 28
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-27"
+  },
+  {
+    "orderId": "ORD-019",
+    "customerName": "Sembene Ousmane",
+    "location": "Ashaiman",
+    "items": [
+      {
+        "product": "Shampoo Bottle",
+        "quantity": 50,
+        "costPrice": 25,
+        "sellingPrice": 35
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-28"
+  },
+  {
+    "orderId": "ORD-020",
+    "customerName": "Leopold Sedar Senghor",
+    "location": "Kasoa",
+    "items": [
+      {
+        "product": "Conditioner Bottle",
+        "quantity": 50,
+        "costPrice": 25,
+        "sellingPrice": 35
+      }
+    ],
+    "status": "Pending",
+    "paymentStatus": "Paid",
+    "orderDate": "2025-09-29"
   }
 ]

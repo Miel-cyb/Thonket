@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Navbar from "./WarehouseOverview/Navbar";
+import Navbar from "./Navbar";
 import productsData from "@/data/products";
 
 const Products = () => {

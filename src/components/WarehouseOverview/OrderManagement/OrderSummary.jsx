@@ -8,7 +8,7 @@ const OrderSummary = ({ orders }) => {
   const stats = {
     total: orders.length,
     pending: orders.filter((o) => o.status === "Pending").length,
-    confirmed: orders.filter((o) => o.status === "Confirmed").length,
+    approved: orders.filter((o) => o.status === "Approved").length,
     packed: orders.filter((o) => o.status === "Packed").length,
     ready: orders.filter((o) => o.status === "Ready").length,
     delayed: orders.filter((o) => o.status === "Delayed").length,
@@ -17,8 +17,8 @@ const OrderSummary = ({ orders }) => {
   const cards = [
     { label: "Total Orders", value: stats.total, color: "text-cyan-900" },
     { label: "Pending", value: stats.pending, color: "text-yellow-600" },
-    { label: "Packed", value: stats.packed, color: "text-blue-600" },
-    { label: "Ready for Dispatch", value: stats.ready, color: "text-green-600" },
+    { label: "Approved", value: stats.approved, color: "text-blue-600" },
+    { label: "Packed", value: stats.packed, color: "text-green-600" },
     { label: "Delayed", value: stats.delayed, color: "text-red-600" },
   ];
 

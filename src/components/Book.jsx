@@ -1,6 +1,5 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button } from "@/components/ui/button"
 
 const products = [
   { id: 1, name: "Rice Bag", price: 400 },
@@ -158,26 +157,26 @@ const BookOrder = () => {
                 />
               </div>
             ))}
-            <Button type="button" onClick={addItemRow} className="mt-2">
+            <button type="button" onClick={addItemRow} className="mt-2 py-2 px-4 rounded-md font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
               + Add Item
-            </Button>
+            </button>
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/orders")}>
+            <button type="button" onClick={() => navigate("/orders")} className="py-2 px-4 rounded-md font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
               Cancel
-            </Button>
-            <Button type="submit" className="bg-cyan-700 hover:bg-cyan-800 text-white">
+            </button>
+            <button type="submit" className="bg-cyan-700 hover:bg-cyan-800 text-white py-2 px-4 rounded-md font-semibold">
               Save Order
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold"
               onClick={downloadInvoice}
             >
               Download Invoice
-            </Button>
+            </button>
           </div>
         </form>
       </div>

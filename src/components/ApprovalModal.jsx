@@ -1,5 +1,3 @@
-import { Button } from "@/components/ui/button"
-
 const ApprovalModal = ({ order, packingNotes, setPackingNotes, estimatedDelivery, setEstimatedDelivery, onClose, onConfirm }) => {
   if (!order) return null
 
@@ -28,8 +26,18 @@ const ApprovalModal = ({ order, packingNotes, setPackingNotes, estimatedDelivery
         </label>
 
         <div className="flex justify-end space-x-4 mt-4">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onConfirm}>Confirm</Button>
+          <button 
+            onClick={onClose}
+            className="py-2 px-4 rounded-md font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="py-2 px-4 rounded-md font-semibold bg-purple-600 text-white hover:bg-purple-700"
+          >
+            Confirm
+          </button>
         </div>
       </div>
     </div>

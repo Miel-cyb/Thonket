@@ -8,6 +8,11 @@ const products = [
     unitOfMeasure: "bag",
     unitCost: 250,
     stock: 12,
+    sizes: [
+      { name: "Small", price: 100, stock: 10 },
+      { name: "Medium", price: 250, stock: 5 },
+      { name: "Large", price: 500, stock: 2 },
+    ],
   },
   {
     id: "P002",
@@ -18,6 +23,11 @@ const products = [
     unitOfMeasure: "bottle",
     unitCost: 150,
     stock: 0,
+    sizes: [
+      { name: "Small", price: 50, stock: 0 },
+      { name: "Medium", price: 150, stock: 0 },
+      { name: "Large", price: 250, stock: 0 },
+    ],
   },
   {
     id: "P003",
@@ -28,6 +38,11 @@ const products = [
     unitOfMeasure: "packet",
     unitCost: 100,
     stock: 25,
+    sizes: [
+      { name: "Small", price: 50, stock: 10 },
+      { name: "Medium", price: 100, stock: 10 },
+      { name: "Large", price: 200, stock: 5 },
+    ],
   },
   {
     id: "P004",
@@ -38,6 +53,11 @@ const products = [
     unitOfMeasure: "tin",
     unitCost: 30,
     stock: 8,
+    sizes: [
+      { name: "Small", price: 15, stock: 3 },
+      { name: "Medium", price: 30, stock: 3 },
+      { name: "Large", price: 50, stock: 2 },
+    ],
   },
   {
     id: "P005",
@@ -48,6 +68,11 @@ const products = [
     unitOfMeasure: "bag",
     unitCost: 320,
     stock: 5,
+    sizes: [
+      { name: "Small", price: 150, stock: 2 },
+      { name: "Medium", price: 320, stock: 2 },
+      { name: "Large", price: 600, stock: 1 },
+    ],
   },
   {
     id: "P006",
@@ -58,6 +83,11 @@ const products = [
     unitOfMeasure: "bag",
     unitCost: 180,
     stock: 15,
+    sizes: [
+      { name: "Small", price: 90, stock: 5 },
+      { name: "Medium", price: 180, stock: 5 },
+      { name: "Large", price: 350, stock: 5 },
+    ],
   },
   {
     id: "P007",
@@ -68,6 +98,11 @@ const products = [
     unitOfMeasure: "can",
     unitCost: 25,
     stock: 30,
+    sizes: [
+      { name: "Small", price: 15, stock: 10 },
+      { name: "Medium", price: 25, stock: 10 },
+      { name: "Large", price: 40, stock: 10 },
+    ],
   },
   {
     id: "P008",
@@ -78,6 +113,11 @@ const products = [
     unitOfMeasure: "packet",
     unitCost: 40,
     stock: 22,
+    sizes: [
+      { name: "Small", price: 20, stock: 10 },
+      { name: "Medium", price: 40, stock: 7 },
+      { name: "Large", price: 70, stock: 5 },
+    ],
   },
   {
     id: "P009",
@@ -88,6 +128,11 @@ const products = [
     unitOfMeasure: "tin",
     unitCost: 35,
     stock: 0,
+    sizes: [
+      { name: "Small", price: 20, stock: 0 },
+      { name: "Medium", price: 35, stock: 0 },
+      { name: "Large", price: 60, stock: 0 },
+    ],
   },
   {
     id: "P010",
@@ -98,6 +143,11 @@ const products = [
     unitOfMeasure: "bag",
     unitCost: 50,
     stock: 40,
+    sizes: [
+      { name: "Small", price: 25, stock: 20 },
+      { name: "Medium", price: 50, stock: 10 },
+      { name: "Large", price: 90, stock: 10 },
+    ],
   },
 ];
 

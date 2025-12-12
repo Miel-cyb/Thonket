@@ -20,7 +20,6 @@ import Dashboard from "@/components/WarehouseOverview/WarehouseDashboard/Dashboa
 import StockControl from "@/components/WarehouseOverview/StockControl";
 import OrderManagement from "@/components/WarehouseOverview/OrderManagement/OrderManagement";
 import SupportPage from "@/components/WarehouseOverview/SupportPage";
-import initialOrders from "@/data/orders.json";
 import initialDrivers from "@/data/drivers.json";
 
 const WarehouseManagerPortal = () => {
@@ -30,9 +29,19 @@ const WarehouseManagerPortal = () => {
   const [date, setDate] = useState(new Date());
 
   useEffect(() => {
-    const resetOrders = initialOrders.map(o => ({ ...o, status: 'Pending', driver: null }));
-    setOrders(resetOrders);
-    localStorage.setItem('orders', JSON.stringify(resetOrders));
+    const fetchWarehouseOrders = async () => {
+      try {
+        const response = await fetch('/api/warehouse');
+        const data = await response.json();
+        const initializedOrders = data.map(o => ({ ...o, status: o.status || 'Pending', driver: o.driver || null }));
+        setOrders(initializedOrders);
+        localStorage.setItem('orders', JSON.stringify(initializedOrders));
+      } catch (error) {
+        console.error('Error fetching warehouse orders:', error);
+      }
+    };
+
+    fetchWarehouseOrders();
     setDrivers(initialDrivers);
   }, []);
 

@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import OrderApproval from '@/components/OperationsDashboard/OrderApproval';
-import allordersData from '@/data/allordersData';
-
-
 
 const OperationsPage = () => {
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("approval");
 
   useEffect(() => {
-    // Fetch orders from the mock API
+    // Fetch orders from the mock API via the Vite proxy
     const fetchOrders = async () => {
       try {
-        const response = await fetch('http://localhost:3000/orders');
+        const response = await fetch('/api/orders');
         const data = await response.json();
         setOrders(data);
       } catch (error) {
@@ -27,8 +24,8 @@ const OperationsPage = () => {
     try {
       const orderToApprove = orders.find((order) => order.orderId === orderId);
       if (orderToApprove) {
-        // Send the approved order to the warehouse
-        await fetch('http://localhost:3000/warehouse', {
+        // Send the approved order to the warehouse via the Vite proxy
+        await fetch('/api/warehouse', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

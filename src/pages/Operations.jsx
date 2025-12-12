@@ -1,44 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import OrderApproval from '@/components/OperationsDashboard/OrderApproval';
+import DriverTracking from '@/components/OperationsDashboard/DriverTracking';
+import Alerts from '@/components/OperationsDashboard/Alerts';
+import AnalyticsDashboard from '@/components/OperationsDashboard/Analytics';
+import { calculatePriority } from '@/utils/calc'; // Import the new utility
 
 const OperationsPage = () => {
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState("approval");
+  const [activeTab, setActiveTab] = useState('approval');
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      let data = await response.json();
+
+      // Calculate priority for each order
+      data = data.map(order => calculatePriority(order));
+
+      setOrders(data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
 
   useEffect(() => {
-    // Fetch orders from the mock API via the Vite proxy
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch('/api/orders');
-        const data = await response.json();
-        setOrders(data);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-      }
-    };
-
     fetchOrders();
   }, []);
 
   const handleApproveOrder = async (orderId) => {
-    try {
-      const orderToApprove = orders.find((order) => order.orderId === orderId);
-      if (orderToApprove) {
-        // Send the approved order to the warehouse via the Vite proxy
-        await fetch('/api/warehouse', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(orderToApprove),
-        });
+    const orderToApprove = orders.find((order) => order.orderId === orderId);
+    if (!orderToApprove) return;
 
-        // Remove the approved order from the list
-        setOrders(orders.filter((order) => order.orderId !== orderId));
-        console.log(`Order ${orderId} approved and sent to warehouse.`);
-      }
+    try {
+      // Optimistically update the UI
+      setOrders(orders.filter(o => o.orderId !== orderId));
+
+      // Add the approved order to the warehouse
+      await fetch('/api/warehouse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderToApprove),
+      });
+
+      // Then, remove the order from the main list
+      await fetch(`/api/orders/${orderToApprove.id}`, {
+        method: 'DELETE',
+      });
+
+      console.log(`Order ${orderId} approved and sent to warehouse.`);
     } catch (error) {
       console.error('Error approving order:', error);
+      // If the API calls fail, revert the UI
+      setOrders(orders);
     }
   };
 
@@ -46,29 +61,38 @@ const OperationsPage = () => {
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Operations Dashboard</h1>
-        
+
         <div className="flex space-x-4 mb-6 border-b border-gray-300">
           <button
-              className={`pb-2 font-semibold ${activeTab === "approval" ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-600"}`}
-              onClick={() => setActiveTab("approval")}
+            className={`pb-2 font-semibold ${activeTab === 'approval' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('approval')}
           >
-              Order Approval
+            Order Approval
           </button>
           <button
-              className={`pb-2 font-semibold ${activeTab === "tracking" ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-600"}`}
-              onClick={() => setActiveTab("tracking")}
+            className={`pb-2 font-semibold ${activeTab === 'tracking' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('tracking')}
           >
-              Driver Tracking
+            Driver Tracking
           </button>
           <button
-              className={`pb-2 font-semibold ${activeTab === "alerts" ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-600"}`}
-              onClick={() => setActiveTab("alerts")}
+            className={`pb-2 font-semibold ${activeTab === 'alerts' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('alerts')}
           >
-              Alerts
+            Alerts
+          </button>
+          <button
+            className={`pb-2 font-semibold ${activeTab === 'analytics' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('analytics')}
+          >
+            Analytics
           </button>
         </div>
 
-        {activeTab === "approval" && <OrderApproval initialOrders={orders} onApproveOrder={handleApproveOrder} />}
+        {activeTab === 'approval' && <OrderApproval initialOrders={orders} onApproveOrder={handleApproveOrder} />}
+        {activeTab === 'tracking' && <DriverTracking orders={orders} />}
+        {activeTab === 'alerts' && <Alerts />}
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
 
       </div>
     </div>

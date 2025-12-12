@@ -1,48 +1,9 @@
 {
   "orders": [
     {
-      "id": "1",
-      "orderId": "ORD-001",
-      "customer": "Kwadwo Manu",
-      "priority": "High",
-      "receivedDate": "2025-07-28T10:00:00.000Z",
-      "location": "Adum",
-      "items": [
-        {
-          "productId": 1,
-          "product": "50kg Rice Bag",
-          "quantity": 2,
-          "price": 400
-        },
-        {
-          "productId": 3,
-          "product": "5L Cooking Oil",
-          "quantity": 1,
-          "price": 150
-        }
-      ]
-    },
-    {
-      "id": "2",
-      "orderId": "ORD-002",
-      "customer": "Adwoa Yeboah",
-      "priority": "Medium",
-      "receivedDate": "2025-07-29T14:30:00.000Z",
-      "location": "Gyinase",
-      "items": [
-        {
-          "productId": 2,
-          "product": "25kg Sugar Bag",
-          "quantity": 3,
-          "price": 350
-        }
-      ]
-    },
-    {
       "id": "3",
       "orderId": "ORD-003",
       "customer": "Femi Adebayo",
-      "priority": "Low",
       "receivedDate": "2025-07-29T18:45:00.000Z",
       "location": "Oforikrom",
       "items": [
@@ -64,7 +25,6 @@
       "id": "4",
       "orderId": "ORD-004",
       "customer": "Ngozi Okonjo",
-      "priority": "High",
       "receivedDate": "2025-07-30T09:15:00.000Z",
       "location": "Amakom",
       "items": [
@@ -80,7 +40,6 @@
       "id": "5",
       "orderId": "ORD-005",
       "customer": "John Doe",
-      "priority": "Medium",
       "receivedDate": "2025-07-30T11:00:00.000Z",
       "location": "KNUST",
       "items": [
@@ -96,7 +55,6 @@
       "id": "6",
       "orderId": "ORD-006",
       "customer": "Jane Smith",
-      "priority": "High",
       "receivedDate": "2025-07-31T08:30:00.000Z",
       "location": "Santasi",
       "items": [
@@ -112,7 +70,6 @@
       "id": "7",
       "orderId": "ORD-007",
       "customer": "Peter Jones",
-      "priority": "Low",
       "receivedDate": "2025-07-31T12:00:00.000Z",
       "location": "Tech Junction",
       "items": [
@@ -128,7 +85,6 @@
       "id": "8",
       "orderId": "ORD-008",
       "customer": "Mary Williams",
-      "priority": "High",
       "receivedDate": "2025-08-01T10:00:00.000Z",
       "location": "Ayigya",
       "items": [
@@ -144,7 +100,6 @@
       "id": "9",
       "orderId": "ORD-009",
       "customer": "David Brown",
-      "priority": "Medium",
       "receivedDate": "2025-08-01T14:30:00.000Z",
       "location": "Bomso",
       "items": [
@@ -160,7 +115,6 @@
       "id": "10",
       "orderId": "ORD-010",
       "customer": "Susan Davis",
-      "priority": "Low",
       "receivedDate": "2025-08-02T09:00:00.000Z",
       "location": "Kotei",
       "items": [
@@ -176,7 +130,6 @@
       "id": "11",
       "orderId": "ORD-011",
       "customer": "Michael Miller",
-      "priority": "High",
       "receivedDate": "2025-08-02T11:30:00.000Z",
       "location": "Emina",
       "items": [
@@ -198,7 +151,6 @@
       "id": "12",
       "orderId": "ORD-012",
       "customer": "Linda Wilson",
-      "priority": "Medium",
       "receivedDate": "2025-08-03T13:45:00.000Z",
       "location": "Atonsu",
       "items": [
@@ -214,7 +166,6 @@
       "id": "13",
       "orderId": "ORD-013",
       "customer": "Robert Moore",
-      "priority": "Low",
       "receivedDate": "2025-08-03T16:00:00.000Z",
       "location": "Asafo",
       "items": [
@@ -230,7 +181,6 @@
       "id": "14",
       "orderId": "ORD-014",
       "customer": "Patricia Taylor",
-      "priority": "High",
       "receivedDate": "2025-08-04T09:30:00.000Z",
       "location": "Danyame",
       "items": [
@@ -246,7 +196,6 @@
       "id": "15",
       "orderId": "ORD-015",
       "customer": "James Anderson",
-      "priority": "Medium",
       "receivedDate": "2025-08-04T12:15:00.000Z",
       "location": "Nhyiaeso",
       "items": [
@@ -262,7 +211,6 @@
       "id": "16",
       "orderId": "ORD-016",
       "customer": "Barbara Thomas",
-      "priority": "High",
       "receivedDate": "2025-08-05T10:00:00.000Z",
       "location": "Kejetia",
       "items": [
@@ -278,7 +226,6 @@
       "id": "17",
       "orderId": "ORD-017",
       "customer": "Paul Jackson",
-      "priority": "Low",
       "receivedDate": "2025-08-05T14:00:00.000Z",
       "location": "Tafo",
       "items": [
@@ -294,7 +241,6 @@
       "id": "18",
       "orderId": "ORD-018",
       "customer": "Karen White",
-      "priority": "Medium",
       "receivedDate": "2025-08-06T11:00:00.000Z",
       "location": "Krofrom",
       "items": [
@@ -310,7 +256,6 @@
       "id": "19",
       "orderId": "ORD-019",
       "customer": "Donald Harris",
-      "priority": "High",
       "receivedDate": "2025-12-23T15:30:00.000Z",
       "location": "Suame",
       "items": [
@@ -326,7 +271,6 @@
       "id": "20",
       "orderId": "ORD-020",
       "customer": "Sarah Martin",
-      "priority": "Low",
       "receivedDate": "2025-12-27T09:00:00.000Z",
       "location": "Bantama",
       "items": [
@@ -344,7 +288,6 @@
       "id": "1",
       "orderId": "ORD-001",
       "customer": "Kwadwo Manu",
-      "priority": "High",
       "receivedDate": "2025-07-28T10:00:00.000Z",
       "location": "Adum",
       "items": [
@@ -363,26 +306,20 @@
       ]
     },
     {
-      "id": "1",
-      "orderId": "ORD-001",
-      "customer": "Kwadwo Manu",
-      "priority": "High",
-      "receivedDate": "2025-07-28T10:00:00.000Z",
-      "location": "Adum",
+      "id": "2",
+      "orderId": "ORD-002",
+      "customer": "Adwoa Yeboah",
+      "receivedDate": "2025-07-29T14:30:00.000Z",
+      "location": "Gyinase",
       "items": [
         {
-          "productId": 1,
-          "product": "50kg Rice Bag",
-          "quantity": 2,
-          "price": 400
-        },
-        {
-          "productId": 3,
-          "product": "5L Cooking Oil",
-          "quantity": 1,
-          "price": 150
+          "productId": 2,
+          "product": "25kg Sugar Bag",
+          "quantity": 3,
+          "price": 350
         }
-      ]
+      ],
+      "priority": "High"
     }
   ]
 }

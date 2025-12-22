@@ -100,7 +100,7 @@ const OrderApproval = ({ initialOrders, onApproveOrder }) => {
   };
 
   const groupedOrders = groupOrdersByDate(orders);
-  const sortedDates = Object.keys(groupedOrders).sort((a, b) => new Date(a) - new Date(b));
+  const sortedDates = Object.keys(groupedOrders).sort((a, b) => new Date(b) - new Date(a));
 
   return (
     <div>

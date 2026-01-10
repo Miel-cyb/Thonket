@@ -1,36 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-export default function SupportPage() {
-  const [reports, setReports] = useState([]);
+export default function SupportPage({ onReportSubmit }) {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!category || !description) return;
 
-    const newReport = {
-      id: Date.now(),
-      category,
-      description,
-      fileName: file ? file.name : null,
-      date: new Date().toLocaleString(),
-    };
+    if (window.confirm("Are you sure you want to submit this report?")) {
+      const newReport = {
+        id: Date.now(),
+        category,
+        description,
+        fileName: file ? file.name : null,
+        date: new Date().toISOString(),
+        title: `${category}: ${description.substring(0, 30)}...`
+      };
 
-    setReports([newReport, ...reports]);
-    setCategory('');
-    setDescription('');
-    setFile(null);
+      onReportSubmit(newReport);
+      setCategory('');
+      setDescription('');
+      setFile(null);
+      setShowSuccess(true);
+    }
   };
+
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess]);
 
   return (
     <div className="w-full min-h-screen bg-gray-50 p-10">
       <h2 className="text-2xl font-semibold text-gray-800 mb-6">
         Support: Report Damages & Stockouts
       </h2>
+
+      {showSuccess && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-md">
+          <p>Report submitted successfully!</p>
+        </div>
+      )}
 
       <div className="mb-8 shadow-md rounded-2xl bg-white">
         <div className="p-6">
@@ -85,36 +104,6 @@ export default function SupportPage() {
             </div>
           </form>
         </div>
-      </div>
-
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-        Previous Reports
-      </h3>
-      <div className="space-y-4">
-        {reports.length === 0 ? (
-          <p className="text-gray-500">No reports submitted yet.</p>
-        ) : (
-          reports.map((report) => (
-            <div key={report.id} className="shadow-sm rounded-xl bg-white">
-              <div className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-gray-500">{report.date}</p>
-                    <p className="font-medium text-gray-800">
-                      {report.category}
-                    </p>
-                    <p className="text-gray-600">{report.description}</p>
-                    {report.fileName && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        📎 {report.fileName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
       </div>
     </div>
   );

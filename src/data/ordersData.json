@@ -127,27 +127,6 @@
       ]
     },
     {
-      "id": "11",
-      "orderId": "ORD-011",
-      "customer": "Michael Miller",
-      "receivedDate": "2025-08-02T11:30:00.000Z",
-      "location": "Emina",
-      "items": [
-        {
-          "productId": 1,
-          "product": "50kg Rice Bag",
-          "quantity": 4,
-          "price": 400
-        },
-        {
-          "productId": 2,
-          "product": "25kg Sugar Bag",
-          "quantity": 4,
-          "price": 350
-        }
-      ]
-    },
-    {
       "id": "12",
       "orderId": "ORD-012",
       "customer": "Linda Wilson",
@@ -316,6 +295,28 @@
           "productId": 2,
           "product": "25kg Sugar Bag",
           "quantity": 3,
+          "price": 350
+        }
+      ],
+      "priority": "High"
+    },
+    {
+      "id": "11",
+      "orderId": "ORD-011",
+      "customer": "Michael Miller",
+      "receivedDate": "2025-08-02T11:30:00.000Z",
+      "location": "Emina",
+      "items": [
+        {
+          "productId": 1,
+          "product": "50kg Rice Bag",
+          "quantity": 4,
+          "price": 400
+        },
+        {
+          "productId": 2,
+          "product": "25kg Sugar Bag",
+          "quantity": 4,
           "price": 350
         }
       ],

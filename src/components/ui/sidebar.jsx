@@ -21,7 +21,7 @@ const useSidebar = () => {
 };
 
 const sidebarStyles = tv({
-  base: "fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-300 ease-in-out md:relative md:w-72 md:translate-x-0",
+  base: "fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col bg-white text-sidebar-foreground shadow-lg transition-transform duration-300 ease-in-out md:relative md:w-72 md:translate-x-0",
   variants: {
     open: {
       true: "translate-x-0",

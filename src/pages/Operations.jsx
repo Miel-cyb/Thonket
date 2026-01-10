@@ -3,9 +3,9 @@ import OrderApproval from '@/components/OperationsDashboard/OrderApproval';
 import DriverTracking from '@/components/OperationsDashboard/DriverTracking';
 import Alerts from '@/components/OperationsDashboard/Alerts';
 import AnalyticsDashboard from '@/components/OperationsDashboard/Analytics';
-import { calculatePriority } from '@/utils/calc'; // Import the new utility
+import { calculatePriority } from '@/utils/calc';
 
-const OperationsPage = () => {
+const OperationsPage = ({ products, reports }) => {
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('approval');
 
@@ -14,7 +14,6 @@ const OperationsPage = () => {
       const response = await fetch('/api/orders');
       let data = await response.json();
 
-      // Calculate priority for each order
       data = data.map(order => calculatePriority(order));
 
       setOrders(data);
@@ -32,10 +31,8 @@ const OperationsPage = () => {
     if (!orderToApprove) return;
 
     try {
-      // Optimistically update the UI
       setOrders(orders.filter(o => o.orderId !== orderId));
 
-      // Add the approved order to the warehouse
       await fetch('/api/warehouse', {
         method: 'POST',
         headers: {
@@ -44,7 +41,6 @@ const OperationsPage = () => {
         body: JSON.stringify(orderToApprove),
       });
 
-      // Then, remove the order from the main list
       await fetch(`/api/orders/${orderToApprove.id}`, {
         method: 'DELETE',
       });
@@ -52,7 +48,6 @@ const OperationsPage = () => {
       console.log(`Order ${orderId} approved and sent to warehouse.`);
     } catch (error) {
       console.error('Error approving order:', error);
-      // If the API calls fail, revert the UI
       setOrders(orders);
     }
   };
@@ -91,7 +86,7 @@ const OperationsPage = () => {
 
         {activeTab === 'approval' && <OrderApproval initialOrders={orders} onApproveOrder={handleApproveOrder} />}
         {activeTab === 'tracking' && <DriverTracking orders={orders} />}
-        {activeTab === 'alerts' && <Alerts />}
+        {activeTab === 'alerts' && <Alerts products={products} reports={reports} />}
         {activeTab === 'analytics' && <AnalyticsDashboard />}
 
       </div>

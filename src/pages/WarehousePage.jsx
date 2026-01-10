@@ -1,19 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
+  SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, useSidebar,
 } from "@/components/ui/sidebar";
-
 import { Menu, Package, Truck, Boxes, ClipboardList, BarChart } from "lucide-react";
 import Products from "@/components/WarehouseOverview/Products";
 import Dashboard from "@/components/WarehouseOverview/WarehouseDashboard/Dashboard";
@@ -22,7 +11,7 @@ import OrderManagement from "@/components/WarehouseOverview/OrderManagement/Orde
 import SupportPage from "@/components/WarehouseOverview/SupportPage";
 import initialDrivers from "@/data/drivers.json";
 
-const WarehouseManagerPortal = () => {
+const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit }) => {
   const [activePage, setActivePage] = useState("Dashboard");
   const [orders, setOrders] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -35,7 +24,6 @@ const WarehouseManagerPortal = () => {
         const data = await response.json();
         const initializedOrders = data.map(o => ({ ...o, status: o.status || 'Pending', driver: o.driver || null }));
         setOrders(initializedOrders);
-        localStorage.setItem('orders', JSON.stringify(initializedOrders));
       } catch (error) {
         console.error('Error fetching warehouse orders:', error);
       }
@@ -47,7 +35,6 @@ const WarehouseManagerPortal = () => {
 
   const updateOrders = (updatedOrders) => {
     setOrders(updatedOrders);
-    localStorage.setItem('orders', JSON.stringify(updatedOrders));
   };
 
   const handleUpdateOrderStatus = (orderId, newStatus) => {
@@ -81,26 +68,20 @@ const WarehouseManagerPortal = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex h-screen bg-background">
         <Sidebar>
           <SidebarHeader>
-            <h1 className="text-xl font-bold px-4 text-white">Thonket</h1>
+            <h1 className="text-xl font-bold px-4 text-primary-foreground">Thonket</h1>
           </SidebarHeader>
 
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>
-                Application
-              </SidebarGroupLabel>
+              <SidebarGroupLabel>Application</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {subpages.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarItemButton
-                        item={item}
-                        activePage={activePage}
-                        setActivePage={setActivePage}
-                      />
+                      <SidebarItemButton item={item} activePage={activePage} setActivePage={setActivePage} />
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -108,19 +89,19 @@ const WarehouseManagerPortal = () => {
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="p-4 text-sm text-gray-300">
+          <SidebarFooter className="p-4 text-sm text-muted-foreground">
             ©{new Date().getFullYear()} Thonket
           </SidebarFooter>
         </Sidebar>
 
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-1 flex-col min-w-0">
           <MobileHeader />
-          <div className="flex-1 overflow-y-auto p-6">
-            {activePage === "Dashboard" && <Dashboard orders={orders} drivers={drivers} date={date} setDate={setDate} setActivePage={setActivePage} />}
-            {activePage === "Products" && <Products />}
-            {activePage === "Stock" && <StockControl />}
+          <div className="flex-1 overflow-y-auto">
+            {activePage === "Dashboard" && <Dashboard orders={orders} drivers={drivers} date={date} setDate={setDate} setActivePage={setActivePage} products={products} reports={reports} />}
+            {activePage === "Products" && <Products products={products} setProducts={setProducts} />}
+            {activePage === "Stock" && <StockControl products={products} setProducts={setProducts} />}
             {activePage === "Orders" && <OrderManagement orders={orders} drivers={drivers} onUpdateStatus={handleUpdateOrderStatus} onAssignDriver={handleAssignDriver} onSaveDriver={handleSaveDriver} />}
-            {activePage === "Reporting" && <SupportPage />}
+            {activePage === "Reporting" && <SupportPage onReportSubmit={onReportSubmit} />}
           </div>
         </div>
       </div>
@@ -131,10 +112,10 @@ const WarehouseManagerPortal = () => {
 const MobileHeader = () => {
   const { open, setOpen } = useSidebar();
   return (
-    <header className="bg-white shadow-md p-4 flex justify-between items-center md:hidden">
-      <h1 className="text-xl font-bold text-[#4400A5]">Thonket</h1>
+    <header className="bg-card shadow-md p-4 flex justify-between items-center md:hidden">
+      <h1 className="text-xl font-bold text-primary">Thonket</h1>
       <button onClick={() => setOpen(!open)}>
-        <Menu className="h-6 w-6 text-[#4400A5]" />
+        <Menu className="h-6 w-6 text-primary" />
       </button>
     </header>
   );
@@ -151,10 +132,7 @@ const SidebarItemButton = ({ item, activePage, setActivePage }) => {
   };
 
   return (
-    <SidebarMenuButton
-      onClick={handleClick}
-      isActive={activePage === item.title}
-    >
+    <SidebarMenuButton onClick={handleClick} isActive={activePage === item.title}>
       <item.icon className="h-4 w-4" />
       <span>{item.title}</span>
     </SidebarMenuButton>

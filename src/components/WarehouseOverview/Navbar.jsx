@@ -26,100 +26,69 @@ const Navbar = ({ onSearch }) => {
     <header className="w-full bg-white border-b px-4 md:px-6 py-3 flex items-center justify-between shadow-sm relative z-20">
       {/* Left Section: Sidebar Trigger + Welcome */}
       <div className="flex items-center gap-4">
-        {/* Sidebar (only shows trigger on mobile) */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <button className="p-2 rounded-md hover:bg-gray-100 transition md:hidden">
-              <Menu className="h-6 w-6 text-gray-700" />
-            </button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64">
-            <SheetHeader>
-              <SheetTitle className="text-cyan-900">Menu</SheetTitle>
-            </SheetHeader>
-            <nav className="mt-6 flex flex-col gap-4">
-              <a
-                href="#"
-                className="flex items-center gap-2 text-gray-700 hover:text-cyan-900"
-              >
-                <Home className="h-4 w-4" />
-                Dashboard
-              </a>
-              <a
-                href="#"
-                className="flex items-center gap-2 text-gray-700 hover:text-cyan-900"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                Products
-              </a>
-              <a
-                href="#"
-                className="flex items-center gap-2 text-gray-700 hover:text-cyan-900"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </a>
-            </nav>
-          </SheetContent>
-        </Sheet>
-
+      
         {/* Welcome text (hidden on very small screens) */}
         <h2 className="font-semibold text-gray-700 hidden sm:block">
           Welcome, <span className="text-cyan-900">User</span>
         </h2>
       </div>
 
-      {/* Center Section: Search */}
-      <div className="flex-1 flex justify-center px-4">
-        <div className="flex items-center w-full max-w-md border rounded-lg overflow-hidden">
+      {/* Center Section: Search Bar */}
+      <div className="flex-1 max-w-xs mx-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
-            type="search"
-            placeholder="Search items..."
-            className="flex-1 px-4 py-2 text-sm outline-none"
+            type="text"
+            placeholder="Search products..."
             value={searchItem}
             onChange={(e) => {
               setSearchItem(e.target.value);
-              onSearch?.(e.target.value);
+              onSearch(e.target.value);
             }}
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 border-transparent focus:border-cyan-500 focus:bg-white focus:ring-0 transition"
           />
-          <button
-            className="bg-cyan-900 text-white px-4 py-2 hover:bg-cyan-800 transition flex items-center"
-            onClick={() => onSearch?.(searchItem)}
-          >
-            <Search className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
       {/* Right Section: User Profile */}
-      <div className="relative">
-        <button
-          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
-          onClick={() => setShowMenu(!showMenu)}
-        >
-          <User className="h-5 w-5 text-cyan-900" />
-          <span className="hidden md:inline text-sm font-medium text-gray-700">
-            Profile
-          </span>
-        </button>
+            <div className="relative">
+              <button
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
+                onClick={() => setShowMenu(!showMenu)}
+              >
+                <User className="h-5 w-5 text-cyan-900" />
+                <span className="hidden lg:inline text-sm font-medium text-cyan-700">
+                  Profile
+                </span>
+              </button>
 
-        {/* Dropdown Menu */}
+        {/* User Dropdown Menu */}
         {showMenu && (
-          <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-md py-2 z-50">
-            <button
-              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              onClick={() => alert("Edit Profile clicked")}
-            >
-              <Pencil className="h-4 w-4" />
-              Edit Profile
-            </button>
-            <button
-              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-              onClick={() => alert("Logout clicked")}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
+          <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border z-30">
+            <div className="p-2">
+              <a
+                href="#"
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-gray-700 transition"
+              >
+                <Pencil className="h-4 w-4" />
+                <span>Edit Profile</span>
+              </a>
+              <a
+                href="#"
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 text-sm text-gray-700 transition"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </a>
+              <div className="my-1 border-t"></div>
+              <a
+                href="#"
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 text-red-600 text-sm transition"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </a>
+            </div>
           </div>
         )}
       </div>

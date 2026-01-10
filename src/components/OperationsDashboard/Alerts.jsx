@@ -1,18 +1,8 @@
-// components/Alerts.jsx
-import React from "react";
+import React from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
-// Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-
-const criticalIssues = [
-    "Stock-out: Oil & Fat in Suame Warehouse",
-    "Delayed delivery: Asokwa route",
-    "High fuel cost: ₵17,000/week",
-    "Customer churn rising: 6% last month",
-];
 
 const regionalData = {
     labels: ['Adum', 'Santasi', 'Asokwa', 'Kotei', 'Tafo', 'Nhyiaeso'],
@@ -30,18 +20,24 @@ const regionalData = {
     ]
 };
 
+const Alerts = ({ products, reports }) => {
+    const lowStockProducts = products.flatMap(p => p.sizes.map(s => ({ ...p, size: s.name, stock: s.stock }))).filter(p => p.stock < 10);
 
-const Alerts = () => {
+    const criticalIssues = [
+        ...lowStockProducts.map(p => `Stock-out: ${p.name} (${p.size}) in warehouse`),
+        "Delayed delivery: Asokwa route",
+        "High fuel cost: ₵17,000/week",
+        "Customer churn rising: 6% last month",
+    ];
+
     return (
         <div>
-            {/* Critical Alerts */}
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                 <h3 className="text-lg font-semibold mb-4 text-red-700">Critical Issues & Alerts</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                    {/* KPI Cards */}
                     <div className="bg-red-50 p-4 rounded-lg shadow-inner">
                         <h4 className="text-sm font-semibold mb-2 text-gray-700">Low Stock</h4>
-                        <p className="text-2xl font-bold text-red-600">3 alerts</p>
+                        <p className="text-2xl font-bold text-red-600">{lowStockProducts.length} alerts</p>
                     </div>
                     <div className="bg-yellow-50 p-4 rounded-lg shadow-inner">
                         <h4 className="text-sm font-semibold mb-2 text-gray-700">Late Deliveries</h4>
@@ -63,7 +59,21 @@ const Alerts = () => {
                 </ul>
             </div>
 
-            {/* Regional Performance Hotspots */}
+            {reports && reports.length > 0 && (
+                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h3 className="text-lg font-semibold mb-4 text-blue-700">Submitted Reports</h3>
+                    <div className="space-y-4">
+                        {reports.map((report, index) => (
+                            <div key={index} className="border-l-4 border-blue-500 p-3 bg-blue-50 rounded-r-lg">
+                                <p className="font-semibold text-blue-800">{report.title}</p>
+                                <p className="text-sm text-blue-700">{report.description}</p>
+                                <p className="text-xs text-muted-foreground mt-2">Reported on: {new Date(report.date).toLocaleDateString()}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Regional Performance Hotspots</h3>
                 <p className="text-sm text-gray-600 mb-4">Monitor sales volume and profitability by region to identify opportunities and risks.</p>

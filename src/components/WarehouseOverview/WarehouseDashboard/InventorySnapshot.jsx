@@ -1,45 +1,42 @@
-// src/components/WarehouseDashboard/InventorySnapshot.jsx
-import React, { useState } from 'react';
-import InventoryDetailModal from './InventoryDetailModal';
+import React from 'react';
 
-const InventorySnapshot = ({ date }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const inventoryStats = [
-    { label: 'Stock Items', value: 1250 },
-    { label: 'Low Stock Alerts', value: 15 },
-    { label: 'Stock Value', value: '$250,000' },
-    { label: 'Storage Capacity', value: '85%' },
-  ];
+const InventorySnapshot = ({ products }) => {
+  // Calculate the total number of items in stock
+  const totalStockItems = products.reduce((acc, p) => acc + (p.stock || 0), 0);
+  
+  // Calculate the number of items with low stock
+  const lowStockAlerts = products.filter(p => p.stock < 10).length;
+  
+  // Calculate the total value of the stock
+  const stockValue = products.reduce((acc, p) => acc + ((p.price || 0) * (p.stock || 0)), 0);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-card rounded-lg shadow-md p-4 h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <div>
-          <h2 className="text-lg font-bold">Inventory Snapshot</h2>
-          <p className="text-sm text-gray-500">For {date.toDateString()}</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)} 
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-        >
+        <h2 className="text-lg font-semibold text-card-foreground">Inventory Snapshot</h2>
+        <button className="bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-lg hover:bg-primary/90 transition">
           View Details
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mt-4">
-        {inventoryStats.map((stat) => (
-          <div key={stat.label} className="text-center">
-            <p className="text-2xl font-bold">{stat.value}</p>
-            <p className="text-sm text-gray-500">{stat.label}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-y-6 flex-grow content-center">
+        <div className="text-center">
+          <p className="text-3xl font-bold text-foreground">{totalStockItems}</p>
+          <p className="text-sm text-muted-foreground">Stock Items</p>
+        </div>
+        <div className="text-center">
+          <p className="text-3xl font-bold text-foreground">{lowStockAlerts}</p>
+          <p className="text-sm text-muted-foreground">Low Stock Alerts</p>
+        </div>
+        <div className="text-center">
+          <p className="text-3xl font-bold text-foreground">₵{stockValue.toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground">Stock Value</p>
+        </div>
+        <div className="text-center">
+          <p className="text-3xl font-bold text-foreground">85%</p>
+          <p className="text-sm text-muted-foreground">Storage Capacity</p>
+        </div>
       </div>
-
-      <InventoryDetailModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-      />
     </div>
   );
 };

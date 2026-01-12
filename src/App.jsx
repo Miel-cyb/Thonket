@@ -8,6 +8,7 @@ import BookOrderDialog from './components/Book';
 import CEODashboard from './pages/CEOPage';
 import WarehousePage from './pages/WarehousePage';
 import productsData from "@/data/products";
+import AdminPage from './admin/AdminPage';
 
 function App() {
   const [products, setProducts] = useState(
@@ -65,6 +66,7 @@ function App() {
           }
         />
         <Route path="/ceo-analytics" element={<CEODashboard />} />
+        <Route path='/admin/*' element={<AdminPage/>}></Route>
       </Routes>
     </BrowserRouter>
   );

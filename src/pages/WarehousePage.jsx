@@ -10,6 +10,7 @@ import StockControl from "@/components/WarehouseOverview/StockControl";
 import OrderManagement from "@/components/WarehouseOverview/OrderManagement/OrderManagement";
 import SupportPage from "@/components/WarehouseOverview/SupportPage";
 import initialDrivers from "@/data/drivers.json";
+import UserMenu from "@/components/UserMenu";
 
 const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit }) => {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -102,6 +103,7 @@ const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit
             {activePage === "Stock" && <StockControl products={products} setProducts={setProducts} />}
             {activePage === "Orders" && <OrderManagement orders={orders} drivers={drivers} onUpdateStatus={handleUpdateOrderStatus} onAssignDriver={handleAssignDriver} onSaveDriver={handleSaveDriver} />}
             {activePage === "Reporting" && <SupportPage onReportSubmit={onReportSubmit} />}
+            
           </div>
         </div>
       </div>
@@ -113,6 +115,7 @@ const MobileHeader = () => {
   const { open, setOpen } = useSidebar();
   return (
     <header className="bg-card shadow-md p-4 flex justify-between items-center md:hidden">
+      
       <h1 className="text-xl font-bold text-primary">Thonket</h1>
       <button onClick={() => setOpen(!open)}>
         <Menu className="h-6 w-6 text-primary" />
@@ -135,6 +138,7 @@ const SidebarItemButton = ({ item, activePage, setActivePage }) => {
     <SidebarMenuButton onClick={handleClick} isActive={activePage === item.title}>
       <item.icon className="h-4 w-4" />
       <span>{item.title}</span>
+      
     </SidebarMenuButton>
   );
 };

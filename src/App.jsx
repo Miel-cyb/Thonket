@@ -1,7 +1,7 @@
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import AllOrders from './pages/AllOrders';
+import Sales from './pages/Sales';
 import SignIn from './pages/SignIn';
 import OperationsManagerPage from './pages/Operations';
 import BookOrderDialog from './components/Book';
@@ -48,7 +48,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<SignIn />} />
-        <Route path="/orders" element={<AllOrders />} />
+        <Route path="/sales" element={<Sales/>} />
         <Route path="/book-order" element={<BookOrderDialog />} />
         <Route
           path="/operations"

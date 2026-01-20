@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  getUsers,
+  getUsers,               /** CURENTLY USING PRINCE'S USERS API */
   getUserById,
-  updateUser,
   deleteUser,
 } from "./api/usersApi";
 

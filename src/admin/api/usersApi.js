@@ -1,7 +1,5 @@
-// import { mockUsers } from "../users.mock";
 
-
-
+import {api} from "./authService";
 
 // const BASE_URL = "https://thonket-sales-order-system.onrender.com/users";
 
@@ -96,8 +94,10 @@ export const updateUserRole = async (authId, role) => {
 
 
 
+ 
 
-import {api} from "./authService"; 
+
+// PRINCE'S API
 
 // GET all users
 export const getUsers = async (limit = 30, offset = 0) => {
@@ -118,12 +118,6 @@ export const createUser = async ({ email, password, role }) => {
     new URLSearchParams({ email, password, confirm_password: password, role }),
     { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
   );
-  return response.data;
-};
-
-// UPDATE user by ID
-export const updateUser = async (id, { email, role }) => {
-  const response = await api.put(`/api/users/${id}`, { email, role });
   return response.data;
 };
 

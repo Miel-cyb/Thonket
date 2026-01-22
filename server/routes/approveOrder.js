@@ -22,10 +22,11 @@ module.exports = (req, res) => {
     return res.status(404).json({ message: 'Order not found' });
   }
 
-  const [approvedOrder] = data.orders.splice(orderIndex, 1);
-  data.warehouse.push(approvedOrder);
+  // Update the order status
+  data.orders[orderIndex].status = 'APPROVED';
+  data.orders[orderIndex].isApproved = true;
 
   writeData(data);
 
-  res.status(200).json(approvedOrder);
+  res.status(200).json(data.orders[orderIndex]);
 };

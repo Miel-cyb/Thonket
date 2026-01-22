@@ -1,22 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-//  replace this with a dynamic fetch later
+const API_URL = 'https://thonket-sales-order-system.onrender.com';
+
 const products = [
-  { id: 'P001', name: 'Rice Bag (25kg)', price: 250 },
-  { id: 'P002', name: 'Cooking Oil (5L)', price: 150 },
-  { id: 'P003', name: 'Milk Powder (1kg)', price: 100 },
-  { id: 'P005', name: 'Sugar Bag (50kg)', price: 320 },
+  { id: 'P001', name: 'Rice Bag (25kg)', sku: 'SKU001', price: 250 },
+  { id: 'P002', name: 'Cooking Oil (5L)', sku: 'SKU002', price: 150 },
+  { id: 'P003', name: 'Milk Powder (1kg)', sku: 'SKU003', price: 100 },
+  { id: 'P005', name: 'Sugar Bag (50kg)', sku: 'SKU004', price: 320 },
 ];
 
 export default function PlaceOrder({ salesAgentID, onBack }) {
-  const [customerName, setCustomerName] = useState('');
-  const [customerContact, setCustomerContact] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [cart, setCart] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchCustomers = useCallback(async () => {
+    if (!salesAgentID) return;
+    try {
+      const response = await fetch(`${API_URL}/customers?salesAgentId=${salesAgentID}`);
+      if (!response.ok) throw new Error('Failed to fetch customers');
+      const data = await response.json();
+      setCustomers(data);
+    } catch (error) {
+      console.error(error);
+      alert('Could not load customers. Please try again.');
+    }
+  }, [salesAgentID]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const handleAddToCart = (product) => {
-    const quantity = 1; // Default quantity
+    const quantity = 1;
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
@@ -31,40 +50,83 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  const handleSubmitOrder = () => {
-    // Endpoint logic will be added here later
-    alert(`Order placed for ${customerName}!\nTotal: GHS ${total.toFixed(2)}`);
-    console.log({ 
-        salesAgentID, 
-        customer: { name: customerName, contact: customerContact },
-        items: cart,
-        total
-    });
+  const handleSubmitOrder = async () => {
+    if (!selectedCustomerId) {
+      alert('Please select a customer.');
+      return;
+    }
+    if (cart.length === 0) {
+      alert('Please add items to the cart.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Step 1: Create the order
+      const orderResponse = await fetch(`${API_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: selectedCustomerId,
+          salesAgentId: salesAgentID,
+          type: 'CASH',
+          totalAmount: total,
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create order.');
+      }
+
+      const orderData = await orderResponse.json();
+      const orderId = orderData._id;
+
+      // Step 2: Add items to the order
+      for (const item of cart) {
+        await fetch(`${API_URL}/order-items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            productName: item.name,
+            sku: item.sku,
+            quantity: item.quantity,
+            price: item.price,
+          }),
+        });
+      }
+
+      alert('Order placed successfully!');
+      onBack(); // Go back to the dashboard
+    } catch (error) {
+      console.error(error);
+      alert(`Error placing order: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="w-full mx-auto bg-white p-8 rounded-2xl shadow-lg">
-        <button onClick={onBack} className="mb-6 text-purple-600 hover:text-purple-800 font-semibold">
-            &larr; Back to Dashboard
-        </button>
+      <button onClick={onBack} className="mb-6 text-purple-600 hover:text-purple-800 font-semibold">
+        &larr; Back to Dashboard
+      </button>
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Create a New Order</h2>
 
-      {/* Customer Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <input
-          type="text"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="Customer Name"
-          className="p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-        />
-        <input
-          type="text"
-          value={customerContact}
-          onChange={(e) => setCustomerContact(e.target.value)}
-          placeholder="Customer Contact (Phone/Email)"
-          className="p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-        />
+      {/* Customer Selection */}
+      <div className="mb-8">
+        <select
+          value={selectedCustomerId}
+          onChange={(e) => setSelectedCustomerId(e.target.value)}
+          className="p-3 w-full border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+        >
+          <option value="">Select a Customer</option>
+          {customers.map((customer) => (
+            <option key={customer._id} value={customer._id}>
+              {customer.name} - {customer.contactInfo.phone}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Product List */}
@@ -106,10 +168,10 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
       {/* Submit */}
       <button
         onClick={handleSubmitOrder}
-        disabled={cart.length === 0 || !customerName}
+        disabled={cart.length === 0 || !selectedCustomerId || isSubmitting}
         className="w-full py-3 px-4 rounded-md font-semibold bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-400 transition-colors"
       >
-        Submit Order
+        {isSubmitting ? 'Placing Order...' : 'Submit Order'}
       </button>
     </div>
   );

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import {
-  getUsers,               /** CURENTLY USING PRINCE'S USERS API */
-  getUserById,
+  getUsers,               /** INITALLY USED PRINCE'S USERS API TO CHECK */
+  updateUserRole,
+  updateUserName,
+  getUserByAuthId,
   deleteUser,
 } from "./api/usersApi";
 
@@ -52,7 +54,7 @@ export default function UsersListPage() {
       <FindById
         label="Find User"
         placeholder="Enter user ID"
-        onSearch={getUserById}
+        onSearch={getUserByAuthId}
         onFound={setFoundUser}
       />
 

@@ -1,23 +1,41 @@
 'use client';
 
 import { useState } from 'react';
-import UserMenu from '../UserMenu'; 
+import UserMenu from '../UserMenu';
 import PlaceOrder from './PlaceOrder';
 import ViewOrders from './ViewOrders';
 import ViewCustomers from './ViewCustomers';
+import OrderDetails from './OrderDetails'; // Import OrderDetails
 
 export default function SalesPage() {
+  const [agentIdInput, setAgentIdInput] = useState('');
   const [salesAgentID, setSalesAgentID] = useState('');
-  const [view, setView] = useState('dashboard'); // dashboard, placeOrder, viewOrders, viewCustomers
+  const [view, setView] = useState('dashboard'); // dashboard, placeOrder, viewOrders, viewCustomers, viewOrderDetails
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+
+  const handleContinue = () => {
+    if (agentIdInput.trim()) {
+      setSalesAgentID(agentIdInput.trim());
+    } else {
+      alert('Please enter a valid Sales Agent ID.');
+    }
+  };
+
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    setView('viewOrderDetails');
+  };
 
   const renderContent = () => {
     switch (view) {
       case 'placeOrder':
         return <PlaceOrder salesAgentID={salesAgentID} onBack={() => setView('dashboard')} />;
       case 'viewOrders':
-        return <ViewOrders salesAgentID={salesAgentID} onBack={() => setView('dashboard')} />;
+        return <ViewOrders salesAgentID={salesAgentID} onBack={() => setView('dashboard')} onSelectOrder={handleSelectOrder} />;
       case 'viewCustomers':
         return <ViewCustomers salesAgentID={salesAgentID} onBack={() => setView('dashboard')} />;
+      case 'viewOrderDetails':
+        return <OrderDetails orderId={selectedOrderId} onBack={() => setView('viewOrders')} />;
       default:
         return renderDashboard();
     }
@@ -72,29 +90,35 @@ export default function SalesPage() {
     <div className="w-full min-h-screen bg-gray-50 p-6 sm:p-10">
       <header className="flex justify-between items-center mb-10">
         <h1 className="text-3xl font-bold text-gray-800">
-          Welcome, Sales Agent
+          Welcome, Sales Agent {salesAgentID && `(${salesAgentID})`}
         </h1>
         <UserMenu />
       </header>
 
       <div className="max-w-4xl mx-auto">
-        {view === 'dashboard' && !salesAgentID ? (
-            <div className="mb-8 p-6 bg-white rounded-2xl shadow-md">
-                <label htmlFor="salesAgentID" className="block text-sm font-medium text-gray-700 mb-2">
-                    Please enter your Sales Agent ID to proceed
+        {!salesAgentID ? (
+            <div className="mb-8 p-8 bg-white rounded-2xl shadow-lg text-center">
+                <label htmlFor="agentIdInput" className="block text-lg font-medium text-gray-800 mb-4">
+                    Please enter your Sales Agent ID to continue
                 </label>
                 <input
                     type="text"
-                    id="salesAgentID"
-                    value={salesAgentID}
-                    onChange={(e) => setSalesAgentID(e.target.value)}
+                    id="agentIdInput"
+                    value={agentIdInput}
+                    onChange={(e) => setAgentIdInput(e.target.value)}
                     placeholder="e.g., SA12345"
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full max-w-sm mx-auto p-3 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                 />
+                <button
+                    onClick={handleContinue}
+                    className="mt-5 w-full max-w-sm mx-auto py-3 px-4 rounded-md font-semibold bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                >
+                    Continue
+                </button>
             </div>
-        ) : null}
-
-        {salesAgentID ? renderContent() : null}
+        ) : (
+          renderContent()
+        )}
       </div>
     </div>
   );

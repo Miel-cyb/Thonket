@@ -53,31 +53,31 @@ const OperationsPage = ({ products, reports }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Operations Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Operations Dashboard</h1>
 
-        <div className="flex space-x-4 mb-6 border-b border-gray-300">
+        <div className="flex flex-wrap space-x-2 sm:space-x-4 mb-6 border-b border-gray-300">
           <button
-            className={`pb-2 font-semibold ${activeTab === 'approval' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            className={`pb-2 font-semibold text-sm sm:text-base ${activeTab === 'approval' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
             onClick={() => setActiveTab('approval')}
           >
             Order Approval
           </button>
           <button
-            className={`pb-2 font-semibold ${activeTab === 'tracking' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            className={`pb-2 font-semibold text-sm sm:text-base ${activeTab === 'tracking' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
             onClick={() => setActiveTab('tracking')}
           >
             Driver Tracking
           </button>
           <button
-            className={`pb-2 font-semibold ${activeTab === 'alerts' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            className={`pb-2 font-semibold text-sm sm:text-base ${activeTab === 'alerts' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
             onClick={() => setActiveTab('alerts')}
           >
             Alerts
           </button>
           <button
-            className={`pb-2 font-semibold ${activeTab === 'analytics' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
+            className={`pb-2 font-semibold text-sm sm:text-base ${activeTab === 'analytics' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600'}`}
             onClick={() => setActiveTab('analytics')}
           >
             Analytics

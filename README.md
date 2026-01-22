@@ -46,11 +46,11 @@ This will start the application on `http://localhost:5173` and the mock server o
 
 ## Data Flow
 
-This application uses a mock server to simulate a backend environment. The data is stored in JSON files in the `src/data` directory and served via a local server running on `http://localhost:3000`. This allows for a realistic development experience without the need for a full-fledged backend.
+This application uses a mock server to simulate a backend environment. The data is stored in JSON files in the `src/data` directory and served via a local server running on `http://localhost:3000`. This allows for a realistic development experience without the need for a full-fledged backend. However, the mock server is a temporary stand-in for a real backend. For the application to work when deployed, it needs to be connected to a live, publicly accessible backend API that is running independently on a server. 
 
 ### Data Source
 
-The primary data source for orders is the `src/data/allordersData.js` file. This file contains an array of order objects, each with detailed information about the customer, items, status, and assigned driver.
+The primary data source for orders is the `src/data/ordersData.json` file. This file contains an array of order objects, each with detailed information about the customer, items, status, and assigned driver. It also has the approved data sent to the warehouse under the warehouse object.
 
 ### API Endpoints
 

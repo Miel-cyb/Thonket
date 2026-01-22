@@ -10,9 +10,11 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [customerError, setCustomerError] = useState(null);
   
   const [products, setProducts] = useState([]);
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [productsError, setProductsError] = useState(null);
   
   const [cart, setCart] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +28,7 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
       setCustomers(data);
     } catch (error) {
       console.error(error);
-      alert('Could not load customers.');
+      setCustomerError('Could not load customers.');
     }
   }, [salesAgentID]);
 
@@ -38,7 +40,7 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
       setProducts(data);
     } catch (error) {
       console.error(error);
-      alert('Could not load products.');
+      setProductsError('Could not load products.');
     }
   }, []);
 
@@ -176,6 +178,7 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
             <p className="text-gray-600 text-sm">{selectedCustomer.contactInfo.email}</p>
           </div>
         )}
+     
       </div>
 
       {/* Product Search and List */}
@@ -188,6 +191,7 @@ export default function PlaceOrder({ salesAgentID, onBack }) {
           onChange={(e) => setProductSearchTerm(e.target.value)}
           className="p-3 w-full border border-gray-300 rounded-md mb-4"
         />
+        {productsError && <p className="text-red-500">{productsError}</p>}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-80 overflow-y-auto">
           {filteredProducts.map((product) => (
             <div key={product._id} className="border p-4 rounded-lg text-center">

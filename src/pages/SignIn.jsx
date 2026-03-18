@@ -22,7 +22,7 @@ const SignIn = () => {
           navigate("/ceo-analytics");
           break;
         case "sales":
-          navigate("/orders");
+          navigate("/sales");
           break;
         case "operations":
           navigate("/operations");

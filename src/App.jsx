@@ -9,6 +9,9 @@ import CEODashboard from './pages/CEOPage';
 import WarehousePage from './pages/WarehousePage';
 import productsData from "@/data/products";
 import AdminPage from './admin/AdminPage';
+import ProductPricing from './components/WarehouseOverview/ProductPricing.jsx';
+
+
 
 function App() {
   const [products, setProducts] = useState(
@@ -48,12 +51,18 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<SignIn />} />
-        <Route path="/sales" element={<Sales/>} />
+        <Route path="/sales" element={<Sales />} />
         <Route path="/book-order" element={<BookOrderDialog />} />
         <Route
           path="/operations"
           element={<OperationsManagerPage products={products} reports={reports} />}
         />
+        <Route
+          path="/products/:productId/pricing"
+          element={<ProductPricing products={products} setProducts={setProducts} />}
+        />
+
+
         <Route
           path="/inventory"
           element={
@@ -66,7 +75,7 @@ function App() {
           }
         />
         <Route path="/ceo-analytics" element={<CEODashboard />} />
-        <Route path='/admin/*' element={<AdminPage/>}></Route>
+        <Route path='/admin/*' element={<AdminPage />}></Route>
       </Routes>
     </BrowserRouter>
   );

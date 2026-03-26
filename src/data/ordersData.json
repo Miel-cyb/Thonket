@@ -230,21 +230,6 @@
           "price": 150
         }
       ]
-    },
-    {
-      "id": "19",
-      "orderId": "ORD-019",
-      "customer": "Donald Harris",
-      "receivedDate": "2025-12-23T15:30:00.000Z",
-      "location": "Suame",
-      "items": [
-        {
-          "productId": 6,
-          "product": "Carton of Milk",
-          "quantity": 12,
-          "price": 200
-        }
-      ]
     }
   ],
   "warehouse": [
@@ -319,6 +304,22 @@
           "product": "Crate of Eggs",
           "quantity": 20,
           "price": 70
+        }
+      ],
+      "priority": "High"
+    },
+    {
+      "id": "19",
+      "orderId": "ORD-019",
+      "customer": "Donald Harris",
+      "receivedDate": "2025-12-23T15:30:00.000Z",
+      "location": "Suame",
+      "items": [
+        {
+          "productId": 6,
+          "product": "Carton of Milk",
+          "quantity": 12,
+          "price": 200
         }
       ],
       "priority": "High"

@@ -1,450 +1,285 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import Navbar from './Navbar';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Package,
+  ChevronRight,
+  TrendingUp,
+  BarChart3,
+  Box,
+} from 'lucide-react';
 
-const Products = ({ products, setProducts }) => {
+const Products = () => {
+  const navigate = useNavigate();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('all');
-  const [isOpen, setIsOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [brands, setBrands] = useState([...new Set(products.map(p => p.brand))]);
-  const [isAddingBrand, setIsAddingBrand] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [availableCategories, setAvailableCategories] = useState(['all']);
 
-  const [newProduct, setNewProduct] = useState({
-    name: '',
-    category: 'rice',
-    brand: '',
-    unitOfMeasure: 'bag',
-    sizes: [{ name: 'Small', price: 0, stock: 0 }, { name: 'Medium', price: 0, stock: 0 }, { name: 'Large', price: 0, stock: 0 }],
-  });
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          'https://thonket-product-price-service.onrender.com/api/products'
+        );
+        const data = await response.json();
 
-  const categories = ['all', 'rice', 'oil', 'milk', 'sardines', 'salt', 'canned', 'pasta', 'sugar', 'flour'];
-  const units = ['bag', 'bottle', 'packet', 'tin', 'can'];
+        const normalized = data.map((p) => ({
+          ...p,
+          displayCategory: p.categoryId?.name || 'General',
+        }));
 
-  const handleSizeChange = (productId, sizeName) => {
-    setProducts(
-      products.map((p) => {
-        if (p.id === productId) {
-          const selectedSize = p.sizes.find((s) => s.name === sizeName);
-          return { ...p, selectedSize };
-        }
-        return p;
-      })
-    );
-  };
+        setProducts(normalized);
+        setAvailableCategories([
+          'all',
+          ...Array.from(new Set(normalized.map((p) => p.displayCategory))),
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredProducts = products.filter((product) => {
-    const matchesCategory = category === 'all' || product.category === category;
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    fetchProducts();
+  }, []);
+
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory =
+      category === 'all' ||
+      p.displayCategory.toLowerCase() === category.toLowerCase();
+    const matchesSearch =
+      p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.brand?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
   const handleRemove = (id) => {
-    setProducts(products.filter((p) => p.id !== id));
-  };
-
-  const handleAddProduct = () => {
-    if (!newProduct.name || !newProduct.brand) {
-      alert('Product Name and Brand are required.');
-      return;
+    if (window.confirm('Remove product from warehouse inventory?')) {
+      setProducts(products.filter((p) => p._id !== id));
     }
-
-    if (isAddingBrand && newProduct.brand && !brands.includes(newProduct.brand)) {
-      setBrands([...brands, newProduct.brand]);
-    }
-
-    const existingProductIndex = products.findIndex(
-      (p) =>
-        p.name.toLowerCase() === newProduct.name.toLowerCase() &&
-        p.brand === newProduct.brand &&
-        p.category === newProduct.category &&
-        p.unitOfMeasure === newProduct.unitOfMeasure
-    );
-
-    if (existingProductIndex !== -1) {
-      const updatedProducts = [...products];
-      const productToUpdate = updatedProducts[existingProductIndex];
-      const newSizes = newProduct.sizes.map((s) => ({ ...s, price: Number(s.price), stock: Number(s.stock) }));
-
-      const uniqueNewSizes = newSizes.filter(
-        (newSize) => !productToUpdate.sizes.some((existingSize) => existingSize.name === newSize.name)
-      );
-
-      if (uniqueNewSizes.length !== newProduct.sizes.length) {
-        alert('One or more of these sizes already exist for this product.');
-        return;
-      }
-
-      productToUpdate.sizes.push(...uniqueNewSizes);
-      setProducts(updatedProducts);
-    } else {
-      const existingIds = products.map((p) => parseInt(p.id.substring(1)));
-      const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-      const newId = `P${(maxId + 1).toString().padStart(3, '0')}`;
-
-      const sizesWithStock = newProduct.sizes.map((s) => ({ ...s, price: Number(s.price), stock: Number(s.stock) }));
-
-      const productToAdd = {
-        ...newProduct,
-        id: newId,
-        sizes: sizesWithStock,
-        selectedSize: sizesWithStock[0] || { name: '', price: 0, stock: 0 },
-      };
-
-      setProducts([...products, productToAdd]);
-    }
-
-    setNewProduct({
-      name: '',
-      category: 'rice',
-      brand: '',
-      unitOfMeasure: 'bag',
-      sizes: [{ name: 'Small', price: 0, stock: 0 }, { name: 'Medium', price: 0, stock: 0 }, { name: 'Large', price: 0, stock: 0 }],
-    });
-    setIsOpen(false);
-    setIsAddingBrand(false);
-  };
-  
-    const handleUpdateProduct = () => {
-    if (!editingProduct) return;
-
-    setProducts(
-      products.map(p => (p.id === editingProduct.id ? editingProduct : p))
-    );
-
-    setIsEditOpen(false);
-    setEditingProduct(null);
   };
 
-  const handleNewProductChange = (e) => {
-    const { name, value } = e.target;
-    setNewProduct({ ...newProduct, [name]: value });
-  };
+  const stats = [
+    { label: 'Total SKUs', value: products.length, icon: Box },
+    {
+      label: 'Active Products',
+      value: products.filter((p) => p.isActive).length,
+      icon: TrendingUp,
+    },
+    {
+      label: 'Categories',
+      value: availableCategories.length - 1,
+      icon: BarChart3,
+    },
+  ];
 
-  const handleNewSizeChange = (index, e) => {
-    const { name, value } = e.target;
-    const sizes = [...newProduct.sizes];
-    let val = value;
-    if (name === 'price' || name === 'stock') {
-      val = Number(value);
-    }
-    sizes[index][name] = val;
-    setNewProduct({ ...newProduct, sizes });
-  };
-  
-  const handleEditSizeChange = (index, e) => {
-    const { name, value } = e.target;
-    const updatedSizes = [...editingProduct.sizes];
-    updatedSizes[index] = { ...updatedSizes[index], [name]: Number(value) };
-    setEditingProduct({ ...editingProduct, sizes: updatedSizes });
-  };
-  
-    const openEditModal = (product) => {
-    setEditingProduct({ ...product });
-    setIsEditOpen(true);
-  };
-
+  if (loading) return <SkeletonLoader />;
 
   return (
-    <div className='w-full'>
-          <Navbar onSearch={(val) => setSearchTerm(val)} />
+    <div className="min-h-screen bg-[#F9FAFB] text-slate-900">
+      <Navbar onSearch={(val) => setSearchTerm(val)} />
 
-      <div className='mt-4 mb-3 flex flex-col gap-4'>
-        <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-3'>
-          <h1 className='font-bold text-lg'>Products</h1>
-          <div className='flex flex-wrap justify-center gap-2'>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`cursor-pointer px-4 py-1 rounded-lg text-sm font-medium transition ${
-                  category === cat
-                    ? 'bg-purple-600  text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </button>
-            ))}
+      <main className="mx-auto max-w-7xl px-6 pb-20">
+        {/* HEADER */}
+        <header className="pt-10 pb-8 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
+          <div className="max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+              Warehouse
+            </p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight">
+              Products
+            </h1>
+            <p className="mt-2 text-base text-slate-500">
+              A clear, real-time view of everything stored and managed in your warehouse.
+            </p>
           </div>
-          <div className='flex justify-end'>
+          <button className="inline-flex items-center gap-2 rounded-xl bg-black px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:opacity-90 active:scale-[0.98]">
+            <Plus size={18} />
+            Add Product
+          </button>
+        </header>
+
+        {/* METRICS */}
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-3 mt-6">
+          {stats.map((stat, i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-slate-200 bg-white p-6"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+                <stat.icon size={20} className="text-slate-400" />
+              </div>
+              <p className="mt-4 text-3xl font-semibold">{stat.value}</p>
+            </div>
+          ))}
+        </section>
+
+        {/* FILTERS */}
+        <section className="mt-10 flex gap-3 overflow-x-auto">
+          {availableCategories.map((cat) => (
             <button
-              onClick={() => setIsOpen(true)}
-              className=' cursor-pointer bg-purple-600 text-primary-foreground px-4 py-2 rounded-lg shadow hover:bg-purple-600 transition'>
-              + Add Product
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition ${category === cat ? 'bg-black text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+                }`}
+            >
+              {cat}
             </button>
-          </div>
-        </div>
-      </div>
+          ))}
+        </section>
 
-      {/* Card View for Mobile/Tablet */}
-      <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden'>
-        {filteredProducts.map((p) => (
-          <div key={p.id} className='bg-card rounded-lg shadow-md p-4 border border-border flex flex-col justify-between'>
-            <div>
-              <div className='flex justify-between items-start mb-2'>
-                <h2 className='text-lg font-bold text-card-foreground'>{p.name}</h2>
-                <span className='text-sm text-muted-foreground font-mono'>{p.id}</span>
-              </div>
-              <div className='grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-3 text-muted-foreground'>
-                <div><span className='font-semibold text-foreground'>Category:</span> {p.category}</div>
-                <div><span className='font-semibold text-foreground'>Brand:</span> {p.brand}</div>
-                <div><span className='font-semibold text-foreground'>Unit:</span> {p.unitOfMeasure}</div>
-                <div><span className='font-semibold text-foreground'>Price:</span> ₵{p.selectedSize.price}</div>
-              </div>
-              <div>
-                {p.selectedSize.stock > 0 ? (
-                  <span className='bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium'>
-                    In Stock ({p.selectedSize.stock} left)
-                  </span>
+        {/* TABLE (DESKTOP) */}
+        <section className="mt-8 hidden md:block">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="pl-6 text-sm font-medium text-slate-500">Product</TableHead>
+                  <TableHead className="text-sm font-medium text-slate-500">Category</TableHead>
+                  <TableHead className="text-sm font-medium text-slate-500">Status</TableHead>
+                  <TableHead className="pr-6 text-right text-sm font-medium text-slate-500">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.length ? (
+                  filteredProducts.map((p) => (
+                    <TableRow key={p._id} className="hover:bg-slate-50 transition">
+                      <TableCell className="pl-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
+                            <Package size={18} className="text-slate-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{p.name}</p>
+                            <p className="text-sm text-slate-500">{p.brand}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600">{p.displayCategory}</TableCell>
+                      <TableCell>
+                        <span className={`text-sm font-medium ${p.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {p.isActive ? 'Active' : 'Archived'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="pr-6">
+                        <div className="flex justify-end gap-2 flex-wrap">
+                          {/* Pricing — Obvious & Highlighted */}
+                          <button
+                            onClick={() => navigate(`/products/${p._id}/pricing`)}
+                            className="flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition"
+                          >
+                            <TrendingUp size={16} />
+                            <span>Pricing</span>
+                          </button>
+
+                          {/* Edit */}
+                          <button className="flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 hover:bg-blue-100 transition">
+                            <Edit2 size={16} />
+                            <span>Edit</span>
+                          </button>
+
+                          {/* Remove */}
+                          <button
+                            onClick={() => handleRemove(p._id)}
+                            className="flex items-center gap-1 rounded-lg bg-rose-50 px-3 py-1 text-sm font-medium text-rose-600 hover:bg-rose-100 transition"
+                          >
+                            <Trash2 size={16} />
+                            <span>Remove</span>
+                          </button>
+
+                          {/* Details */}
+                          <button
+                            onClick={() => navigate(`/products/${p._id}`)}
+                            className="flex items-center gap-1 rounded-lg bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+                          >
+                            <ChevronRight size={16} />
+                            <span>Details</span>
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
-                  <span className='bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium'>
-                    Out of Stock
-                  </span>
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-16 text-center text-slate-400">
+                      No products found
+                    </TableCell>
+                  </TableRow>
                 )}
-              </div>
-            </div>
-            <div className='flex items-center justify-between mt-4'>
-              <div className='flex items-center gap-2'>
-                <span className='font-semibold text-sm'>Size:</span>
-                <select
-                  value={p.selectedSize.name}
-                  onChange={(e) => handleSizeChange(p.id, e.target.value)}
-                  className='border rounded-lg px-2 py-1 text-sm bg-background'>
-                  {p.sizes.map((size) => (
-                    <option key={size.name} value={size.name}>
-                      {size.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-                <div className="flex gap-2">
-                <button onClick={() => openEditModal(p)} className='bg-purple-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-purple-700 transition'>Edit</button>
-
-              <button
-                onClick={() => handleRemove(p.id)}
-                className='  cursor-pointer bg-destructive text-white px-3 py-1 rounded-lg text-sm hover:bg-destructive/90 transition'>
-                Remove
-              </button>
-              </div>
-            </div>
+              </TableBody>
+            </Table>
           </div>
-        ))}
-      </div>
+        </section>
 
-      {/* Table View for Desktop */}
-      <div className='hidden md:block w-full overflow-x-auto'>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Brand</TableHead>
-              <TableHead>Size & Price</TableHead>
-              <TableHead>Stock Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProducts.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell>
-                  <div className='font-medium'>{p.name}</div>
-                  <div className='text-sm text-muted-foreground'>{p.id}</div>
-                </TableCell>
-                <TableCell>{p.category}</TableCell>
-                <TableCell>{p.brand}</TableCell>
-                <TableCell>
-                  <select
-                    value={p.selectedSize.name}
-                    onChange={(e) => handleSizeChange(p.id, e.target.value)}
-                    className='border rounded-lg px-2 py-1 text-sm bg-background'>
-                    {p.sizes.map((size) => (
-                      <option key={size.name} value={size.name}>
-                        {size.name} - ₵{size.price}
-                      </option>
-                    ))}
-                  </select>
-                </TableCell>
-                <TableCell>
-                  {p.selectedSize.stock > 0 ? (
-                    <span className='bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs'>
-                      In Stock ({p.selectedSize.stock})
-                    </span>
-                  ) : (
-                    <span className='bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs'>
-                      Out of Stock
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="flex gap-2">
-                   <button onClick={() => openEditModal(p)} className='bg-purple-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-purple-700 transition'>Edit</button>
-                  <button
-                    onClick={() => handleRemove(p.id)}
-                    className='cursor-pointer bg-destructive text-white px-3 py-1 rounded-lg text-sm hover:bg-destructive/90 transition'>
-                    Remove
-                  </button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+        {/* MOBILE */}
+        <section className="mt-6 grid gap-4 md:hidden">
+          {filteredProducts.map((p) => (
+            <div key={p._id} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center justify-between">
+                <Package size={18} className="text-slate-400" />
+                <span className={`text-sm font-medium ${p.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {p.isActive ? 'Active' : 'Archived'}
+                </span>
+              </div>
 
-      {isOpen && (
-        <div className='fixed inset-0 flex items-center justify-center bg-black/60 bg-opacity-50 z-50 p-4'>
-          <div className='bg-card rounded-lg shadow-lg p-6 w-full max-w-lg relative max-h-[90vh] overflow-y-auto'>
-            <button
-              onClick={() => setIsOpen(false)}
-              className='absolute top-3 right-3 text-muted-foreground hover:text-foreground text-2xl font-bold'>
-              &times;
-            </button>
-            <h2 className='text-xl font-semibold mb-6'>Add New Product</h2>
+              <p className="mt-3 font-medium">{p.name}</p>
+              <p className="text-sm text-slate-500">{p.brand} · {p.displayCategory}</p>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <input
-                type='text' name='name' placeholder='Product Name'
-                value={newProduct.name} onChange={handleNewProductChange}
-                className='border rounded-lg px-3 py-2 text-sm md:col-span-2 bg-background'
-              />
-              <select name='category' value={newProduct.category} onChange={handleNewProductChange} className='border rounded-lg px-3 py-2 text-sm bg-background'>
-                {categories.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-              </select>
-              <select name='unitOfMeasure' value={newProduct.unitOfMeasure} onChange={handleNewProductChange} className='border rounded-lg px-3 py-2 text-sm bg-background'>
-                {units.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <div className='md:col-span-2'>
-                {isAddingBrand ? (
-                  <div className='flex items-center gap-2'>
-                    <input
-                      type='text'
-                      name='brand'
-                      placeholder='New Brand Name'
-                      value={newProduct.brand}
-                      onChange={handleNewProductChange}
-                      className='border rounded-lg px-3 py-2 text-sm w-full bg-background'
-                    />
-                    <button onClick={() => setIsAddingBrand(false)} className='text-sm text-muted-foreground hover:text-foreground'>Cancel</button>
-                  </div>
-                ) : (
-                  <select
-                    name='brand'
-                    value={newProduct.brand}
-                    onChange={(e) => {
-                      if (e.target.value === '__add_new__') {
-                        setIsAddingBrand(true);
-                        setNewProduct({ ...newProduct, brand: '' });
-                      } else {
-                        handleNewProductChange(e);
-                      }
-                    }}
-                    className='border rounded-lg px-3 py-2 text-sm w-full bg-background'>
-                    <option value='' disabled>Select Brand</option>
-                    {brands.map(b => <option key={b} value={b}>{b}</option>)}
-                    <option value='__add_new__'>+ Add New Brand</option>
-                  </select>
-                )}
+              <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+                <button
+                  onClick={() => navigate(`/products/${p._id}/pricing`)}
+                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition"
+                >
+                  <TrendingUp size={16} />
+                  <span>Pricing</span>
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition">
+                  <Edit2 size={16} />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => handleRemove(p._id)}
+                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-100 transition"
+                >
+                  <Trash2 size={16} />
+                  <span>Remove</span>
+                </button>
               </div>
             </div>
-
-            <h3 className='text-lg font-semibold mt-6 mb-3'>Product Sizes</h3>
-            <div className='grid grid-cols-1 gap-y-4'>
-              {newProduct.sizes.map((size, index) => (
-                <div key={index} className='p-3 border rounded-lg bg-muted/50'>
-                  <p className='font-medium mb-2'>{size.name}</p>
-                  <div className='grid grid-cols-2 gap-4'>
-                    <div>
-                      <label htmlFor={`price-${index}`} className='text-sm font-medium text-muted-foreground'>Price</label>
-                      <div className='flex items-center gap-2 mt-1'>
-                        <span className='text-muted-foreground'>₵</span>
-                        <input
-                          id={`price-${index}`}
-                          type='number' name='price' placeholder='0.00'
-                          value={size.price} onChange={(e) => handleNewSizeChange(index, e)}
-                          className='border rounded-lg px-3 py-2 text-sm w-full bg-background'
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor={`stock-${index}`} className='text-sm font-medium text-muted-foreground'>Initial Stock</label>
-                      <input
-                        id={`stock-${index}`}
-                        type='number' name='stock' placeholder='0'
-                        value={size.stock} onChange={(e) => handleNewSizeChange(index, e)}
-                        className='border rounded-lg px-3 py-2 text-sm w-full bg-background mt-1'
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className='flex justify-end mt-4'>
-              <button
-                onClick={handleAddProduct}
-                className='bg-primary text-primary-foreground px-6 py-2 rounded-lg shadow hover:bg-primary/90 transition'>
-                Save Product
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      
-      {isEditOpen && editingProduct && (
-        <div className='fixed inset-0 flex items-center justify-center bg-black/60 bg-opacity-50 z-50 p-4'>
-          <div className='bg-card rounded-lg shadow-lg p-6 w-full max-w-lg relative max-h-[90vh] overflow-y-auto'>
-            <button onClick={() => setIsEditOpen(false)} className='absolute top-3 right-3 text-muted-foreground hover:text-foreground text-2xl font-bold'>
-              &times;
-            </button>
-            <h2 className='text-xl font-semibold mb-6'>Edit Product: {editingProduct.name}</h2>
-
-            <div className='grid grid-cols-1 gap-y-4'>
-              {editingProduct.sizes.map((size, index) => (
-                <div key={index} className='p-3 border rounded-lg bg-muted/50'>
-                  <p className='font-medium mb-2'>{size.name}</p>
-                  <div className='grid grid-cols-2 gap-4'>
-                    <div>
-                      <label htmlFor={`edit-price-${index}`} className='text-sm font-medium text-muted-foreground'>Price</label>
-                      <div className='flex items-center gap-2 mt-1'>
-                        <span className='text-muted-foreground'>₵</span>
-                        <input
-                          id={`edit-price-${index}`}
-                          type='number' name='price' placeholder='0.00'
-                          value={size.price}
-                          onChange={(e) => handleEditSizeChange(index, e)}
-                          className='border rounded-lg px-3 py-2 text-sm w-full bg-background'
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor={`edit-stock-${index}`} className='text-sm font-medium text-muted-foreground'>Stock</label>
-                      <input
-                        id={`edit-stock-${index}`}
-                        type='number' name='stock' placeholder='0'
-                        value={size.stock}
-                        onChange={(e) => handleEditSizeChange(index, e)}
-                        className='border rounded-lg px-3 py-2 text-sm w-full bg-background mt-1'
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className='flex justify-end mt-4'>
-              <button onClick={handleUpdateProduct} className='bg-primary text-primary-foreground px-6 py-2 rounded-lg shadow hover:bg-primary/90 transition'>
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          ))}
+        </section>
+      </main>
     </div>
   );
 };
+
+const SkeletonLoader = () => (
+  <div className="min-h-screen bg-[#F9FAFB] p-8 animate-pulse">
+    <div className="mx-auto max-w-7xl space-y-8">
+      <div className="h-10 w-64 rounded-xl bg-slate-200" />
+      <div className="grid grid-cols-3 gap-6">
+        <div className="h-28 rounded-2xl bg-slate-200" />
+        <div className="h-28 rounded-2xl bg-slate-200" />
+        <div className="h-28 rounded-2xl bg-slate-200" />
+      </div>
+      <div className="h-[360px] rounded-2xl bg-white border" />
+    </div>
+  </div>
+);
 
 export default Products;

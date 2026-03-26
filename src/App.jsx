@@ -10,6 +10,8 @@ import WarehousePage from './pages/WarehousePage';
 import productsData from "@/data/products";
 import AdminPage from './admin/AdminPage';
 import ProductPricing from './components/WarehouseOverview/ProductPricing.jsx';
+import CategoriesPage from './pages/CategoriesPage';
+import ProductsPage from './pages/ProductPage';
 
 
 
@@ -56,6 +58,20 @@ function App() {
         <Route
           path="/operations"
           element={<OperationsManagerPage products={products} reports={reports} />}
+        />
+        <Route
+          path="/products/:productId/pricing"
+          element={<ProductPricing products={products} setProducts={setProducts} />}
+        />
+
+        <Route
+          path="/products/categories"
+          element={<CategoriesPage />}
+        />
+
+        <Route
+          path="/products/list"
+          element={<ProductsPage />}
         />
         <Route
           path="/products/:productId/pricing"

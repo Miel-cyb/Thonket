@@ -20,8 +20,10 @@ import {
   ArrowDownRight,
   Filter
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+// Internal Components (assuming these paths exist in your project)
 import OrderApproval from '@/components/OperationsDashboard/OrderApproval';
-import DriverTracking from '@/components/OperationsDashboard/DriverTracking';
 import Alerts from '@/components/OperationsDashboard/Alerts';
 import AnalyticsDashboard from '@/components/OperationsDashboard/Analytics';
 import { calculatePriority } from '@/utils/calc';
@@ -34,6 +36,8 @@ const STAGES = [
   { key: 'delivery', label: 'Out for Delivery' },
   { key: 'completed', label: 'Delivered' }
 ];
+
+// --- Sub-Components ---
 
 const StatCard = ({ label, value, icon: Icon, trend, trendType }) => (
   <div className="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] p-5 border border-slate-200/60 flex items-center justify-between group hover:border-blue-200 transition-colors">
@@ -71,10 +75,15 @@ const ConfigTile = ({ title, description, icon: Icon, onClick }) => (
   </button>
 );
 
+// --- Main Page ---
+
 const OperationsPage = ({ products, reports }) => {
+  // CORRECTED: useNavigate must be inside the component
+  const navigate = useNavigate();
+
   const [orders, setOrders] = useState([]);
   const [activeStage, setActiveStage] = useState('pending');
-  const [view, setView] = useState('execution'); // 'execution' | 'analytics' | 'configuration'
+  const [view, setView] = useState('execution');
   const [loading, setLoading] = useState(false);
 
   const fetchOrders = async () => {
@@ -84,7 +93,11 @@ const OperationsPage = ({ products, reports }) => {
       let data = await res.json();
       data = data.map(o => calculatePriority(o));
       setOrders(data);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchOrders(); }, []);
@@ -127,8 +140,8 @@ const OperationsPage = ({ products, reports }) => {
                   key={item.id}
                   onClick={() => setView(item.id)}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${view === item.id
-                      ? 'bg-white text-slate-900 shadow-md scale-[1.02]'
-                      : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-white text-slate-900 shadow-md scale-[1.02]'
+                    : 'text-slate-500 hover:text-slate-700'
                     }`}
                 >
                   <item.icon size={15} strokeWidth={view === item.id ? 2.5 : 2} />
@@ -158,8 +171,8 @@ const OperationsPage = ({ products, reports }) => {
                   key={s.key}
                   onClick={() => setActiveStage(s.key)}
                   className={`flex-1 min-w-[160px] p-5 rounded-[22px] transition-all border ${activeStage === s.key
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200'
-                      : 'border-transparent hover:bg-slate-50 text-slate-500'
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200'
+                    : 'border-transparent hover:bg-slate-50 text-slate-500'
                     }`}
                 >
                   <div className="flex flex-col gap-1 text-left">
@@ -252,12 +265,42 @@ const OperationsPage = ({ products, reports }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ConfigTile title="Category Architecture" description="Define the global taxonomy and parent-child relationships for all products." icon={Layers} />
-              <ConfigTile title="Master Product List" description="Central repository for base SKU data, localized descriptions, and media." icon={Box} />
-              <ConfigTile title="Variant Matrix" description="Manage dynamic attributes like weight-based pricing, size, and color variants." icon={Plus} />
-              <ConfigTile title="Price Optimization" description="Configure wholesale tiers, regional tax rules, and dynamic base prices." icon={Tag} />
-              <ConfigTile title="Promotion Logic" description="Set up advanced discount stacking, flash sale triggers, and coupon rules." icon={Percent} />
-              <ConfigTile title="Operational Rules" description="Define SLA thresholds, auto-dispatch logic, and courier priority weights." icon={Settings} />
+              <ConfigTile
+                title="Category Architecture"
+                description="Define the global taxonomy and parent-child relationships for all products."
+                icon={Layers}
+                onClick={() => navigate('/products/categories')}
+              />
+              <ConfigTile
+                title="Master Product List"
+                description="Central repository for base SKU data, localized descriptions, and media."
+                icon={Box}
+                onClick={() => navigate('/products/list')}
+              />
+              <ConfigTile
+                title="Variant Matrix"
+                description="Manage dynamic attributes like weight-based pricing, size, and color variants."
+                icon={Plus}
+                onClick={() => navigate('/products/variants')}
+              />
+              <ConfigTile
+                title="Price Optimization"
+                description="Configure wholesale tiers, regional tax rules, and dynamic base prices."
+                icon={Tag}
+                onClick={() => navigate('/products/pricing')}
+              />
+              <ConfigTile
+                title="Promotion Logic"
+                description="Set up advanced discount stacking, flash sale triggers, and coupon rules."
+                icon={Percent}
+                onClick={() => navigate('/products/promotions')}
+              />
+              <ConfigTile
+                title="Operational Rules"
+                description="Define SLA thresholds, auto-dispatch logic, and courier priority weights."
+                icon={Settings}
+                onClick={() => navigate('/operations/rules')}
+              />
             </div>
           </div>
         )}

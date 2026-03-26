@@ -1,96 +1,135 @@
-import React from 'react';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import React, { useMemo } from 'react';
+import {
+    AlertTriangle,
+    Package,
+    MessageSquare,
+    ChevronRight,
+    Activity,
+    History
+} from 'lucide-react';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-const regionalData = {
-    labels: ['Adum', 'Santasi', 'Asokwa', 'Kotei', 'Tafo', 'Nhyiaeso'],
-    datasets: [
-        {
-            label: 'Sales Volume',
-            data: [500, 350, 420, 280, 450, 600],
-            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        },
-        {
-            label: 'Profit Margin (%)',
-            data: [15, 12, 18, 10, 16, 20],
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        }
-    ]
-};
-
-const Alerts = ({ products, reports }) => {
-    const lowStockProducts = products.flatMap(p => p.sizes.map(s => ({ ...p, size: s.name, stock: s.stock }))).filter(p => p.stock < 10);
-
-    const criticalIssues = [
-        ...lowStockProducts.map(p => `Stock-out: ${p.name} (${p.size}) in warehouse`),
-        "Delayed delivery: Asokwa route",
-        "High fuel cost: ₵17,000/week",
-        "Customer churn rising: 6% last month",
-    ];
+const Alerts = ({ products = [], reports = [] }) => {
+    // Extract critical stock items (Stock < 10)
+    const lowStock = useMemo(() => {
+        return (products || [])
+            .flatMap((p) => (p.sizes || []).map((s) => ({
+                name: p.name,
+                size: s.name,
+                stock: s.stock ?? 0
+            })))
+            .filter((p) => p.stock < 10)
+            .sort((a, b) => a.stock - b.stock)
+            .slice(0, 5);
+    }, [products]);
 
     return (
-        <div>
-            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                <h3 className="text-lg font-semibold mb-4 text-red-700">Critical Issues & Alerts</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                    <div className="bg-red-50 p-4 rounded-lg shadow-inner">
-                        <h4 className="text-sm font-semibold mb-2 text-gray-700">Low Stock</h4>
-                        <p className="text-2xl font-bold text-red-600">{lowStockProducts.length} alerts</p>
-                    </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg shadow-inner">
-                        <h4 className="text-sm font-semibold mb-2 text-gray-700">Late Deliveries</h4>
-                        <p className="text-2xl font-bold text-yellow-600">5 routes</p>
-                    </div>
-                    <div className="bg-orange-50 p-4 rounded-lg shadow-inner">
-                        <h4 className="text-sm font-semibold mb-2 text-gray-700">High Fuel Cost</h4>
-                        <p className="text-2xl font-bold text-orange-600">₵17,000/wk</p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg shadow-inner">
-                        <h4 className="text-sm font-semibold mb-2 text-gray-700">High Churn</h4>
-                        <p className="text-2xl font-bold text-purple-600">6%</p>
-                    </div>
-                </div>
-                <ul className="list-disc list-inside space-y-2">
-                    {criticalIssues.map((issue, index) => (
-                        <li key={index} className="text-red-600 font-medium">{issue}</li>
-                    ))}
-                </ul>
-            </div>
+        <div className="flex flex-col gap-6">
 
-            {reports && reports.length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h3 className="text-lg font-semibold mb-4 text-blue-700">Submitted Reports</h3>
-                    <div className="space-y-4">
-                        {reports.map((report, index) => (
-                            <div key={index} className="border-l-4 border-blue-500 p-3 bg-blue-50 rounded-r-lg">
-                                <p className="font-semibold text-blue-800">{report.title}</p>
-                                <p className="text-sm text-blue-700">{report.description}</p>
-                                <p className="text-xs text-muted-foreground mt-2">Reported on: {new Date(report.date).toLocaleDateString()}</p>
+            {/* SECTION 1: CRITICAL INVENTORY RISKS */}
+            <section>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-red-100 text-red-600 rounded-lg">
+                            <Package size={14} />
+                        </div>
+                        <h4 className="text-[11px] font-black uppercase tracking-wider text-gray-500">
+                            Inventory Risks
+                        </h4>
+                    </div>
+                    {lowStock.length > 0 && (
+                        <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                    )}
+                </div>
+
+                <div className="space-y-1.5">
+                    {lowStock.length > 0 ? (
+                        lowStock.map((item, i) => (
+                            <div
+                                key={i}
+                                className="group flex items-center justify-between p-2 rounded-xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-sm transition-all cursor-pointer"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`text-[10px] font-bold h-6 w-6 rounded flex items-center justify-center ${item.stock <= 2 ? 'bg-red-600 text-white' : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                        {item.stock}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-800 line-clamp-1">{item.name}</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">Size: {item.size}</p>
+                                    </div>
+                                </div>
+                                <ChevronRight size={12} className="text-gray-300 group-hover:text-red-500 transition-colors" />
                             </div>
-                        ))}
-                    </div>
+                        ))
+                    ) : (
+                        <div className="py-4 text-center border-2 border-dashed border-gray-100 rounded-xl">
+                            <p className="text-[11px] text-gray-400 font-medium italic">Stock levels optimal</p>
+                        </div>
+                    )}
                 </div>
-            )}
+            </section>
 
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">Regional Performance Hotspots</h3>
-                <p className="text-sm text-gray-600 mb-4">Monitor sales volume and profitability by region to identify opportunities and risks.</p>
-                <div style={{height: '300px'}}>
-                    <Bar 
-                        data={regionalData} 
-                        options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { position: 'top' },
-                                title: { display: true, text: 'Regional Sales & Profitability' }
-                            }
-                        }}
-                    />
+            {/* SECTION 2: SYSTEM KPI TRACKER */}
+            <section className="bg-gray-900 rounded-2xl p-4 shadow-lg shadow-gray-200">
+                <div className="flex items-center gap-2 mb-3">
+                    <Activity size={14} className="text-emerald-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Live Efficiency</span>
                 </div>
-            </div>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white">98.4%</span>
+                    <span className="text-[10px] font-bold text-emerald-400">+2.1%</span>
+                </div>
+                <div className="mt-3 h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 w-[98.4%]" />
+                </div>
+            </section>
+
+            {/* SECTION 3: FIELD INTELLIGENCE FEED */}
+            <section>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                            <MessageSquare size={14} />
+                        </div>
+                        <h4 className="text-[11px] font-black uppercase tracking-wider text-gray-500">
+                            Field Intelligence
+                        </h4>
+                    </div>
+                    <button className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1">
+                        <History size={10} /> History
+                    </button>
+                </div>
+
+                <div className="relative space-y-4 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-gray-100">
+                    {reports.length > 0 ? (
+                        reports.slice(0, 3).map((report, i) => (
+                            <div key={i} className="relative pl-6 group">
+                                {/* Timeline Dot */}
+                                <div className="absolute left-0 top-1 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-500 ring-1 ring-blue-100" />
+
+                                <div className="cursor-pointer group-hover:translate-x-1 transition-transform">
+                                    <p className="text-[11px] font-bold text-gray-800 leading-tight">
+                                        {report.title}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 line-clamp-2 mt-0.5 leading-relaxed">
+                                        {report.description}
+                                    </p>
+                                    <p className="text-[9px] text-gray-300 mt-1 font-bold tracking-tighter uppercase">
+                                        {report.date ? new Date(report.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                                    </p>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-[11px] text-gray-400 italic pl-6 text-center">No reports filed today</p>
+                    )}
+                </div>
+            </section>
+
+            {/* ACTION FOOTER */}
+            <button className="w-full py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-[11px] font-bold text-gray-600 transition-colors uppercase tracking-widest">
+                Generate Full Audit
+            </button>
         </div>
     );
 };

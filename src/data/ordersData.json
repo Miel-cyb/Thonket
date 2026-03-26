@@ -1,27 +1,6 @@
 {
   "orders": [
     {
-      "id": "3",
-      "orderId": "ORD-003",
-      "customer": "Femi Adebayo",
-      "receivedDate": "2025-07-29T18:45:00.000Z",
-      "location": "Oforikrom",
-      "items": [
-        {
-          "productId": 4,
-          "product": "25L Vegetable Oil",
-          "quantity": 1,
-          "price": 250
-        },
-        {
-          "productId": 5,
-          "product": "20kg Salt Bag",
-          "quantity": 5,
-          "price": 100
-        }
-      ]
-    },
-    {
       "id": "4",
       "orderId": "ORD-004",
       "customer": "Ngozi Okonjo",
@@ -323,6 +302,29 @@
         }
       ],
       "priority": "High"
+    },
+    {
+      "id": "3",
+      "orderId": "ORD-003",
+      "customer": "Femi Adebayo",
+      "receivedDate": "2025-07-29T18:45:00.000Z",
+      "location": "Oforikrom",
+      "items": [
+        {
+          "productId": 4,
+          "product": "25L Vegetable Oil",
+          "quantity": 1,
+          "price": 250
+        },
+        {
+          "productId": 5,
+          "product": "20kg Salt Bag",
+          "quantity": 5,
+          "price": 100
+        }
+      ],
+      "priority": "Medium",
+      "stage": "approved"
     }
   ]
 }

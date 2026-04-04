@@ -1,15 +1,19 @@
 import { useState } from "react";
-import UsersListPage from "./UsersListPage";
-import CreateUserPage from "./CreateUserPage";
-import ManageRolesPage from "./ManageRolesPage";
-import EditUserModal from "./components/EditUserModal"
-import StaffList from "./pages/StaffList"
-import CreateStaff from "./pages/CreateStaff"
+
+import UsersListPage from "../pages/CustomerPage";
+import CreateUserFormPage from "../pages/CreateUserFormPage";
+import ManageRolesPage from "../pages/ManageRolesPage";
+import EditUserModal from "../components/User/CreateUserForm";
+
+import StaffPage from "../pages/StaffPage";
 
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -17,13 +21,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Users, UserPlus, Search, Shield } from "lucide-react";
+import { Users, UserPlus, Shield, Briefcase } from "lucide-react";
 
 export default function AdminPage() {
-  const [activeView, setActiveView] = useState("users");
-  const [modalUser, setModalUser] = useState(null); 
+  const [activeView, setActiveView] = useState("customers");
+  const [modalUser, setModalUser] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-
 
   const openEditModal = (user) => {
     setModalUser(user);
@@ -37,60 +40,115 @@ export default function AdminPage() {
 
   const renderContent = () => {
     switch (activeView) {
-      case "view staff":
-        return <StaffList />;
-      case "add staff":
-          return <CreateStaff />;
-      case "create":
-        return <CreateUserPage />;
+      case "customers":
+        return <UsersListPage onEdit={openEditModal} />;
+
+      case "staff":
+        return <StaffPage />;
+
+      case "create-user":
+        return <CreateUserFormPage />;
+
       case "roles":
         return <ManageRolesPage />;
-        case "edit":
-        return <ManageRolesPage />;
+
       default:
-        return <UsersListPage  onEdit={openEditModal}/>;
+        return <UsersListPage onEdit={openEditModal} />;
     }
   };
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-white">
+      <div className="flex h-screen bg-gray-50">
+
         <AdminSidebar activeView={activeView} setActiveView={setActiveView} />
+
         <div className="flex-1 flex flex-col">
           <MobileHeader />
+
           <main className="flex-1 p-6 overflow-y-auto">
+            <h1 className="text-xl font-bold mb-4 capitalize">
+              {activeView.replace("-", " ")}
+            </h1>
+
             {renderContent()}
           </main>
         </div>
+
         {modalOpen && (
-        <EditUserModal user={modalUser} onClose={closeModal} />
-      )}
+          <EditUserModal user={modalUser} onClose={closeModal} />
+        )}
       </div>
     </SidebarProvider>
   );
 }
 
-
+/* ================= SIDEBAR ================= */
 
 function AdminSidebar({ activeView, setActiveView }) {
   return (
-    <Sidebar className="bg-white text-black">
-      <SidebarHeader className="p-4 font-bold text-lg">
-        Thonket Admin
-      </SidebarHeader>
+    <Sidebar>
+      <SidebarHeader>Thonket Admin</SidebarHeader>
 
       <SidebarContent>
-        <SidebarMenu>
-          <MenuItem icon={Users} label="View Users" value="users" {...{ activeView, setActiveView }} />
-          <MenuItem icon={Users} label="View Staff" value="view staff" {...{ activeView, setActiveView }} />
-          <MenuItem icon={Users} label="Add Staff" value="add staff" {...{ activeView, setActiveView }} />
-          <MenuItem icon={UserPlus} label="Create User" value="create" {...{ activeView, setActiveView }} />
-          <MenuItem icon={Shield} label="Manage Roles" value="roles" {...{ activeView, setActiveView }} />
-        </SidebarMenu>
+
+        {/* Customers */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Customers</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <MenuItem
+                icon={Users}
+                label="All Customers"
+                value="customers"
+                {...{ activeView, setActiveView }}
+              />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Staff */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Staff</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <MenuItem
+                icon={Briefcase}
+                label="Staff Overview"
+                value="staff"
+                {...{ activeView, setActiveView }}
+              />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Management */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <MenuItem
+                icon={UserPlus}
+                label="Create User"
+                value="create-user"
+                {...{ activeView, setActiveView }}
+              />
+              <MenuItem
+                icon={Shield}
+                label="Manage Roles"
+                value="roles"
+                {...{ activeView, setActiveView }}
+              />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
       </SidebarContent>
     </Sidebar>
   );
 }
+
+/* ================= MENU ITEM ================= */
 
 function MenuItem({ icon: Icon, label, value, activeView, setActiveView }) {
   const { setOpen } = useSidebar();
@@ -103,7 +161,6 @@ function MenuItem({ icon: Icon, label, value, activeView, setActiveView }) {
           setActiveView(value);
           setOpen(false);
         }}
-        className={'text-black data-[active=true]:bg-white/20 data-[active=true]:text-white/20 '}
       >
         <Icon className="h-4 w-4" />
         {label}
@@ -112,7 +169,7 @@ function MenuItem({ icon: Icon, label, value, activeView, setActiveView }) {
   );
 }
 
-
+/* ================= MOBILE HEADER ================= */
 
 function MobileHeader() {
   const { open, setOpen } = useSidebar();

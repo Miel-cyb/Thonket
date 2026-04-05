@@ -11,7 +11,7 @@ export default function DashboardHeader() {
                         Sales Dashboard
                     </h1>
                     <p className="text-sm text-gray-500">
-                        Welcome back — here’s what’s happening today
+                        Welcome back here’s what’s happening today
                     </p>
                 </div>
 

@@ -11,7 +11,7 @@ import CustomerListCard from "../components/Sales/customers/CustomerListCard";
 import CreateCustomerForm from "../components/Sales/customers/CreateCustomerForm";
 import ActivityFeed from "../components/Sales/activities/ActivityFeed";
 import PendingIssuesView from "../components/Sales/issues/PendingIssuesView";
-// Transaction Entry (The Unified Form)
+// Transaction Entry
 import OrderEntryForm from "../components/Sales/orders/entry/OrderEntryForm";
 // Context & Icons
 import { AlertsProvider } from "../components/Sales/alerts/AlertContext";
@@ -25,7 +25,6 @@ export default function SalesDashboardPage() {
     { id: 4, name: "Diana Prince", email: "diana@example.com", ordersCount: 15, type: 'Individual', agentId: "TK-44" },
   ]);
 
-  // Current Agent Context (Used for filtering and authorization)
   const [activeAgent] = useState({ id: "TK-44", name: "Agent Sarah Jenkins" });
 
   const [activities, setActivities] = useState([
@@ -39,24 +38,14 @@ export default function SalesDashboardPage() {
 
   const [activePanel, setActivePanel] = useState(null);
 
-  /**
-   * Finalizes the wholesale transaction
-   * Updates the activity feed and resets the dashboard state
-   */
   const handleOrderCreated = (orderData) => {
-    // 1. Log the system activity
     const newActivity = {
       id: Date.now(),
       type: 'orderPlaced',
       message: `PROTOCOL: ${orderData.items.length} units allocated for ${orderData.customer.name} ($${orderData.total.toLocaleString()})`,
       timestamp: 'Just Now'
     };
-
     setActivities(prev => [newActivity, ...prev]);
-
-    // 2. Optional: Logic to decrement stock or push to backend API goes here
-
-    // 3. Clear the view
     setActivePanel(null);
   };
 
@@ -74,7 +63,7 @@ export default function SalesDashboardPage() {
 
             <div className="flex gap-8 items-start min-h-[850px]">
               {/* SIDEBAR COMMAND RAIL */}
-              <nav className="flex flex-col gap-5 py-2 sticky top-10">
+              <nav className="flex flex-col gap-5 py-2 sticky top-10 shrink-0">
                 <PanelTrigger icon={<LayoutGrid size={22} />} label="Matrix Home" isActive={activePanel === null} onClick={() => setActivePanel(null)} color="bg-slate-900" />
                 <div className="h-[1px] w-full bg-slate-200 my-2" />
                 <PanelTrigger icon={<ShoppingBag size={22} />} label="New Order" isActive={activePanel === 'ordering'} onClick={() => setActivePanel('ordering')} color="bg-purple-600" />
@@ -88,11 +77,13 @@ export default function SalesDashboardPage() {
               <main className="flex-1 min-w-0">
                 <div className="relative w-full min-h-[800px] bg-white rounded-[3rem] border border-slate-200 shadow-[0_40px_80px_-15px_rgba(15,23,42,0.05)] overflow-hidden flex flex-col transition-all duration-500">
 
-                  {/* DYNAMIC HEADER - Adjusts based on the protocol selected */}
-                  <div className="px-10 py-7 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
+                  {/* DYNAMIC HEADER */}
+                  <div className="px-10 py-7 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-4">
-                      <div className={`h-8 w-2 rounded-full transition-colors duration-500 ${activePanel === 'ordering' ? 'bg-purple-600 animate-pulse' : 'bg-slate-900'
-                        }`} />
+                      <div className={`h-8 w-2 rounded-full transition-colors duration-500 ${
+                        activePanel === 'ordering' ? 'bg-purple-600 animate-pulse' : 
+                        activePanel === 'accession' ? 'bg-emerald-600' : 'bg-slate-900'
+                      }`} />
                       <div>
                         <h3 className="font-black text-[14px] uppercase tracking-[0.25em] text-slate-800">
                           {activePanel === 'ordering' ? 'Transaction Entry Protocol' :
@@ -113,36 +104,52 @@ export default function SalesDashboardPage() {
                   </div>
 
                   {/* DYNAMIC CONTENT ENGINE */}
-                  <div className="flex-1 overflow-hidden bg-white">
+                  <div className="flex-1 overflow-y-auto bg-slate-50/50">
                     {!activePanel ? (
-                      <div className="animate-in fade-in zoom-in-95 duration-500 h-full overflow-y-auto">
+                      <div className="animate-in fade-in zoom-in-95 duration-500 h-full">
                         <OrderPipeline />
                       </div>
                     ) : (
-                      <div className="h-full animate-in slide-in-from-right-10 fade-in duration-500 p-8">
+                      <div className="h-full animate-in slide-in-from-right-10 fade-in duration-500">
                         {activePanel === 'ordering' && (
-                          <OrderEntryForm
-                            customers={customers}
-                            agent={activeAgent}
-                            onCancel={() => setActivePanel(null)}
-                            onCreateOrder={handleOrderCreated}
-                          />
+                          <div className="p-8 h-full">
+                            <OrderEntryForm
+                                customers={customers}
+                                agent={activeAgent}
+                                onCancel={() => setActivePanel(null)}
+                                onCreateOrder={handleOrderCreated}
+                            />
+                          </div>
                         )}
+                        
                         {activePanel === 'portfolio' && (
-                          <div className="h-full overflow-y-auto pr-4">
+                          <div className="p-8 h-full">
                             <CustomerListCard customers={customers} />
                           </div>
                         )}
+
+                        {/* CORRECTED ACCESSION VIEW */}
                         {activePanel === 'accession' && (
-                          <div className="max-w-2xl mx-auto py-10">
-                            <CreateCustomerForm onCustomerCreated={(c) => {
-                              setCustomers(p => [...p, { ...c, id: Date.now() }]);
-                              setActivePanel(null);
-                            }} />
+                          <div className="h-full flex items-center justify-center p-4 md:p-12">
+                             <CreateCustomerForm 
+                                salesAgentID={activeAgent.id}
+                                onCancel={() => setActivePanel(null)}
+                                onSave={(newCustomer) => {
+                                  setCustomers(prev => [...prev, { ...newCustomer, id: Date.now(), ordersCount: 0 }]);
+                                  setActivities(prev => [{
+                                    id: Date.now(),
+                                    type: 'customerAdded',
+                                    message: `SYSTEM: New entity "${newCustomer.name}" successfully onboarded.`,
+                                    timestamp: 'Just Now'
+                                  }, ...prev]);
+                                  setActivePanel(null);
+                                }} 
+                             />
                           </div>
                         )}
-                        {activePanel === 'issues' && <PendingIssuesView issues={pendingIssues} />}
-                        {activePanel === 'activity' && <ActivityFeed activities={activities} />}
+
+                        {activePanel === 'issues' && <div className="p-8"><PendingIssuesView issues={pendingIssues} /></div>}
+                        {activePanel === 'activity' && <div className="p-8"><ActivityFeed activities={activities} /></div>}
                       </div>
                     )}
                   </div>

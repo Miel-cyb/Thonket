@@ -12,6 +12,7 @@ import AdminPage from './admin/AdminPage';
 import ProductPricing from './components/WarehouseOverview/ProductPricing.jsx';
 import CategoriesPage from './pages/CategoriesPage';
 import ProductsPage from './pages/ProductPage';
+import FleetDashboardPage from './pages/FleetDashboardPage';
 
 
 
@@ -89,6 +90,15 @@ function App() {
               onReportSubmit={handleReportSubmit}
             />
           }
+        />
+        <Route
+          path="/fleet/manager"
+          element={<FleetDashboardPage userRole="manager" />}
+        />
+
+        <Route
+          path="/fleet/driver"
+          element={<FleetDashboardPage userRole="driver" />}
         />
         <Route path="/ceo-analytics" element={<CEODashboard />} />
         <Route path='/admin/*' element={<AdminPage />}></Route>

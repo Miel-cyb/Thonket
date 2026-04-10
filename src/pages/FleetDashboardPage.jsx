@@ -35,11 +35,16 @@ export default function FleetDashboardPage({ userRole = 'manager' }) {
     const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
     const [isDeployModalOpen, setIsDeployModalOpen] = useState(false); // NEW: State for Deploy Modal
 
+    // ✅ MOCK DATA UPDATED: Added trip properties to Mart C and others
     const [tasks, setTasks] = useState([
-        { id: 1, customerName: 'Shop A', address: 'Accra Central', status: 'pending', assignedToDriver: false, type: 'Delivery' },
-        { id: 2, customerName: 'Shop B', address: 'Tema Harbor', status: 'completed', assignedToDriver: true, driverName: 'Kwame', completedAt: '07:30 AM' },
-        { id: 3, customerName: 'Mart C', address: 'East Legon', status: 'in-progress', assignedToDriver: true, driverName: 'Ama', type: 'Pickup' },
-        { id: 4, customerName: 'Pharmacy D', address: 'Osu', status: 'pending', assignedToDriver: false, type: 'Delivery' },
+        { id: 1, customerName: 'Shop A', address: 'Accra Central', status: 'pending', assignedToDriver: true, type: 'Delivery', tripNumber: 1, sequence: 1, orderNumber: 'ORD-101', itemsCount: 5 },
+        { id: 2, customerName: 'Shop B', address: 'Tema Harbor', status: 'completed', assignedToDriver: true, driverName: 'Kwame', completedAt: '07:30 AM', tripNumber: 1, sequence: 2, orderNumber: 'ORD-102', itemsCount: 12 },
+        { id: 3, customerName: 'Mart C', address: 'East Legon', status: 'pending', assignedToDriver: true, driverName: 'Ama', type: 'Pickup', tripNumber: 1, sequence: 3, orderNumber: 'ORD-103', itemsCount: 8 },
+        { id: 4, customerName: 'Pharmacy D', address: 'Osu', status: 'pending', assignedToDriver: true, type: 'Delivery', tripNumber: 2, sequence: 1, orderNumber: 'ORD-104', itemsCount: 3 },
+        { id: 1, customerName: 'Shop A', address: 'Accra Central', status: 'pending', assignedToDriver: true, type: 'Delivery', tripNumber: 1, sequence: 1, orderNumber: 'ORD-101', itemsCount: 5 },
+        { id: 2, customerName: 'Shop B', address: 'Tema Harbor', status: 'completed', assignedToDriver: true, driverName: 'Kwame', completedAt: '07:30 AM', tripNumber: 1, sequence: 2, orderNumber: 'ORD-102', itemsCount: 12 },
+        { id: 3, customerName: 'Mart C', address: 'East Legon', status: 'pending', assignedToDriver: true, driverName: 'Ama', type: 'Pickup', tripNumber: 1, sequence: 3, orderNumber: 'ORD-103', itemsCount: 8 },
+        { id: 4, customerName: 'Pharmacy D', address: 'Osu', status: 'pending', assignedToDriver: true, type: 'Delivery', tripNumber: 2, sequence: 1, orderNumber: 'ORD-104', itemsCount: 3 }
     ]);
 
     const [vehicles, setVehicles] = useState([

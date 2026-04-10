@@ -1,10 +1,9 @@
-import React from 'react'; // Ensure React is imported for useState to work
+import React, { useState } from 'react'; // ✅ Import React for JSX and useState
 import { ChevronRight, Folder, FolderOpen } from 'lucide-react';
 
-// 1. Change name to CategoryItem and add 'export'
 export const CategoryItem = ({ item, level = 0, onSelect, selectedId }) => {
-    const [isOpen, setIsOpen] = React.useState(true);
-    const isSelected = selectedId === item.id;
+    const [isOpen, setIsOpen] = useState(true);
+    const isSelected = selectedId === item._id; // match API _id
 
     return (
         <div className="select-none">
@@ -14,7 +13,6 @@ export const CategoryItem = ({ item, level = 0, onSelect, selectedId }) => {
                     }`}
                 style={{ marginLeft: `${level * 16}px` }}
             >
-                {/* Check if children exist to show the toggle arrow */}
                 {item.children?.length > 0 ? (
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
@@ -23,17 +21,16 @@ export const CategoryItem = ({ item, level = 0, onSelect, selectedId }) => {
                         <ChevronRight size={14} />
                     </button>
                 ) : (
-                    <div className="w-6" /> /* Spacer for alignment */
+                    <div className="w-6" />
                 )}
 
                 {isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
                 <span className="text-[13px] font-bold tracking-tight">{item.name}</span>
             </div>
 
-            {/* 2. Update the recursive call to use the new name */}
             {isOpen && item.children?.map(child => (
                 <CategoryItem
-                    key={child.id}
+                    key={child._id} // unique key
                     item={child}
                     level={level + 1}
                     onSelect={onSelect}

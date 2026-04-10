@@ -13,6 +13,7 @@ import ProductPricing from './components/WarehouseOverview/ProductPricing.jsx';
 import CategoriesPage from './pages/CategoriesPage';
 import ProductsPage from './pages/ProductPage';
 import FleetDashboardPage from './pages/FleetDashboardPage';
+import PriceManagementPage from './pages/PriceManagementPage';
 
 
 
@@ -74,6 +75,12 @@ function App() {
           path="/products/list"
           element={<ProductsPage />}
         />
+
+        <Route
+          path="/products/pricing"
+          element={<PriceManagementPage />}
+        />
+
         <Route
           path="/products/:productId/pricing"
           element={<ProductPricing products={products} setProducts={setProducts} />}

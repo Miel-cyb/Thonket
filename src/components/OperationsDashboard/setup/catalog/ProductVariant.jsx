@@ -1,224 +1,187 @@
 import React, { useRef } from 'react';
 import {
     X,
-    Layers,
-    Database,
     GripVertical,
     Tag,
     Image as ImageIcon,
     Hash,
+    ChevronDown,
+    Weight,
+    Box,
     CheckCircle2,
-    Circle,
-    ChevronDown
+    Circle
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-/**
- * 1. ProductVariantElement
- * Optimized for readability and data entry.
- */
-export const ProductVariantElement = ({ variant, onUpdate, onRemove }) => {
+export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
     const fileInputRef = useRef(null);
-    const units = ['pcs', 'kg', 'g', 'ml', 'ltr', 'box', 'set', 'pack'];
+    const units = ['PCS', 'KG', 'L', 'BOX'];
+
+    // ✅ Exactly aligned with your Mongoose Model
+    const v = {
+        name: variant.name ?? '',
+        sku: variant.sku ?? '',
+        unitOfMeasure: variant.unitOfMeasure ?? 'PCS',
+        weightKg: variant.weightKg ?? 0,
+        volumeM3: variant.volumeM3 ?? 0,
+        attributes: variant.attributes ?? { type: '', value: '' }, // Supporting the Map/Object logic
+        isActive: variant.isActive ?? true,
+        image: variant.image ?? '' // UI-only field or added to model later
+    };
+
+    const update = (patch) => onUpdate({ ...v, ...patch });
+
+    const toastStyle = {
+        borderRadius: '12px',
+        background: '#1e293b',
+        color: '#fff',
+        fontSize: '12px',
+        fontWeight: '600',
+    };
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const url = URL.createObjectURL(file);
-            onUpdate({ ...variant, image: url });
+            update({ image: URL.createObjectURL(file) });
+            toast.success(`Image added to ${v.sku || 'variant'}`, { style: toastStyle });
         }
     };
 
-    const toggleStatus = () => {
-        onUpdate({ ...variant, status: variant.status === 'Active' ? 'Inactive' : 'Active' });
-    };
-
-    const isActive = variant.status === 'Active';
-
     return (
-        <div className={`flex items-center gap-3 pl-12 pr-4 py-3 border-l-2 transition-all duration-200 group/variant 
-            ${isActive ? 'bg-white border-indigo-400' : 'bg-slate-50 border-slate-200 opacity-70'}`}>
-
-            {/* Draggable & Status Toggle */}
-            <div className="shrink-0 flex items-center gap-3">
-                <GripVertical size={16} className="text-slate-300 opacity-0 group-hover/variant:opacity-100 cursor-grab" />
-                <button
-                    onClick={toggleStatus}
-                    className={`transition-colors hover:scale-110 ${isActive ? 'text-emerald-500' : 'text-slate-400'}`}
-                >
-                    {isActive ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                </button>
+        <div
+            className={`grid grid-cols-[40px_50px_200px_150px_180px_100px_100px_100px_auto]
+            items-center gap-3 px-4 py-4 border-l-4 transition-all
+            ${v.isActive ? 'bg-white border-indigo-500 shadow-sm' : 'bg-slate-50 border-slate-300 opacity-70'}`}
+        >
+            {/* 1. Drag Handle */}
+            <div className="flex items-center justify-center">
+                <GripVertical size={18} className="text-slate-300 cursor-grab active:cursor-grabbing" />
             </div>
 
-            {/* Variant Image Slot */}
-            <div className="shrink-0">
+            {/* 2. Image Slot */}
+            <div className="relative group">
                 <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden hover:border-indigo-400 shadow-sm transition-all"
+                    className="w-10 h-10 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden bg-slate-50 hover:border-indigo-400 transition-colors"
                 >
-                    {variant.image ? (
-                        <img src={variant.image} alt="SKU" className="w-full h-full object-cover" />
+                    {v.image ? (
+                        <img src={v.image} alt="" className="w-full h-full object-cover" />
                     ) : (
                         <ImageIcon size={16} className="text-slate-400" />
                     )}
                 </button>
-                <input type="file" ref={fileInputRef} hidden onChange={handleImageChange} accept="image/*" />
+                <input type="file" hidden ref={fileInputRef} onChange={handleImageChange} />
             </div>
 
-            {/* SKU Field */}
-            <div className="w-40 shrink-0">
-                <div className="relative flex items-center">
-                    <Hash size={13} className="absolute left-3 text-slate-400" />
-                    <input
-                        value={variant.sku || ''}
-                        onChange={(e) => onUpdate({ ...variant, sku: e.target.value })}
-                        placeholder="SKU-0000"
-                        className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs font-bold text-slate-900 uppercase tracking-wider outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
-                    />
-                </div>
-            </div>
-
-            {/* Attribute & Value Group */}
-            <div className="flex flex-1 items-center gap-2">
-                <div className="w-32 shrink-0 relative">
-                    <Tag size={13} className="absolute left-3 text-slate-400" />
-                    <input
-                        value={variant.attribute || ''}
-                        onChange={(e) => onUpdate({ ...variant, attribute: e.target.value })}
-                        placeholder="Size/Color"
-                        className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-indigo-500"
-                    />
-                </div>
+            {/* 3. Variant Name */}
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Variant Name</label>
                 <input
-                    value={variant.value || ''}
-                    onChange={(e) => onUpdate({ ...variant, value: e.target.value })}
-                    placeholder="Value (e.g. XL)"
-                    className="flex-1 min-w-[80px] bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500"
+                    value={v.name}
+                    onChange={(e) => update({ name: e.target.value })}
+                    placeholder="e.g. Large / Red"
+                    className="w-full border-slate-200 border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium"
                 />
             </div>
 
-            {/* UoM Dropdown */}
-            <div className="w-28 shrink-0 relative">
-                <select
-                    value={variant.uom}
-                    onChange={(e) => onUpdate({ ...variant, uom: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs font-bold text-slate-700 appearance-none outline-none focus:border-indigo-500"
+            {/* 4. SKU */}
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">SKU Code</label>
+                <div className="relative">
+                    <Hash size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                        value={v.sku}
+                        onChange={(e) => update({ sku: e.target.value.toUpperCase() })}
+                        placeholder="AUTO"
+                        className="w-full border-slate-200 border rounded-lg pl-7 pr-2 py-1.5 text-xs font-black tracking-wider focus:border-indigo-500 outline-none bg-slate-50/50"
+                    />
+                </div>
+            </div>
+
+            {/* 5. Attributes Map (Simplified to Key:Value for UI) */}
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Attributes</label>
+                <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/50">
+                    <Tag size={12} className="text-slate-400" />
+                    <input
+                        value={v.attributes.type}
+                        onChange={(e) => update({ attributes: { ...v.attributes, type: e.target.value } })}
+                        placeholder="Size"
+                        className="w-16 bg-transparent text-[11px] font-bold uppercase outline-none"
+                    />
+                    <span className="text-slate-300">:</span>
+                    <input
+                        value={v.attributes.value}
+                        onChange={(e) => update({ attributes: { ...v.attributes, value: e.target.value } })}
+                        placeholder="XL"
+                        className="w-16 bg-transparent text-[11px] outline-none text-indigo-600 font-bold"
+                    />
+                </div>
+            </div>
+
+            {/* 6. Weight */}
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 text-center">Weight (Kg)</label>
+                <div className="relative">
+                    <Weight size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                        type="number"
+                        value={v.weightKg}
+                        onChange={(e) => update({ weightKg: parseFloat(e.target.value) || 0 })}
+                        className="w-full border-slate-200 border rounded-lg pl-7 pr-2 py-1.5 text-xs font-bold text-slate-700 outline-none"
+                    />
+                </div>
+            </div>
+
+            {/* 7. Volume */}
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 text-center">Vol (m³)</label>
+                <div className="relative">
+                    <Box size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                        type="number"
+                        value={v.volumeM3}
+                        onChange={(e) => update({ volumeM3: parseFloat(e.target.value) || 0 })}
+                        className="w-full border-slate-200 border rounded-lg pl-7 pr-2 py-1.5 text-xs font-bold text-slate-700 outline-none"
+                    />
+                </div>
+            </div>
+
+            {/* 8. UOM Selection */}
+            <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">UOM</label>
+                <div className="relative">
+                    <select
+                        value={v.unitOfMeasure}
+                        onChange={(e) => update({ unitOfMeasure: e.target.value })}
+                        className="w-full border-slate-200 border rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-tighter bg-white outline-none appearance-none cursor-pointer"
+                    >
+                        {units.map(u => (
+                            <option key={u} value={u}>{u}</option>
+                        ))}
+                    </select>
+                    <ChevronDown size={12} className="absolute right-2 top-2.5 text-slate-400 pointer-events-none" />
+                </div>
+            </div>
+
+            {/* 9. Actions */}
+            <div className="flex items-center gap-1 justify-end pt-5">
+                <button
+                    onClick={() => {
+                        update({ isActive: !v.isActive });
+                        toast(v.isActive ? "Variant Disabled" : "Variant Enabled", { style: toastStyle });
+                    }}
+                    className={`p-2 rounded-lg transition-colors ${v.isActive ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:bg-slate-100'}`}
                 >
-                    {units.map(unit => <option key={unit} value={unit}>{unit.toUpperCase()}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    {v.isActive ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                </button>
+                <button
+                    onClick={onRemove}
+                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                >
+                    <X size={20} />
+                </button>
             </div>
-
-            {/* Stock Count */}
-            <div className="w-28 shrink-0 relative">
-                <Database size={13} className="absolute left-3 text-slate-400" />
-                <input
-                    type="number"
-                    value={variant.stock || 0}
-                    onChange={(e) => onUpdate({ ...variant, stock: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
-                />
-            </div>
-
-            {/* Remove Action */}
-            <button onClick={onRemove} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
-                <X size={16} strokeWidth={2.5} />
-            </button>
-        </div>
-    );
-};
-
-/**
- * 2. BulkProductRow
- * Master container for product name and variant management.
- */
-export const BulkProductRow = ({ product, onUpdate, onRemove }) => {
-
-    const addVariant = () => {
-        const newVariant = {
-            id: crypto.randomUUID(),
-            sku: '',
-            attribute: '',
-            value: '',
-            uom: 'pcs',
-            stock: 0,
-            status: 'Active',
-            image: null
-        };
-        const currentVariants = product.variants || [];
-        onUpdate({ ...product, variants: [...currentVariants, newVariant] });
-    };
-
-    const updateVariant = (vId, updatedData) => {
-        const newVariants = product.variants.map(v => v.id === vId ? updatedData : v);
-        onUpdate({ ...product, variants: newVariants });
-    };
-
-    const removeVariant = (vId) => {
-        const newVariants = product.variants.filter(v => v.id !== vId);
-        onUpdate({ ...product, variants: newVariants });
-    };
-
-    return (
-        <div className="mb-6 last:mb-0">
-            <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative z-10 hover:border-indigo-300 transition-all">
-
-                {/* Master Image Preview */}
-                <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 shrink-0 group">
-                    <ImageIcon size={20} className="text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                </div>
-
-                {/* Name & Category Info */}
-                <div className="flex-1 min-w-0">
-                    <input
-                        value={product.name || ''}
-                        onChange={(e) => onUpdate({ ...product, name: e.target.value })}
-                        placeholder="Master Product Name (e.g. Nike Air Max)"
-                        className="w-full bg-transparent border-none outline-none text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-0"
-                    />
-                    <div className="flex items-center gap-3 mt-1.5">
-                        <span className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">
-                            {product.categoryName || 'General'}
-                        </span>
-                        <span className="text-xs font-medium text-slate-400">
-                            {product.variants?.length || 0} Variants
-                        </span>
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={addVariant}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-lg border border-indigo-100 transition-all font-bold text-xs uppercase tracking-tight"
-                    >
-                        <Layers size={14} />
-                        Add Variant
-                    </button>
-
-                    <div className="w-px h-8 bg-slate-100 mx-1" />
-
-                    <button
-                        onClick={onRemove}
-                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                        <X size={18} strokeWidth={2} />
-                    </button>
-                </div>
-            </div>
-
-            {/* Variant List Rendering */}
-            {product.variants && product.variants.length > 0 && (
-                <div className="ml-6 mt-[-8px] pt-4 pb-2 bg-slate-50/50 border-x border-b border-slate-200 rounded-b-xl overflow-hidden shadow-inner">
-                    {product.variants.map((v) => (
-                        <ProductVariantElement
-                            key={v.id}
-                            variant={v}
-                            onUpdate={(data) => updateVariant(v.id, data)}
-                            onRemove={() => removeVariant(v.id)}
-                        />
-                    ))}
-                </div>
-            )}
         </div>
     );
 };

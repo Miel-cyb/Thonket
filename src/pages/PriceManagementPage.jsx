@@ -19,36 +19,46 @@ const PriceManagementPage = () => {
     const [loading, setLoading] = useState(false);
     const [activeProduct, setActiveProduct] = useState(null);
 
-    // 1. Fetch Categories & Products
+    // 1. Fetch Categories
     const fetchCategories = useCallback(async () => {
         try {
             const { data } = await axios.get(`${API_ENDPOINTS.CATEGORIES}/hierarchy/all`);
             setCategories(Array.isArray(data) ? data : (data?.data || []));
-        } catch (err) { console.error("Category Fetch Error", err); }
+        } catch (err) {
+            console.error("Category Fetch Error", err);
+        }
     }, []);
 
-    const fetchProducts = useCallback(async (params = {}) => {
+    // 2. Fetch Price Catalog
+    const fetchPriceCatalog = useCallback(async (params = {}) => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`${API_ENDPOINTS.PRODUCTS}/catalog`, { params });
-            setProducts(Array.isArray(data) ? data : (data?.data || []));
-        } catch (err) { console.error(err); }
-        finally { setLoading(false); }
+            const { data } = await axios.get(`${API_ENDPOINTS.PRICES}/catalog`, { params });
+
+            console.log('this is the price catalog data', data);
+            setProducts(data?.products || []);
+        } catch (err) {
+            console.error("Catalog Sync Error", err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    useEffect(() => { fetchCategories(); }, [fetchCategories]);
+    useEffect(() => {
+        fetchCategories();
+    }, [fetchCategories]);
 
     useEffect(() => {
         const delay = setTimeout(() => {
-            fetchProducts({
+            fetchPriceCatalog({
                 categoryId: selectedCategoryObj?._id || undefined,
                 search: searchQuery || undefined
             });
         }, 300);
         return () => clearTimeout(delay);
-    }, [selectedCategoryObj, searchQuery, fetchProducts]);
+    }, [selectedCategoryObj, searchQuery, fetchPriceCatalog]);
 
-    // 2. Calculated Statistics
+    // 3. Stats Calculation
     const priceStats = useMemo(() => {
         let totalNetVal = 0;
         let totalDiscountImpact = 0;
@@ -56,29 +66,85 @@ const PriceManagementPage = () => {
         let activeTiers = 0;
 
         products.forEach(p => {
-            p.variants?.forEach(v => {
-                const base = Number(v.price?.basePrice || 0);
-                const discVal = Number(v.discount?.value || 0);
-                const isPercent = v.discount?.discountType === "PERCENTAGE";
+            const basePrices = p.pricing?.base || [];
+            const discounts = p.pricing?.discounts || [];
+            const tiers = p.pricing?.tiers || [];
 
-                const net = isPercent ? base - (base * (discVal / 100)) : base - discVal;
+            basePrices.forEach(bp => {
+                const base = Number(bp.basePrice || 0);
+                const disc = discounts.find(d => d.variantId === bp.variantId) || { value: 0, discountType: "PERCENTAGE" };
+                const isPercent = disc.discountType === "PERCENTAGE";
 
-                totalNetVal += net;
-                totalDiscountImpact += isPercent ? (base * (discVal / 100)) : discVal;
+                const discountAmt = isPercent ? (base * (Number(disc.value || 0) / 100)) : Number(disc.value || 0);
+                totalNetVal += (base - discountAmt);
+                totalDiscountImpact += discountAmt;
                 variantCount++;
-                if (v.tierPrices?.length > 0) activeTiers += v.tierPrices.length;
             });
+            activeTiers += (tiers?.length || 0);
         });
 
         return {
             avgNetPrice: variantCount ? (totalNetVal / variantCount).toFixed(2) : "0.00",
-            totalSavings: totalDiscountImpact.toLocaleString(),
+            totalSavings: totalDiscountImpact.toLocaleString(undefined, { minimumFractionDigits: 2 }),
             bulkTiers: activeTiers,
-            currency: products[0]?.variants[0]?.price?.currency || "GHS"
+            currency: "GHS"
         };
     }, [products]);
 
-    // 3. PERSISTENCE LOGIC
+    // 4. SELECTION LOGIC
+    const handleSelectProduct = (product) => {
+        const baseEntries = product.pricing?.base || [];
+
+        const initializedVariants = baseEntries.map(basePriceEntry => {
+            const vId = basePriceEntry.variantId;
+            const existingDiscount = product.pricing?.discounts?.find(d => d.variantId === vId) ||
+                product.pricing?.discounts?.find(d => d.scope === 'PRODUCT');
+
+            const existingTiers = product.pricing?.tiers?.filter(t => t.variantId === vId) || [];
+
+            return {
+                _id: vId,
+                name: basePriceEntry.variantName || product.name,
+                sku: basePriceEntry.sku || 'N/A',
+                // This structure ensures tiers is ALWAYS an array so .map() works in the child
+                pricing: {
+                    base: [{ ...basePriceEntry }],
+                    discounts: existingDiscount ? [{ ...existingDiscount }] : [{ value: 0, discountType: "PERCENTAGE", scope: "VARIANT" }],
+                    tiers: existingTiers.length > 0 ? [...existingTiers] : []
+                }
+            };
+        });
+
+        setActiveProduct({
+            ...product,
+            variants: initializedVariants
+        });
+    };
+
+    // 5. VARIANT UPDATE LOGIC (FIXED: Improved immutability for array updates)
+    const handleVariantUpdate = (variantIdx, model, patchData) => {
+        setActiveProduct(prev => {
+            if (!prev) return null;
+
+            const updatedVariants = prev.variants.map((variant, idx) => {
+                if (idx !== variantIdx) return variant;
+
+                // Create a fresh copy of the variant and its pricing
+                return {
+                    ...variant,
+                    pricing: {
+                        ...variant.pricing,
+                        // If patchData is an array (like tiers), replace it entirely with a new reference
+                        [model]: Array.isArray(patchData) ? [...patchData] : { ...variant.pricing[model], ...patchData }
+                    }
+                };
+            });
+
+            return { ...prev, variants: updatedVariants };
+        });
+    };
+
+    // 6. BULK SYNC
     const handleUpdatePrices = async () => {
         if (!activeProduct) return;
         try {
@@ -87,31 +153,19 @@ const PriceManagementPage = () => {
                 productId: activeProduct._id,
                 variants: activeProduct.variants
             });
+
+            fetchPriceCatalog({
+                categoryId: selectedCategoryObj?._id || undefined,
+                search: searchQuery || undefined
+            });
+
+            setActiveProduct(null);
             alert("Pricing models synced successfully.");
         } catch (err) {
-            alert("Error syncing models: " + err.message);
+            alert("Sync Failed: " + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
-    };
-
-    // 4. CORE UPDATE HANDLER (Fixed Tier Bug)
-    const handleVariantUpdate = (variantIdx, model, patch) => {
-        const newVariants = [...activeProduct.variants];
-        const currentVariant = newVariants[variantIdx];
-
-        // Logic Change: If patch is an array (like tierPrices), override directly. 
-        // If it's an object (like price/discount), merge it.
-        const updatedContent = Array.isArray(patch)
-            ? patch
-            : { ...currentVariant[model], ...patch };
-
-        newVariants[variantIdx] = {
-            ...currentVariant,
-            [model]: updatedContent
-        };
-
-        setActiveProduct({ ...activeProduct, variants: newVariants });
     };
 
     return (
@@ -162,7 +216,6 @@ const PriceManagementPage = () => {
 
                 <main className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
                     <div className="max-w-7xl mx-auto">
-                        {/* ANALYTICS PANEL */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                             <StatCard icon={Activity} label="Avg Net Yield" value={`${priceStats.currency} ${priceStats.avgNetPrice}`} color="bg-emerald-600 text-white shadow-emerald-100" />
                             <StatCard icon={Percent} label="Discount Impact" value={`${priceStats.currency} ${priceStats.totalSavings}`} color="bg-rose-500 text-white shadow-rose-100" />
@@ -171,28 +224,36 @@ const PriceManagementPage = () => {
                         </div>
 
                         {!activeProduct ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-in fade-in">
-                                {products.map(p => (
-                                    <div
-                                        key={p._id}
-                                        onClick={() => setActiveProduct(p)}
-                                        className="p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-500 hover:shadow-xl transition-all cursor-pointer group"
-                                    >
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-indigo-50">
-                                                <Package size={18} className="text-slate-400 group-hover:text-indigo-600" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {products.map(p => {
+                                    const vCount = (p.pricing?.base || []).length;
+                                    return (
+                                        <div
+                                            key={p._id}
+                                            onClick={() => handleSelectProduct(p)}
+                                            className="p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-500 hover:shadow-xl transition-all cursor-pointer group relative"
+                                        >
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-indigo-50">
+                                                    <Package size={18} className="text-slate-400 group-hover:text-indigo-600" />
+                                                </div>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${p.hasActivePrice ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                        {p.hasActivePrice ? 'Market Ready' : 'Price Missing'}
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">
+                                                        {vCount} SKUs
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded text-slate-500 uppercase">
-                                                {p.variants?.length || 0} SKUs
-                                            </span>
+                                            <h3 className="text-sm font-black text-slate-800 mb-1">{p.name}</h3>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{p.brand || 'No Brand'}</p>
                                         </div>
-                                        <h3 className="text-sm font-black text-slate-800 mb-1">{p.name}</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{p.categoryName}</p>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
-                            <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                                 <div className="flex items-center justify-between bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                                     <button onClick={() => setActiveProduct(null)} className="flex items-center gap-2 text-xs font-black text-slate-500 hover:text-indigo-600 uppercase transition-colors">
                                         <ArrowLeft size={16} /> Exit Editor
@@ -219,11 +280,11 @@ const PriceManagementPage = () => {
                                     </div>
 
                                     <div className="divide-y divide-slate-50">
-                                        {activeProduct.variants?.map((v, idx) => (
+                                        {activeProduct.variants.map((v, idx) => (
                                             <PriceVariantRow
-                                                key={v._id || idx}
+                                                key={v._id || `v-${idx}`}
                                                 variant={v}
-                                                onUpdate={(model, patch) => handleVariantUpdate(idx, model, patch)}
+                                                onUpdate={(model, patchData) => handleVariantUpdate(idx, model, patchData)}
                                                 onRemove={() => {
                                                     const filtered = activeProduct.variants.filter((_, i) => i !== idx);
                                                     setActiveProduct({ ...activeProduct, variants: filtered });

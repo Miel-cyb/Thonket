@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from "react";
 // Layout & Analytics
 import DashboardHeader from "../components/Sales/layout/DashboardHeader";
@@ -83,7 +82,7 @@ export default function SalesDashboardPage() {
 
             {/* CORE OPERATIONAL AREA */}
             <div className="flex gap-8 items-start min-h-[850px] mb-10">
-              
+
               {/* SIDEBAR COMMAND RAIL */}
               <nav className="flex flex-col gap-5 py-2 sticky top-10 shrink-0 z-40">
                 <PanelTrigger icon={<LayoutGrid size={22} />} label="Matrix Home" isActive={activePanel === null} onClick={() => setActivePanel(null)} color="bg-slate-900" />
@@ -102,21 +101,20 @@ export default function SalesDashboardPage() {
                   {/* DYNAMIC HEADER */}
                   <div className="px-10 py-7 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-4">
-                      <div className={`h-8 w-2 rounded-full transition-all duration-500 ${
-                        activePanel === 'ordering' ? 'bg-purple-600 animate-pulse' : 
-                        activePanel === 'accession' ? 'bg-emerald-600' : 
-                        activePanel === 'portfolio' ? 'bg-indigo-600' : 'bg-slate-900'
-                      }`} />
+                      <div className={`h-8 w-2 rounded-full transition-all duration-500 ${activePanel === 'ordering' ? 'bg-purple-600 animate-pulse' :
+                          activePanel === 'accession' ? 'bg-emerald-600' :
+                            activePanel === 'portfolio' ? 'bg-indigo-600' : 'bg-slate-900'
+                        }`} />
                       <div>
                         <h3 className="font-black text-[14px] uppercase tracking-[0.25em] text-slate-800">
                           {activePanel === 'ordering' ? 'Transaction Entry Protocol' :
-                           activePanel === 'portfolio' ? 'Customer Intelligence' :
-                           activePanel === 'accession' ? 'Onboarding Entity' :
-                           'Master Pipeline Matrix'}
+                            activePanel === 'portfolio' ? 'Customer Intelligence' :
+                              activePanel === 'accession' ? 'Onboarding Entity' :
+                                'Master Pipeline Matrix'}
                         </h3>
                       </div>
                     </div>
-                    
+
                     {activePanel && (
                       <button
                         onClick={() => setActivePanel(null)}
@@ -135,19 +133,19 @@ export default function SalesDashboardPage() {
                       </div>
                     ) : (
                       <div className="h-full animate-in slide-in-from-right-10 fade-in duration-500">
-                        
+
                         {/* 1. ORDERING VIEW */}
                         {activePanel === 'ordering' && (
-                            <OrderEntryForm
-                                products={products}
-                                categories={categories}
-                                customers={customers}
-                                agent={activeAgent}
-                                onCancel={() => setActivePanel(null)}
-                                onCreateOrder={handleOrderCreated}
-                            />
+                          <OrderEntryForm
+                            products={products}
+                            categories={categories}
+                            customers={customers}
+                            agent={activeAgent}
+                            onCancel={() => setActivePanel(null)}
+                            onCreateOrder={handleOrderCreated}
+                          />
                         )}
-                        
+
                         {/* 2. PORTFOLIO VIEW */}
                         {activePanel === 'portfolio' && (
                           <div className="p-8 h-full overflow-y-auto">
@@ -158,26 +156,26 @@ export default function SalesDashboardPage() {
                         {/* 3. ACCESSION VIEW */}
                         {activePanel === 'accession' && (
                           <div className="h-full flex items-center justify-center p-8 bg-slate-50/50">
-                             <CreateCustomerForm 
-                                salesAgentID={activeAgent.id}
-                                onCancel={() => setActivePanel(null)}
-                                onSave={handleCustomerAdded} 
-                             />
+                            <CreateCustomerForm
+                              salesAgentID={activeAgent.id}
+                              onCancel={() => setActivePanel(null)}
+                              onSave={handleCustomerAdded}
+                            />
                           </div>
                         )}
 
                         {/* 4. ISSUES VIEW */}
                         {activePanel === 'issues' && (
-                            <div className="p-8 h-full overflow-y-auto">
-                                <PendingIssuesView issues={pendingIssues} />
-                            </div>
+                          <div className="p-8 h-full overflow-y-auto">
+                            <PendingIssuesView issues={pendingIssues} />
+                          </div>
                         )}
 
                         {/* 5. ACTIVITY VIEW */}
                         {activePanel === 'activity' && (
-                            <div className="p-8 h-full overflow-y-auto">
-                                <ActivityFeed activities={activities} />
-                            </div>
+                          <div className="p-8 h-full overflow-y-auto">
+                            <ActivityFeed activities={activities} />
+                          </div>
                         )}
 
                       </div>

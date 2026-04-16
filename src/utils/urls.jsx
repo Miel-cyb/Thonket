@@ -1,9 +1,9 @@
 
-const CATEGORY_BASE_URL = 'http://192.168.176.143:5002/api/categories'; // Change this to your backend URL
+const CATEGORY_BASE_URL = 'http://192.168.230.143:5002/api/categories'; // Change this to your backend URL
 
-const PRODUCT_BASE_URL = 'http://192.168.176.143:5002/api/products'; // Change this to your backend URL
+const PRODUCT_BASE_URL = 'http://192.168.230.143:5002/api/products'; // Change this to your backend URL
 
-const PRICE_BASE_URL = 'http://192.168.176.143:5002/api/prices'; // Change this to your backend URL
+const PRICE_BASE_URL = 'http://192.168.230.143:5002/api/prices'; // Change this to your backend URL
 
 export const API_ENDPOINTS = {
     CATEGORIES: CATEGORY_BASE_URL,

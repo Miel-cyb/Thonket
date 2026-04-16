@@ -14,6 +14,7 @@ import CategoriesPage from './pages/CategoriesPage';
 import ProductsPage from './pages/ProductPage';
 import FleetDashboardPage from './pages/FleetDashboardPage';
 import PriceManagementPage from './pages/PriceManagementPage';
+import FinanceDashboardPage from './pages/FinanacePage';
 
 
 
@@ -60,6 +61,10 @@ function App() {
         <Route
           path="/operations"
           element={<OperationsManagerPage products={products} reports={reports} />}
+        />
+        <Route
+          path="/finance"
+          element={<FinanceDashboardPage />}
         />
         <Route
           path="/products/:productId/pricing"

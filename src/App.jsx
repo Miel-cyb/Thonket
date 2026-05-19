@@ -63,10 +63,6 @@ function App() {
           element={<OperationsManagerPage products={products} reports={reports} />}
         />
         <Route
-          path="/finance"
-          element={<FinanceDashboardPage />}
-        />
-        <Route
           path="/products/:productId/pricing"
           element={<ProductPricing products={products} setProducts={setProducts} />}
         />
@@ -80,6 +76,12 @@ function App() {
           path="/products/list"
           element={<ProductsPage />}
         />
+
+        <Route
+          path="/finance"
+          element={<FinanceDashboardPage />}
+        />
+
 
         <Route
           path="/products/pricing"

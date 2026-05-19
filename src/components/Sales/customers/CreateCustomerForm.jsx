@@ -2,305 +2,203 @@
 
 import { useState } from "react";
 import {
-    UserPlus, Building2, User, Briefcase, Mail,
-    ShieldCheck, Hash, MapPin, Plus, Trash2,
-    Globe, PhoneCall, UserCheck, Home, CreditCard
+    User, Briefcase, Mail, MapPin,
+    PhoneCall, UserCheck, Home, CreditCard
 } from "lucide-react";
 
-export default function CreateCustomerForm({ onCustomerCreated }) {
+export default function CreateCustomerForm({ onCustomerCreated, onCancel }) {
+
     const [formData, setFormData] = useState({
-        type: "Wholesale", // Wholesale or Individual
-        assignedAgent: "Current Agent",
-        // Business Fields
-        entityName: "",
-        taxId: "",
-        website: "",
-        // Individual/Contact Fields
         contactName: "",
         contactEmail: "",
         contactPhone: "",
-        // Branch/Address Logic
-        branches: [{ id: Date.now(), name: "Headquarters", address: "", city: "" }],
+        idNumber: "",
+        occupation: "",
         personalAddress: ""
     });
 
-    const salesAgents = ["Current Agent", "Sarah Miller", "Marcus Chen", "Elena Rodriguez"];
-
-    const handleTypeChange = (newType) => {
-        setFormData(prev => ({ ...prev, type: newType }));
-    };
-
-    const addBranch = () => {
-        setFormData(prev => ({
-            ...prev,
-            branches: [...prev.branches, { id: Date.now(), name: "", address: "", city: "" }]
-        }));
-    };
-
-    const removeBranch = (id) => {
-        if (formData.branches.length === 1) return;
-        setFormData(prev => ({
-            ...prev,
-            branches: prev.branches.filter(b => b.id !== id)
-        }));
-    };
-
-    const handleBranchChange = (id, field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            branches: prev.branches.map(b => b.id === id ? { ...b, [field]: value } : b)
-        }));
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (onCustomerCreated) onCustomerCreated({ ...formData, id: Date.now() });
+
+        if (onCustomerCreated) {
+            onCustomerCreated({
+                ...formData,
+                type: "Individual",
+                id: Date.now()
+            });
+        }
     };
 
-    const isWholesale = formData.type === "Wholesale";
-
     return (
-        <div className="max-w-5xl mx-auto pb-20">
-            <form onSubmit={handleSubmit} className="space-y-10 animate-in fade-in duration-700">
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-10">
+            <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in duration-200">
 
-                {/* 1. DYNAMIC HEADER & TOGGLE */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[3rem] border border-slate-200 shadow-sm transition-all">
-                    <div className="flex items-center gap-6">
-                        <div className={`p-4 rounded-3xl shadow-xl transition-all duration-500 bg-indigo-600 shadow-indigo-100 text-white`}>
-                            {isWholesale ? <Building2 size={32} /> : <User size={32} />}
+                {/* CORE HEADER */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-5">
+                        <div className="p-3.5 rounded-xl bg-indigo-50 text-indigo-600 shadow-inner">
+                            <User size={28} className="stroke-[2.25]" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-                                {isWholesale ? "Corporate Accession" : "Individual Enrollment"}
+                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                                New Individual Customer
                             </h2>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
-                                {isWholesale ? "Registering Business Entity & Nodes" : "Direct Consumer Entry Protocol"}
+                            <p className="text-base text-slate-500 mt-1 font-medium">
+                                Register a new direct consumer profile in the system database.
                             </p>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                        {['Wholesale', 'Individual'].map((t) => (
-                            <button
-                                key={t}
-                                type="button"
-                                onClick={() => handleTypeChange(t)}
-                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.type === t
-                                    ? 'bg-slate-900 text-white shadow-lg'
-                                    : 'text-slate-400 hover:text-slate-600'
-                                    }`}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* DATA BODY LAYOUT */}
+                <div className="space-y-8">
 
-                    {/* 2. PRIMARY DATA COLUMN */}
-                    <div className="lg:col-span-2 space-y-8">
-
-                        {isWholesale ? (
-                            /* WHOLESALE SPECIFIC SECTIONS */
-                            <>
-                                <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 space-y-6 animate-in slide-in-from-left-4 duration-500">
-                                    <h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em] flex items-center gap-2">
-                                        <ShieldCheck size={16} /> Business Credentials
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div className="relative">
-                                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                            <input
-                                                type="text"
-                                                placeholder="LEGAL ENTITY NAME"
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none"
-                                                value={formData.entityName}
-                                                onChange={(e) => setFormData({ ...formData, entityName: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="relative">
-                                            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                            <input
-                                                type="text"
-                                                placeholder="TAX ID / REGISTRATION"
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none"
-                                                value={formData.taxId}
-                                                onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="relative md:col-span-2">
-                                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                            <input
-                                                type="url"
-                                                placeholder="CORPORATE WEBSITE"
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none"
-                                                value={formData.website}
-                                                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 space-y-6 animate-in slide-in-from-left-6 duration-500">
-                                    <div className="flex justify-between items-center">
-                                        <h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em] flex items-center gap-2">
-                                            <MapPin size={16} /> Operational Branches
-                                        </h3>
-                                        <button type="button" onClick={addBranch} className="p-2 bg-slate-900 text-white rounded-xl hover:bg-indigo-600 transition-colors">
-                                            <Plus size={18} />
-                                        </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {formData.branches.map((branch) => (
-                                            <div key={branch.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100 relative">
-                                                <input
-                                                    placeholder="BRANCH NAME"
-                                                    className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-indigo-400"
-                                                    value={branch.name}
-                                                    onChange={(e) => handleBranchChange(branch.id, 'name', e.target.value)}
-                                                />
-                                                <input
-                                                    placeholder="PHYSICAL ADDRESS"
-                                                    className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-indigo-400"
-                                                    value={branch.address}
-                                                    onChange={(e) => handleBranchChange(branch.id, 'address', e.target.value)}
-                                                />
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        placeholder="CITY"
-                                                        className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-indigo-400"
-                                                        value={branch.city}
-                                                        onChange={(e) => handleBranchChange(branch.id, 'city', e.target.value)}
-                                                    />
-                                                    <button type="button" onClick={() => removeBranch(branch.id)} className="p-3 text-slate-300 hover:text-red-500 transition-colors">
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            </>
-                        ) : (
-                            /* INDIVIDUAL SPECIFIC SECTIONS (Now using Indigo/Slate) */
-                            <>
-                                <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 space-y-6 animate-in slide-in-from-right-4 duration-500">
-                                    <h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em] flex items-center gap-2">
-                                        <UserCheck size={16} /> Personal Identification
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div className="relative md:col-span-2">
-                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                            <input
-                                                type="text"
-                                                placeholder="FULL LEGAL NAME"
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none"
-                                                value={formData.contactName}
-                                                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="relative">
-                                            <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                            <input
-                                                type="text"
-                                                placeholder="ID / PASSPORT NO."
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none"
-                                            />
-                                        </div>
-                                        <div className="relative">
-                                            <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                            <input
-                                                type="text"
-                                                placeholder="OCCUPATION"
-                                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 space-y-6 animate-in slide-in-from-right-6 duration-500">
-                                    <h3 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em] flex items-center gap-2">
-                                        <Home size={16} /> Fulfillment Address
-                                    </h3>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-4 top-6 text-slate-300" size={18} />
-                                        <textarea
-                                            rows="3"
-                                            placeholder="PRIMARY SHIPPING & BILLING RESIDENCE"
-                                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:ring-4 ring-indigo-50 outline-none resize-none"
-                                            value={formData.personalAddress}
-                                            onChange={(e) => setFormData({ ...formData, personalAddress: e.target.value })}
-                                        />
-                                    </div>
-                                </section>
-                            </>
-                        )}
-                    </div>
-
-                    {/* 3. SHARED SIDEBAR */}
-                    <div className="space-y-8">
-                        <section className="p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl transition-all duration-500 bg-slate-900 shadow-indigo-100">
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-indigo-400">
-                                <UserCheck size={16} /> {isWholesale ? "Primary Liaison" : "Connectivity Nodes"}
+                    {/* SECTION 1: PERSONAL INFORMATION */}
+                    <section className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                        <div className="pb-3 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2.5">
+                                <UserCheck size={18} className="text-indigo-600 stroke-[2.5]" />
+                                Personal Information
                             </h3>
-                            <div className="space-y-4">
-                                {isWholesale && (
-                                    <div className="relative">
-                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                                        <input
-                                            placeholder="CONTACT FULL NAME"
-                                            className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white focus:text-slate-900 transition-all outline-none"
-                                            value={formData.contactName}
-                                            onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                                        />
-                                    </div>
-                                )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                            {/* FULL NAME */}
+                            <div className="sm:col-span-2 space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 block">
+                                    Full Legal Name <span className="text-rose-500">*</span>
+                                </label>
                                 <div className="relative">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
-                                        placeholder="DIRECT EMAIL"
-                                        className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white focus:text-slate-900 transition-all outline-none"
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Alexander Wright"
+                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-base text-slate-900 font-medium placeholder-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all duration-150 shadow-sm"
+                                        value={formData.contactName}
+                                        onChange={(e) => handleInputChange('contactName', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* EMAIL ADDRESS */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 block">
+                                    Email Address <span className="text-rose-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="email"
+                                        required
+                                        placeholder="name@company.com"
+                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-base text-slate-900 font-medium placeholder-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all duration-150 shadow-sm"
                                         value={formData.contactEmail}
-                                        onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                                        onChange={(e) => handleInputChange('contactEmail', e.target.value)}
                                     />
                                 </div>
+                            </div>
+
+                            {/* PHONE NUMBER */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 block">
+                                    Phone Number
+                                </label>
                                 <div className="relative">
-                                    <PhoneCall className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                    <PhoneCall className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                     <input
-                                        placeholder="PHONE NUMBER"
-                                        className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white focus:text-slate-900 transition-all outline-none"
+                                        type="tel"
+                                        placeholder="+1 (555) 000-0000"
+                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-base text-slate-900 font-medium placeholder-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all duration-150 shadow-sm"
                                         value={formData.contactPhone}
-                                        onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                                        onChange={(e) => handleInputChange('contactPhone', e.target.value)}
                                     />
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-white/10">
-                                <label className="text-[10px] font-black uppercase tracking-widest mb-3 block text-indigo-400">Custodian Assignment</label>
-                                <select
-                                    className="w-full p-4 bg-white/10 border border-white/20 rounded-2xl text-[11px] font-bold uppercase tracking-widest outline-none cursor-pointer hover:bg-white/20 transition-all"
-                                    value={formData.assignedAgent}
-                                    onChange={(e) => setFormData({ ...formData, assignedAgent: e.target.value })}
-                                >
-                                    {salesAgents.map(agent => (
-                                        <option key={agent} value={agent} className="text-slate-900">{agent}</option>
-                                    ))}
-                                </select>
+                            {/* ID / PASSPORT NO */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 block">
+                                    ID / Passport Number
+                                </label>
+                                <div className="relative">
+                                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="Identification Document Number"
+                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-base text-slate-900 font-medium placeholder-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all duration-150 shadow-sm"
+                                        value={formData.idNumber}
+                                        onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                                    />
+                                </div>
                             </div>
-                        </section>
 
-                        <button
-                            type="submit"
-                            className={`w-full py-6 text-white rounded-[2rem] text-[12px] font-black uppercase tracking-[0.3em] shadow-xl transition-all active:scale-95 hover:-translate-y-1 ${isWholesale
-                                    ? 'bg-emerald-500 shadow-emerald-100 hover:bg-emerald-600'
-                                    : 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700'
-                                }`}
-                        >
-                            Authorize {isWholesale ? "Entity" : "Client"}
-                        </button>
-                    </div>
+                            {/* OCCUPATION */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700 block">
+                                    Occupation / Profession
+                                </label>
+                                <div className="relative">
+                                    <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Senior Software Architect"
+                                        className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-base text-slate-900 font-medium placeholder-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all duration-150 shadow-sm"
+                                        value={formData.occupation}
+                                        onChange={(e) => handleInputChange('occupation', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    {/* SECTION 2: METADATA & FULFILLMENT */}
+                    <section className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+
+                        {/* ADDRESS COMPONENT (FULL WIDTH) */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                <Home size={16} className="text-indigo-600" /> Fulfillment Address
+                            </label>
+                            <div className="relative">
+                                <MapPin className="absolute left-4 top-4 text-slate-400" size={18} />
+                                <textarea
+                                    rows="4"
+                                    placeholder="Enter complete street name, housing/suite units, state, and postal index..."
+                                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-base text-slate-900 font-medium placeholder-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none resize-none transition-all duration-150 shadow-sm"
+                                    value={formData.personalAddress}
+                                    onChange={(e) => handleInputChange('personalAddress', e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </section>
+
                 </div>
+
+                {/* ACTIONS FOOTER */}
+                <div className="flex items-center justify-end gap-4 pt-4 border-t border-slate-200">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-base font-bold hover:bg-slate-50 hover:text-slate-900 active:scale-[0.99] transition duration-150"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-base font-bold shadow-md shadow-indigo-100 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 active:scale-[0.99] transition duration-150"
+                    >
+                        Save Customer Profile
+                    </button>
+                </div>
+
             </form>
         </div>
     );

@@ -15,6 +15,7 @@ import ProductsPage from './pages/ProductPage';
 import FleetDashboardPage from './pages/FleetDashboardPage';
 import PriceManagementPage from './pages/PriceManagementPage';
 import FinanceDashboardPage from './pages/FinanacePage';
+import SalesManagerDashboardPage from './pages/SalesManagerPage';
 
 
 
@@ -57,6 +58,7 @@ function App() {
       <Routes>
         <Route path="/" element={<SignIn />} />
         <Route path="/sales" element={<Sales />} />
+        <Route path="/sales-manager" element={<SalesManagerDashboardPage />} />
         <Route path="/book-order" element={<BookOrderDialog />} />
         <Route
           path="/operations"

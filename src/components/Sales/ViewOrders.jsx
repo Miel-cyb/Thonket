@@ -94,7 +94,7 @@ export default function ViewOrders({ salesAgentID, onBack, onSelectOrder }) {
         &larr; Back to Dashboard
       </button>
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Order History</h2>
-      
+
       <div className="flex items-center gap-4 mb-6">
         <input
           type="text"
@@ -141,8 +141,8 @@ export default function ViewOrders({ salesAgentID, onBack, onSelectOrder }) {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button 
-                        onClick={() => onSelectOrder(order._id)} 
+                      <button
+                        onClick={() => onSelectOrder(order._id)}
                         className="text-purple-600 hover:underline font-semibold"
                       >
                         View

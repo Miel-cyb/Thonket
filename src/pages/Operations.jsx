@@ -27,6 +27,7 @@ import OrderApproval from '@/components/OperationsDashboard/OrderApproval';
 import Alerts from '@/components/OperationsDashboard/Alerts';
 import AnalyticsDashboard from '@/components/OperationsDashboard/Analytics';
 import { calculatePriority } from '@/utils/calc';
+import SystemConfiguration from '@/components/ProductConfig/ConfigList';
 
 const STAGES = [
   { key: 'pending', label: 'Pending Approval' },
@@ -249,60 +250,7 @@ const OperationsPage = ({ products, reports }) => {
         )}
 
         {view === 'configuration' && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">System Infrastructure</h2>
-                <p className="text-[14px] font-medium text-slate-500">Manage catalog architecture and commercial rules</p>
-              </div>
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
-                <input
-                  placeholder="Search settings..."
-                  className="bg-white border border-slate-200 rounded-2xl pl-11 pr-5 py-3.5 text-sm w-full md:w-80 shadow-sm outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ConfigTile
-                title="Category Architecture"
-                description="Define the global taxonomy and parent-child relationships for all products."
-                icon={Layers}
-                onClick={() => navigate('/products/categories')}
-              />
-              <ConfigTile
-                title="Master Product List"
-                description="Central repository for base SKU data, localized descriptions, and media."
-                icon={Box}
-                onClick={() => navigate('/products/list')}
-              />
-              <ConfigTile
-                title="Variant Matrix"
-                description="Manage dynamic attributes like weight-based pricing, size, and color variants."
-                icon={Plus}
-                onClick={() => navigate('/products/variants')}
-              />
-              <ConfigTile
-                title="Price Optimization"
-                description="Configure wholesale tiers, regional tax rules, and dynamic base prices."
-                icon={Tag}
-                onClick={() => navigate('/products/pricing')}
-              />
-              <ConfigTile
-                title="Promotion Logic"
-                description="Set up advanced discount stacking, flash sale triggers, and coupon rules."
-                icon={Percent}
-                onClick={() => navigate('/products/promotions')}
-              />
-              <ConfigTile
-                title="Operational Rules"
-                description="Define SLA thresholds, auto-dispatch logic, and courier priority weights."
-                icon={Settings}
-                onClick={() => navigate('/operations/rules')}
-              />
-            </div>
-          </div>
+          <SystemConfiguration navigate={navigate} />
         )}
       </div>
     </div>

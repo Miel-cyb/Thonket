@@ -16,6 +16,7 @@ import FleetDashboardPage from './pages/FleetDashboardPage';
 import PriceManagementPage from './pages/PriceManagementPage';
 import FinanceDashboardPage from './pages/FinanacePage';
 import SalesManagerDashboardPage from './pages/SalesManagerPage';
+import StockIntakePage from './pages/StockIntakePage';
 
 
 
@@ -64,6 +65,8 @@ function App() {
           path="/operations"
           element={<OperationsManagerPage products={products} reports={reports} />}
         />
+
+        <Route path="/stock-intake" element={<StockIntakePage />} />
         <Route
           path="/products/:productId/pricing"
           element={<ProductPricing products={products} setProducts={setProducts} />}

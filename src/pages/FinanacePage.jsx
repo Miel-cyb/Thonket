@@ -24,7 +24,8 @@ import {
     Layers,
     Box,
     Plus,
-    Tag
+    Tag,
+    ClipboardList
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
@@ -118,7 +119,9 @@ export default function FinanceDashboardPage() {
                             {[
                                 { id: 'execution', icon: Zap, label: 'Execution' },
                                 { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-                                { id: 'configuration', icon: Settings, label: 'Config' }
+                                { id: 'configuration', icon: Settings, label: 'Config' },
+                                { id: 'procurement', icon: ClipboardList, label: 'Purchases' }
+
                             ].map((item) => (
                                 <button
                                     key={item.id}

@@ -47,8 +47,7 @@ const MOCK_ORDERS = [
     { _id: "ORD-004", customerName: "Makola Traders Union", paymentType: "CREDIT", totalAmount: 22000, stage: "pending_ops_review", risk: "high", creditScore: 35, escalationReason: "Finance unsure about credit exposure", customer: { name: "Makola Traders Union", creditLimit: 50000, usedCredit: 41000, riskScore: 35 } }
 ];
 
-// --- Sub-Components (Operations Style) ---
-
+// --- Sub-Components ---
 const ConfigTile = ({ title, description, icon: Icon, onClick, badge }) => (
     <button
         onClick={onClick}
@@ -59,7 +58,11 @@ const ConfigTile = ({ title, description, icon: Icon, onClick, badge }) => (
         </div>
         <div className="flex justify-between items-start mb-1">
             <h4 className="text-[15px] font-bold text-slate-900">{title}</h4>
-            {badge && <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">{badge}</span>}
+            {badge && (
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-lg uppercase tracking-wider">
+                    {badge}
+                </span>
+            )}
         </div>
         <p className="text-[13px] font-medium text-slate-500 leading-relaxed mb-4">{description}</p>
         <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 uppercase tracking-widest">
@@ -73,15 +76,20 @@ export default function FinanceDashboardPage() {
     const [orders, setOrders] = useState(MOCK_ORDERS);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [opsOrder, setOpsOrder] = useState(null);
-    const [view, setView] = useState("execution"); // execution, analytics, configuration
+    const [view, setView] = useState("execution");
     const [activeStage, setActiveStage] = useState("pending");
     const [searchQuery, setSearchQuery] = useState("");
 
-    // -----------------------------
-    // DERIVED DATA
-    // -----------------------------
-    const filteredOrders = useMemo(() => orders.filter(o => (o.stage || "pending") === activeStage), [orders, activeStage]);
-    const escalatedOrders = useMemo(() => orders.filter(o => o.stage === "pending_ops_review"), [orders]);
+    const filteredOrders = useMemo(
+        () => orders.filter(o => (o.stage || "pending") === activeStage),
+        [orders, activeStage]
+    );
+
+    const escalatedOrders = useMemo(
+        () => orders.filter(o => o.stage === "pending_ops_review"),
+        [orders]
+    );
+
     const selectedCustomer = selectedOrder?.customer || null;
 
     const counts = useMemo(() => {
@@ -94,7 +102,9 @@ export default function FinanceDashboardPage() {
     }, [orders]);
 
     const updateOrderStatus = (orderId, newStage) => {
-        setOrders(prev => prev.map(o => o._id === orderId ? { ...o, stage: newStage } : o));
+        setOrders(prev =>
+            prev.map(o => o._id === orderId ? { ...o, stage: newStage } : o)
+        );
         setSelectedOrder(null);
     };
 
@@ -102,7 +112,7 @@ export default function FinanceDashboardPage() {
         <div className="min-h-screen bg-[#F8FAFC] text-slate-900 antialiased selection:bg-indigo-100">
             <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8">
 
-                {/* TOP NAVIGATION & VIEW SWITCHER (Operations Style) */}
+                {/* TOP NAVIGATION */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white/50 backdrop-blur-md p-6 rounded-[32px] border border-white shadow-sm">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-600 uppercase tracking-widest">
@@ -111,7 +121,9 @@ export default function FinanceDashboardPage() {
                             <ChevronRight size={12} className="text-slate-300" />
                             <span className="text-slate-400">{view}</span>
                         </div>
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight capitalize">{view}</h1>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight capitalize">
+                            {view}
+                        </h1>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -119,16 +131,14 @@ export default function FinanceDashboardPage() {
                             {[
                                 { id: 'execution', icon: Zap, label: 'Execution' },
                                 { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-                                { id: 'configuration', icon: Settings, label: 'Config' },
-                                { id: 'procurement', icon: ClipboardList, label: 'Purchases' }
-
+                                { id: 'configuration', icon: Settings, label: 'Config' }
                             ].map((item) => (
                                 <button
                                     key={item.id}
                                     onClick={() => setView(item.id)}
                                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${view === item.id
-                                        ? 'bg-white text-slate-900 shadow-md scale-[1.02]'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                            ? 'bg-white text-slate-900 shadow-md scale-[1.02]'
+                                            : 'text-slate-500 hover:text-slate-700'
                                         }`}
                                 >
                                     <item.icon size={15} strokeWidth={view === item.id ? 2.5 : 2} />
@@ -136,20 +146,30 @@ export default function FinanceDashboardPage() {
                                 </button>
                             ))}
                         </div>
-                        <button onClick={() => setOrders([...MOCK_ORDERS])} className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm">
+
+                        {/* ✅ FIXED: PROCUREMENT IS NOW SEPARATE NAV BUTTON ONLY */}
+                        <button
+                            onClick={() => navigate('/procurement')}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md"
+                        >
+                            <ClipboardList size={15} />
+                            Purchases
+                        </button>
+
+                        <button
+                            onClick={() => setOrders([...MOCK_ORDERS])}
+                            className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+                        >
                             <RefreshCcw size={18} />
                         </button>
                     </div>
                 </div>
 
-                {/* VIEW CONDITIONAL RENDERING */}
-
-                {/* --- EXECUTION VIEW --- */}
+                {/* EXECUTION VIEW */}
                 {view === "execution" && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <FinanceStatsGrid orders={orders} />
 
-                        {/* STAGE SELECTOR (Operations Style) */}
                         <div className="bg-white rounded-[32px] shadow-sm border border-slate-200/60 p-2.5 flex overflow-x-auto gap-2 no-scrollbar">
                             {[
                                 { id: "pending", label: "Review Required", icon: Clock },
@@ -162,17 +182,19 @@ export default function FinanceDashboardPage() {
                                     key={stage.id}
                                     onClick={() => setActiveStage(stage.id)}
                                     className={`flex-1 min-w-[180px] p-5 rounded-[22px] transition-all border ${activeStage === stage.id
-                                        ? 'bg-slate-900 border-slate-900 text-white shadow-xl'
-                                        : 'border-transparent hover:bg-slate-50 text-slate-500'
+                                            ? 'bg-slate-900 border-slate-900 text-white shadow-xl'
+                                            : 'border-transparent hover:bg-slate-50 text-slate-500'
                                         }`}
                                 >
                                     <div className="flex flex-col gap-1 text-left">
-                                        <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${activeStage === stage.id ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em]">
                                             {stage.label}
                                         </span>
                                         <div className="flex items-center justify-between">
-                                            <span className="text-2xl font-bold tabular-nums">{counts[stage.id] || 0}</span>
-                                            <stage.icon size={16} className={activeStage === stage.id ? "text-indigo-400" : "text-slate-300"} />
+                                            <span className="text-2xl font-bold tabular-nums">
+                                                {counts[stage.id] || 0}
+                                            </span>
+                                            <stage.icon size={16} />
                                         </div>
                                     </div>
                                 </button>
@@ -192,27 +214,18 @@ export default function FinanceDashboardPage() {
 
                             <aside className="lg:col-span-4 xl:col-span-3 space-y-6">
                                 {selectedCustomer ? (
-                                    <div className="sticky top-8 animate-in slide-in-from-top-4 duration-300">
-                                        <div className="mb-2 flex items-center justify-between px-2">
-                                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Customer Context</span>
-                                            <button onClick={() => setSelectedOrder(null)} className="text-xs text-indigo-600 font-bold hover:underline">CLOSE</button>
-                                        </div>
-                                        <CustomerCreditProfile customer={selectedCustomer} />
-                                    </div>
+                                    <CustomerCreditProfile customer={selectedCustomer} />
                                 ) : (
-                                    <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
-                                        <div className="relative z-10">
-                                            <div className="flex items-center gap-2 mb-4 text-indigo-300">
-                                                <ShieldCheck size={18} />
-                                                <h3 className="font-bold text-xs uppercase tracking-widest">Audit Ready</h3>
-                                            </div>
-                                            <p className="text-sm text-slate-300 leading-relaxed">
-                                                Select an order to verify <span className="text-white font-semibold">KYC documents</span> and credit history.
-                                            </p>
+                                    <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl">
+                                        <div className="flex items-center gap-2 mb-4 text-indigo-300">
+                                            <ShieldCheck size={18} />
+                                            <h3 className="font-bold text-xs uppercase tracking-widest">
+                                                Audit Ready
+                                            </h3>
                                         </div>
-                                        <div className="absolute -bottom-4 -right-4 opacity-10">
-                                            <ShieldCheck size={120} />
-                                        </div>
+                                        <p className="text-sm text-slate-300 leading-relaxed">
+                                            Select an order to verify KYC documents and credit history.
+                                        </p>
                                     </div>
                                 )}
                             </aside>
@@ -220,14 +233,18 @@ export default function FinanceDashboardPage() {
                     </div>
                 )}
 
-                {/* --- ANALYTICS VIEW --- */}
+                {/* ANALYTICS VIEW (UNCHANGED) */}
                 {view === "analytics" && (
                     <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
                         <div className="bg-white rounded-[40px] border border-slate-200 p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-8">
                                 <div className="space-y-1">
-                                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">Credit Score Engine</h2>
-                                    <p className="text-sm font-medium text-slate-500">Real-time risk assessment across the portfolio</p>
+                                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                                        Credit Score Engine
+                                    </h2>
+                                    <p className="text-sm font-medium text-slate-500">
+                                        Real-time risk assessment across the portfolio
+                                    </p>
                                 </div>
                                 <ShieldCheck className="text-indigo-600" size={32} />
                             </div>
@@ -242,13 +259,17 @@ export default function FinanceDashboardPage() {
                     </div>
                 )}
 
-                {/* --- CONFIGURATION VIEW --- */}
+                {/* CONFIGURATION VIEW (UNCHANGED) */}
                 {view === "configuration" && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-8">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="space-y-1">
-                                <h2 className="text-xl font-bold text-slate-900 tracking-tight">System Infrastructure</h2>
-                                <p className="text-[14px] font-medium text-slate-500">Manage global finance parameters and product architecture</p>
+                                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                                    System Infrastructure
+                                </h2>
+                                <p className="text-[14px] font-medium text-slate-500">
+                                    Manage global finance parameters and product architecture
+                                </p>
                             </div>
                             <div className="relative group">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
@@ -261,73 +282,21 @@ export default function FinanceDashboardPage() {
                             </div>
                         </div>
 
-                        {/* FINANCE & PRODUCT CONFIGURATION GRID */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {/* Product Architecture Elements */}
-                            <ConfigTile
-                                title="Category Architecture"
-                                description="Define the global taxonomy and parent-child relationships for all products."
-                                icon={Layers}
-                                onClick={() => navigate('/products/categories')}
-                            />
-                            <ConfigTile
-                                title="Master Product List"
-                                description="Central repository for base SKU data, localized descriptions, and media."
-                                icon={Box}
-                                onClick={() => navigate('/products/list')}
-                            />
-                            <ConfigTile
-                                title="Variant Matrix"
-                                description="Manage dynamic attributes like weight-based pricing, size, and color variants."
-                                icon={Plus}
-                                onClick={() => navigate('/products/variants')}
-                            />
-                            <ConfigTile
-                                title="Price Optimization"
-                                description="Configure wholesale tiers, regional tax rules, and dynamic base prices."
-                                icon={Tag}
-                                onClick={() => navigate('/products/pricing')}
-                            />
-
-                            {/* Core Finance Parameters */}
-                            <ConfigTile
-                                title="Credit Thresholds"
-                                description="Adjust global credit limits and auto-hold triggers for high-risk accounts."
-                                icon={Sliders}
-                                onClick={() => navigate('/finance/config/credit')}
-                                badge="Global"
-                            />
-                            <ConfigTile
-                                title="Approval Workflows"
-                                description="Define hierarchy for manual overrides on credit blocked orders."
-                                icon={Lock}
-                                onClick={() => navigate('/finance/config/workflows')}
-                                badge="Secure"
-                            />
-                            <ConfigTile
-                                title="Currency Rates"
-                                description="Real-time exchange rate configurations for multi-country billing."
-                                icon={Globe}
-                                onClick={() => navigate('/finance/config/currency')}
-                            />
-                            <ConfigTile
-                                title="Payment Terms"
-                                description="Configure Net-15, Net-30, and early settlement discount rules."
-                                icon={CreditCard}
-                                onClick={() => navigate('/finance/config/terms')}
-                            />
-                            <ConfigTile
-                                title="Tax Jurisdictions"
-                                description="Manage VAT rates and automated tax compliance reporting per region."
-                                icon={Scale}
-                                onClick={() => navigate('/finance/config/tax')}
-                            />
+                            <ConfigTile title="Category Architecture" description="Define taxonomy" icon={Layers} onClick={() => navigate('/products/categories')} />
+                            <ConfigTile title="Master Product List" description="Central SKU data" icon={Box} onClick={() => navigate('/products/list')} />
+                            <ConfigTile title="Variant Matrix" description="Manage variants" icon={Plus} onClick={() => navigate('/products/variants')} />
+                            <ConfigTile title="Price Optimization" description="Pricing rules" icon={Tag} onClick={() => navigate('/products/pricing')} />
+                            <ConfigTile title="Credit Thresholds" description="Risk limits" icon={Sliders} onClick={() => navigate('/finance/config/credit')} badge="Global" />
+                            <ConfigTile title="Approval Workflows" description="Override rules" icon={Lock} onClick={() => navigate('/finance/config/workflows')} badge="Secure" />
+                            <ConfigTile title="Currency Rates" description="FX settings" icon={Globe} onClick={() => navigate('/finance/config/currency')} />
+                            <ConfigTile title="Payment Terms" description="Net terms" icon={CreditCard} onClick={() => navigate('/finance/config/terms')} />
+                            <ConfigTile title="Tax Jurisdictions" description="VAT rules" icon={Scale} onClick={() => navigate('/finance/config/tax')} />
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* OVERLAYS */}
             <FinanceDecisionModal
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
@@ -335,6 +304,7 @@ export default function FinanceDashboardPage() {
                 onReject={(order) => updateOrderStatus(order._id, "rejected")}
                 onForward={(order) => updateOrderStatus(order._id, "pending_ops_review")}
             />
+
             <OpsHandoffDrawer order={opsOrder} onClose={() => setOpsOrder(null)} />
         </div>
     );

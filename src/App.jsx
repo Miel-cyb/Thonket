@@ -17,6 +17,7 @@ import PriceManagementPage from './pages/PriceManagementPage';
 import FinanceDashboardPage from './pages/FinanacePage';
 import SalesManagerDashboardPage from './pages/SalesManagerPage';
 import StockIntakePage from './pages/StockIntakePage';
+import ProcurementPage from './pages/ProcurementPage';
 
 
 
@@ -85,6 +86,11 @@ function App() {
         <Route
           path="/finance"
           element={<FinanceDashboardPage />}
+        />
+
+        <Route
+          path="/procurement"
+          element={<ProcurementPage />}
         />
 
 

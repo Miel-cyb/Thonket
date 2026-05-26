@@ -19,6 +19,9 @@ import SalesManagerDashboardPage from './pages/SalesManagerPage';
 import StockIntakePage from './pages/StockIntakePage';
 import ProcurementPage from './pages/ProcurementPage';
 import SupplierOnboardingPage from './pages/SupplierOnboardingPage';
+import SupplierList from './pages/SuppliersPage'
+import SupplierDetailPage from './pages/SupplierDetailPage';
+import PurchaseCreatePage from './pages/PurchaseCreatePage';
 
 
 
@@ -95,8 +98,23 @@ function App() {
         />
 
         <Route
+          path="/procurement/create"
+          element={<PurchaseCreatePage />}
+        />
+
+        <Route
           path="/supplier-onboarding"
           element={<SupplierOnboardingPage />}
+        />
+
+        <Route
+          path="/suppliers"
+          element={<SupplierList />}
+        />
+
+        <Route
+          path="/suppliers/:supplierId"
+          element={<SupplierDetailPage />}
         />
 
         <Route

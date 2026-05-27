@@ -9,18 +9,60 @@ import StepSupplyCapability from "../single/StepSupplyCapability";
 import StepCoverageLogistics from "../single/StepCoverageLogistics";
 import StepComplianceRisk from "../single/StepComplianceRisk";
 import StepReview from "../single/StepReview";
+import { API_ENDPOINTS } from "../../../utils/urls";
 
+/// SingleSupplierWizard
+// A comprehensive multi-step form component designed to guide users through the supplier onboarding process.
+// Each step is modularized into its own component for maintainability and clarity, with a dynamic progress header.
 export default function SingleSupplierWizard() {
     const [step, setStep] = useState(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Initialized fields to map cleanly against your MongoDB validation schemas
     const [formData, setFormData] = useState({
-        businessIdentity: {},
-        legalVerification: {},
-        contactInformation: {},
-        locationDetails: {},
-        supplyCapability: {},
-        coverageLogistics: {},
-        complianceRisk: {},
+        businessIdentity: {
+            businessName: "",
+            tradingName: "",
+            businessType: "",
+            yearEstablished: new Date().getFullYear(),
+        },
+        legalVerification: {
+            registrationNumber: "",
+            taxId: "",
+            licenseType: "",
+        },
+        contactInformation: {
+            primaryContactName: "",
+            contactRole: "",
+            emailAddress: "",
+            phoneNumber: "",
+            whatsappNumber: "",
+        },
+        locationDetails: {
+            headOfficeAddress: "",
+            cityRegion: "",
+            country: "",
+        },
+        coverageLogistics: {
+            deliveryType: "",
+            deliveryCapability: "",
+            operatingHours: "",
+            coverageAreas: "",
+        },
+        supplyCapability: {
+            productCategories: [], // Array mapping to schema validate rule
+            brandsHandled: "",
+            capacity: {
+                value: 0,
+                unit: "units",
+            },
+            availabilityType: "always",
+        },
+        complianceRisk: {
+            verificationStatus: "pending", // Schema fallback defaults
+            riskLevel: "medium",
+            complianceNotes: "",
+        },
     });
 
     const steps = [
@@ -59,9 +101,44 @@ export default function SingleSupplierWizard() {
         }
     };
 
-    const handleSubmit = () => {
-        console.log("Submitting all onboarding data:", formData);
-        alert("Supplier Onboarding Submitted Successfully!");
+    const handleSubmit = async () => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
+        try {
+            // Simulated System Creator Meta block required by backend schema validation
+            const payload = {
+                ...formData,
+                createdBy: {
+                    userId: "usr_2026_94821",
+                    username: "current.user",
+                    role: "staff" // Fits enum restriction: ["admin", "manager", "staff"]
+                }
+            };
+
+            const response = await fetch(API_ENDPOINTS.SUPPLIERS, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to register supplier profile.");
+            }
+
+            alert("Supplier Onboarding Submitted Successfully!");
+            // Optional: Route user back or reset state after successful operation
+            setStep(0);
+
+        } catch (error) {
+            console.error("Submission error:", error);
+            alert(`Submission Failed: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -143,7 +220,7 @@ export default function SingleSupplierWizard() {
             <div className="flex items-center justify-between px-8 py-5 bg-slate-50/50 border-t border-slate-100">
                 <button
                     type="button"
-                    disabled={isFirstStep}
+                    disabled={isFirstStep || isSubmitting}
                     onClick={handleBack}
                     className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl font-semibold text-sm text-slate-600 bg-white hover:bg-slate-50 active:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-all shadow-sm"
                 >
@@ -155,14 +232,22 @@ export default function SingleSupplierWizard() {
 
                 <button
                     type="button"
+                    disabled={isSubmitting}
                     onClick={handleNext}
                     className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm text-white shadow-sm transition-all ${isLastStep
                         ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10"
                         : "bg-slate-900 hover:bg-slate-800 shadow-slate-900/10"
-                        }`}
+                        } disabled:opacity-50 disabled:pointer-events-none`}
                 >
-                    <span>{isLastStep ? "Submit Registration" : "Save & Continue"}</span>
-                    {!isLastStep && (
+                    <span>
+                        {isSubmitting
+                            ? "Processing..."
+                            : isLastStep
+                                ? "Submit Registration"
+                                : "Save & Continue"
+                        }
+                    </span>
+                    {!isLastStep && !isSubmitting && (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>

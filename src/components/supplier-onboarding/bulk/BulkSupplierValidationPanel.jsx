@@ -11,15 +11,30 @@ export default function BulkSupplierValidationPanel({ suppliers = [] }) {
             const rowNum = idx + 1;
             const issues = [];
 
-            if (!supplier.businessName?.trim()) {
+            // Extract nested schemas with safe fallbacks matching the core data model
+            const businessIdentity = supplier.businessIdentity || {};
+            const contactInformation = supplier.contactInformation || {};
+
+            const businessName = businessIdentity.businessName || supplier.businessName;
+            const email = contactInformation.email || supplier.email;
+            const phoneNumber = contactInformation.phoneNumber || supplier.phone;
+
+            // 1. Business Name Validation
+            if (!businessName?.trim()) {
                 issues.push("Missing company designation name");
             }
-            if (supplier.email && !emailRegex.test(supplier.email)) {
-                issues.push("Invalid email endpoint syntax structure");
-            } else if (!supplier.email) {
+
+            // 2. Corporate Communication Email Validation
+            if (email) {
+                if (!emailRegex.test(email)) {
+                    issues.push("Invalid email endpoint syntax structure");
+                }
+            } else {
                 issues.push("Primary contact communication email is required");
             }
-            if (supplier.phone && supplier.phone.trim().length < 7) {
+
+            // 3. Direct Contact Line Telecom Validation
+            if (phoneNumber && phoneNumber.trim().length < 7) {
                 issues.push("Telecom entry string appears incomplete");
             }
 

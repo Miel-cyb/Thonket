@@ -1,30 +1,49 @@
 import React, { useState, useEffect } from "react";
+import { API_ENDPOINTS } from "../../../utils/urls";
 
 export default function StepSupplyCapability({ formData, updateFormData }) {
     // Safe default structural extraction from the core wizard state tree
     const localData = formData.supplyCapability || {};
 
     // Local state for fetched categories and handling loading/error baselines
-    const [categoriesList, setCategoriesList] = useState([]);
-    const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+    const [categoriesList, setCategoriesList] = useState(() => {
+        // Instant structural check: hydrate UI immediately from local cache if it exists
+        try {
+            const cached = localStorage.getItem("cached_product_categories");
+            return cached ? JSON.parse(cached) : [];
+        } catch (e) {
+            console.error("Failed to parse cached categories:", e);
+            return [];
+        }
+    });
+
+    // If cache has data, don't show block loading screens, fetch silently in background
+    const [isLoadingCategories, setIsLoadingCategories] = useState(categoriesList.length === 0);
     const [fetchError, setFetchError] = useState("");
 
-    // Fetch product categories from database endpoint on mount
+    // Fetch product categories from database endpoint with Stale-While-Revalidate caching
     useEffect(() => {
         const fetchCategories = async () => {
-            setIsLoadingCategories(true);
+            if (categoriesList.length === 0) {
+                setIsLoadingCategories(true);
+            }
             setFetchError("");
-            try {
-                // Using a clean standard template route string or a safe absolute path fallback
-                const response = await fetch("/api/product-categories");
 
+            try {
+                const response = await fetch(API_ENDPOINTS.CATEGORIES);
                 const contentType = response.headers.get("content-type");
+
                 if (contentType && contentType.includes("application/json")) {
                     const data = await response.json();
+
                     if (response.ok) {
-                        // Expects array format: e.g., ["Beverages", "Grains", "Packaged Dairy Products"]
-                        // Or if object payload: data.categories
-                        setCategoriesList(Array.isArray(data) ? data : data.categories || []);
+                        const parsedCategories = Array.isArray(data) ? data : data.categories || [];
+
+                        // Update component state with structural documents
+                        setCategoriesList(parsedCategories);
+
+                        // Commit to long-lived browser layout cache
+                        localStorage.setItem("cached_product_categories", JSON.stringify(parsedCategories));
                     } else {
                         throw new Error(data.message || "Failed to load system product categories.");
                     }
@@ -33,9 +52,22 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
                 }
             } catch (err) {
                 console.error("Categories fetch error:", err);
-                setFetchError("Could not populate product categories from database.");
-                // Fallback static array array if backend endpoint is unavailable during setup
-                setCategoriesList(["Beverages", "Grains", "Packaged Dairy Products", "Fresh Produce", "Meat & Poultry"]);
+
+                // Fallback to static defaults only if both network and cache are missing items
+                if (categoriesList.length === 0) {
+                    const fallbacks = [
+                        { _id: "f1", name: "Beverages" },
+                        { _id: "f2", name: "Grains" },
+                        { _id: "f3", name: "Packaged Dairy Products" },
+                        { _id: "f4", name: "Fresh Produce" },
+                        { _id: "f5", name: "Meat & Poultry" }
+                    ];
+                    setCategoriesList(fallbacks);
+                    setFetchError("Could not populate production categories. Using static defaults.");
+                } else {
+                    // Network failed but cache saved us
+                    setFetchError("Displaying cached data. Offline mode active.");
+                }
             } finally {
                 setIsLoadingCategories(false);
             }
@@ -59,7 +91,7 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
         });
     };
 
-    // Toggle logic helper for managing product category arrays
+    // Toggle logic helper for managing complex product category string arrays
     const handleCategoryToggle = (categoryName) => {
         const currentCategories = Array.isArray(localData.productCategories)
             ? localData.productCategories
@@ -114,21 +146,26 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
                         <div className="w-full p-4 bg-white border border-slate-300 rounded-xl shadow-sm">
                             {fetchError && (
                                 <p className="text-[11px] font-medium text-amber-600 mb-3 flex items-center gap-1.5">
-                                    ⚠️ {fetchError} (Using static defaults)
+                                    ⚠️ {fetchError}
                                 </p>
                             )}
                             <div className="flex flex-wrap gap-2.5">
                                 {categoriesList.map((category) => {
+                                    // Extract string name field whether schema is an object or primitive fallbacks
+                                    const catName = typeof category === "object" ? category.name : category;
+                                    const catId = typeof category === "object" ? category._id : category;
+
                                     const selectedArr = Array.isArray(localData.productCategories) ? localData.productCategories : [];
-                                    const isChecked = selectedArr.includes(category);
+                                    const isChecked = selectedArr.includes(catName);
+
                                     return (
                                         <button
-                                            key={category}
+                                            key={catId || catName}
                                             type="button"
-                                            onClick={() => handleCategoryToggle(category)}
+                                            onClick={() => handleCategoryToggle(catName)}
                                             className={`px-3 py-2 border rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${isChecked
-                                                    ? "bg-slate-900 border-slate-900 text-white shadow-sm shadow-slate-900/10"
-                                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                                ? "bg-slate-900 border-slate-900 text-white shadow-sm shadow-slate-900/10"
+                                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                                                 }`}
                                         >
                                             <div className={`h-3 w-3 rounded-md border flex items-center justify-center transition-colors ${isChecked ? "border-white bg-white text-slate-900" : "border-slate-300"}`}>
@@ -138,7 +175,7 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
                                                     </svg>
                                                 )}
                                             </div>
-                                            {category}
+                                            {catName}
                                         </button>
                                     );
                                 })}
@@ -218,8 +255,8 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
                                     type="button"
                                     onClick={() => handleFieldChange("availabilityType", option.value)}
                                     className={`p-4 rounded-xl text-left border transition-all flex items-start gap-3 relative ${isSelected
-                                            ? "border-slate-900 bg-slate-50/50 ring-1 ring-slate-900/15"
-                                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/30"
+                                        ? "border-slate-900 bg-slate-50/50 ring-1 ring-slate-900/15"
+                                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/30"
                                         }`}
                                 >
                                     <div className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center flex-shrink-0 ${isSelected ? "border-slate-900 text-slate-900" : "border-slate-300"

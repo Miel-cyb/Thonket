@@ -113,7 +113,7 @@ function App() {
         />
 
         <Route
-          path="/suppliers/:supplierId"
+          path="/supplier/:supplierId"
           element={<SupplierDetailPage />}
         />
 

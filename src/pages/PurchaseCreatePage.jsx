@@ -61,15 +61,17 @@ export default function PurchaseCreatePage() {
             <div className="max-w-[1660px] w-full mx-auto p-6 flex flex-col lg:flex-row gap-6 items-start flex-1">
 
                 {/* LEFT COLUMN: VISUALLY BALANCED STEP TIMELINE */}
+                {/* IMPROVED: Removed arbitrary inner overflows that mask or break custom sub-component layout rendering */}
                 <nav
                     aria-label="Progress tracking pipeline"
-                    className="w-full lg:w-80 bg-white border border-slate-200 rounded-2xl p-4 lg:sticky lg:top-24 shadow-3xs shrink-0 max-h-[calc(100vh-8rem)] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 transition-colors"
+                    className="w-full lg:w-80 bg-white border border-slate-200 rounded-2xl p-4 lg:sticky lg:top-24 shadow-3xs shrink-0 block"
                 >
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1 hidden lg:block">
                         Execution Milestones
                     </p>
 
-                    <ol role="list" className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-2 lg:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:display-none snap-x">
+                    {/* IMPROVED: Refined mobile horizontal margins to prevent card shadows from hitting outer layout edges */}
+                    <ol role="list" className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-3 lg:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:display-none snap-x">
                         {stepsMeta.map((s) => {
                             const isCompleted = step > s.id;
                             const isActive = step === s.id;
@@ -113,9 +115,10 @@ export default function PurchaseCreatePage() {
                 </nav>
 
                 {/* RIGHT COLUMN: MAIN FORM WINDOW CONTAINER */}
-                <main className="flex-1 w-full bg-white border border-slate-200 rounded-2xl shadow-xs p-6 sm:p-8 lg:p-10 flex flex-col justify-between transition-all duration-150 min-h-[580px]">
+                {/* IMPROVED: Added absolute stacking root context wrapper space rules to protect dropdown overlays */}
+                <main className="relative flex-1 w-full bg-white border border-slate-200 rounded-2xl shadow-xs p-6 sm:p-8 lg:p-10 flex flex-col justify-between transition-all duration-150 min-h-[620px]">
 
-                    <div className="animate-fadeIn focus:outline-none" id="form-stage-focus">
+                    <div className="focus:outline-none" id="form-stage-focus">
 
                         {/* CLEAN INTERNAL PANEL HEADER */}
                         <header className="mb-6 pb-4 border-b border-slate-100 flex items-end justify-between gap-4">
@@ -147,7 +150,7 @@ export default function PurchaseCreatePage() {
                     </div>
 
                     {/* CONTROL FOOTER BAR */}
-                    <footer className="flex items-center justify-between border-t border-slate-100 pt-6 mt-10">
+                    <footer className="flex items-center justify-between border-t border-slate-100 pt-6 mt-10 z-10 bg-white">
                         <button
                             onClick={back}
                             disabled={step === 1}

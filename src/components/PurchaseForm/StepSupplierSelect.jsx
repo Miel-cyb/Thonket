@@ -146,11 +146,10 @@ export default function StepSupplierSelection({ form = {}, setForm }) {
                             <div
                                 key={vendor._id}
                                 onClick={() => handleSelectSupplier(vendor)}
-                                className={`group border rounded-xl p-4 bg-white shadow-xs cursor-pointer transition-all duration-150 relative overflow-hidden flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 ${
-                                    isAssigned
+                                className={`group border rounded-xl p-4 bg-white shadow-xs cursor-pointer transition-all duration-150 relative overflow-hidden flex flex-col justify-between hover:shadow-md hover:-translate-y-0.5 ${isAssigned
                                         ? "border-indigo-600 ring-2 ring-indigo-500/10 bg-indigo-50/5"
                                         : "border-slate-200 hover:border-slate-300"
-                                }`}
+                                    }`}
                             >
                                 <div className="space-y-2">
                                     {/* Entity Header Metrics */}
@@ -165,11 +164,10 @@ export default function StepSupplierSelection({ form = {}, setForm }) {
                                         </div>
 
                                         {/* Status Tag Checkbox Indicator Overlay */}
-                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all ${
-                                            isAssigned
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all ${isAssigned
                                                 ? "bg-indigo-600 border-indigo-600 text-white"
                                                 : "bg-white border-slate-200 group-hover:border-slate-300"
-                                        }`}>
+                                            }`}>
                                             {isAssigned && <CheckCircle2 className="w-4 h-4 stroke-[3]" />}
                                         </div>
                                     </div>

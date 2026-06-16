@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
     ArrowLeftCircle, Search, Save, Package,
     ArrowLeft, Percent, BarChart3,
-    Activity, ShieldCheck, Globe, Layers
+    ShieldCheck, Layers, ClipboardCheck, AlertTriangle, CheckCircle2, Tags
 } from 'lucide-react';
 
 import { CategoryItem } from '../components/OperationsDashboard/setup/catalog/CategoryItem.jsx';
@@ -34,7 +34,6 @@ const PriceManagementPage = () => {
         setLoading(true);
         try {
             const { data } = await axios.get(`${API_ENDPOINTS.PRICES}/catalog`, { params });
-
             console.log('this is the price catalog data', data);
             setProducts(data?.products || []);
         } catch (err) {
@@ -58,36 +57,59 @@ const PriceManagementPage = () => {
         return () => clearTimeout(delay);
     }, [selectedCategoryObj, searchQuery, fetchPriceCatalog]);
 
-    // 3. Stats Calculation
+    // 3. Pricing Completeness & Operational Configurations Analytics Calculation
     const priceStats = useMemo(() => {
-        let totalNetVal = 0;
-        let totalDiscountImpact = 0;
-        let variantCount = 0;
-        let activeTiers = 0;
+        let totalSKUs = 0;
+        let pricedSKUs = 0;
+        let missingPricesCount = 0;
+        let totalActiveTiers = 0;
+        let totalActiveDiscounts = 0;
+        let saleReadyProductsCount = 0;
 
         products.forEach(p => {
             const basePrices = p.pricing?.base || [];
             const discounts = p.pricing?.discounts || [];
             const tiers = p.pricing?.tiers || [];
 
-            basePrices.forEach(bp => {
-                const base = Number(bp.basePrice || 0);
-                const disc = discounts.find(d => d.variantId === bp.variantId) || { value: 0, discountType: "PERCENTAGE" };
-                const isPercent = disc.discountType === "PERCENTAGE";
+            let productHasAllPricesConfigured = true;
+            let productHasAtLeastOneSKU = basePrices.length > 0;
 
-                const discountAmt = isPercent ? (base * (Number(disc.value || 0) / 100)) : Number(disc.value || 0);
-                totalNetVal += (base - discountAmt);
-                totalDiscountImpact += discountAmt;
-                variantCount++;
+            basePrices.forEach(bp => {
+                totalSKUs++;
+                const basePriceNum = Number(bp.basePrice || 0);
+
+                if (basePriceNum > 0) {
+                    pricedSKUs++;
+                } else {
+                    missingPricesCount++;
+                    productHasAllPricesConfigured = false;
+                }
             });
-            activeTiers += (tiers?.length || 0);
+
+            totalActiveTiers += (tiers?.length || 0);
+            totalActiveDiscounts += (discounts?.length || 0);
+
+            if (!productHasAtLeastOneSKU) {
+                productHasAllPricesConfigured = false;
+            }
+
+            if (productHasAllPricesConfigured) {
+                saleReadyProductsCount++;
+            }
         });
 
+        const coveragePercentage = totalSKUs > 0
+            ? Math.round((pricedSKUs / totalSKUs) * 100)
+            : 0;
+
         return {
-            avgNetPrice: variantCount ? (totalNetVal / variantCount).toFixed(2) : "0.00",
-            totalSavings: totalDiscountImpact.toLocaleString(undefined, { minimumFractionDigits: 2 }),
-            bulkTiers: activeTiers,
-            currency: "GHS"
+            pricedSKUs,
+            missingPrices: missingPricesCount,
+            priceCoverage: `${coveragePercentage}%`,
+            activeTiers: totalActiveTiers,
+            activeDiscounts: totalActiveDiscounts,
+            saleReadyProducts: saleReadyProductsCount,
+            coverageAlert: coveragePercentage < 100 ? "Incomplete" : "Optimal"
         };
     }, [products]);
 
@@ -106,7 +128,6 @@ const PriceManagementPage = () => {
                 _id: vId,
                 name: basePriceEntry.variantName || product.name,
                 sku: basePriceEntry.sku || 'N/A',
-                // This structure ensures tiers is ALWAYS an array so .map() works in the child
                 pricing: {
                     base: [{ ...basePriceEntry }],
                     discounts: existingDiscount ? [{ ...existingDiscount }] : [{ value: 0, discountType: "PERCENTAGE", scope: "VARIANT" }],
@@ -121,7 +142,7 @@ const PriceManagementPage = () => {
         });
     };
 
-    // 5. VARIANT UPDATE LOGIC (FIXED: Improved immutability for array updates)
+    // 5. VARIANT UPDATE LOGIC
     const handleVariantUpdate = (variantIdx, model, patchData) => {
         setActiveProduct(prev => {
             if (!prev) return null;
@@ -129,12 +150,10 @@ const PriceManagementPage = () => {
             const updatedVariants = prev.variants.map((variant, idx) => {
                 if (idx !== variantIdx) return variant;
 
-                // Create a fresh copy of the variant and its pricing
                 return {
                     ...variant,
                     pricing: {
                         ...variant.pricing,
-                        // If patchData is an array (like tiers), replace it entirely with a new reference
                         [model]: Array.isArray(patchData) ? [...patchData] : { ...variant.pricing[model], ...patchData }
                     }
                 };
@@ -180,7 +199,7 @@ const PriceManagementPage = () => {
                             <ShieldCheck size={22} />
                         </div>
                         <div>
-                            <h1 className="text-sm font-black uppercase tracking-tight">Enterprise<span className="text-indigo-600">Pricing</span></h1>
+                            <h1 className="text-sm font-black uppercase tracking-tight">Products <span className="text-indigo-600">Pricing</span></h1>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Model-Based Strategy</p>
                         </div>
                     </div>
@@ -215,12 +234,16 @@ const PriceManagementPage = () => {
                 </aside>
 
                 <main className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                            <StatCard icon={Activity} label="Avg Net Yield" value={`${priceStats.currency} ${priceStats.avgNetPrice}`} color="bg-emerald-600 text-white shadow-emerald-100" />
-                            <StatCard icon={Percent} label="Discount Impact" value={`${priceStats.currency} ${priceStats.totalSavings}`} color="bg-rose-500 text-white shadow-rose-100" />
-                            <StatCard icon={Layers} label="Active Tiers" value={priceStats.bulkTiers} color="bg-indigo-600 text-white shadow-indigo-100" />
-                            <StatCard icon={Globe} label="Currency" value={priceStats.currency} color="bg-slate-900 text-white shadow-slate-200" />
+                    <div className="max-w-[1600px] mx-auto space-y-8">
+
+                        {/* Flex-Wrap Stats Container to prevent packing or shrinking card blocks */}
+                        <div className="flex flex-wrap gap-4 items-stretch w-full">
+                            <StatCard icon={Package} label="Priced SKUs" value={priceStats.pricedSKUs} color="bg-indigo-600 text-white shadow-indigo-100" />
+                            <StatCard icon={AlertTriangle} label="Missing Prices" value={priceStats.missingPrices} color="bg-amber-500 text-white shadow-amber-100" detail={priceStats.missingPrices > 0 ? "Action Req" : null} />
+                            <StatCard icon={ClipboardCheck} label="Price Coverage" value={priceStats.priceCoverage} color="bg-emerald-600 text-white shadow-emerald-100" detail={priceStats.coverageAlert} />
+                            <StatCard icon={Layers} label="Active Tiers" value={priceStats.activeTiers} color="bg-blue-600 text-white shadow-blue-100" />
+                            <StatCard icon={Tags} label="Active Discounts" value={priceStats.activeDiscounts} color="bg-purple-600 text-white shadow-purple-100" />
+                            <StatCard icon={CheckCircle2} label="Sale-Ready" value={priceStats.saleReadyProducts} color="bg-slate-900 text-white shadow-slate-200" />
                         </div>
 
                         {!activeProduct ? (

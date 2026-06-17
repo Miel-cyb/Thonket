@@ -13,14 +13,15 @@ import {
     Circle,
     QrCode,
     Check,
-    Type
+    Type,
+    Plus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Define structured property matrix
 const AVAILABLE_ATTRIBUTES = {
     'Size': ['S', 'M', 'L', 'XL', 'XXL', 'Standard'],
-    'Color': ['Red', 'Blue', 'Green', 'Black', 'White', 'Custom'],
+    'Color': ['Red', 'Blue', 'Green', 'Black', 'White'],
     'Material': ['Cotton', 'Polyester', 'Plastic', 'Metal', 'Glass'],
     'Flavor': ['Vanilla', 'Chocolate', 'Strawberry', 'Original'],
 };
@@ -31,6 +32,9 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
 
     // Track active attribute type configuration workspace locally per row
     const [activeType, setActiveType] = useState('');
+
+    // Dedicated state for custom text value inputs inside the dropdown options block
+    const [customAttrValue, setCustomAttrValue] = useState('');
 
     // Local string buffer states to completely separate raw typing inputs from parent re-renders
     const [localPackFactor, setLocalPackFactor] = useState(variant.packagingFactor ?? '');
@@ -119,8 +123,29 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
             const formalType = Object.keys(AVAILABLE_ATTRIBUTES).find(k => k.toLowerCase() === type.toLowerCase()) || type;
             const formalValue = (AVAILABLE_ATTRIBUTES[formalType] || []).find(v => v.toLowerCase() === value.toLowerCase()) || value;
 
-            const updatedAttributes = [...v.attributes, { type: formalType, value: formalValue }];
-            update({ attributes: updatedAttributes });
+            // Check duplicate selections
+            const exists = v.attributes.some(
+                attr => attr.type.toLowerCase() === formalType.toLowerCase() && attr.value.toLowerCase() === formalValue.toLowerCase()
+            );
+
+            if (!exists) {
+                const updatedAttributes = [...v.attributes, { type: formalType, value: formalValue }];
+                update({ attributes: updatedAttributes });
+            }
+        }
+    };
+
+    const handleAddCustomAttribute = () => {
+        if (!customAttrValue.trim()) return;
+
+        handleToggleAttribute(activeType, customAttrValue.trim(), false);
+        setCustomAttrValue('');
+    };
+
+    const handleKeyDownCustomInput = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddCustomAttribute();
         }
     };
 
@@ -132,7 +157,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
             ref={containerRef}
             className={`flex flex-col lg:flex-row lg:items-center gap-5 p-5 border transition-all relative rounded-xl
             ${v.isActive ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-50/70 border-slate-200/60 opacity-65 shadow-none'}
-            ${activeType ? 'z-50 style-isolate' : 'z-10'}`}
+            ${activeType ? 'z-50' : 'z-10'}`}
             style={{ zIndex: activeType ? 50 : 10 }}
         >
             {/* Left Control Column: Drag & Media Handling */}
@@ -171,7 +196,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                             type="text"
                             value={v.name}
                             onChange={(e) => update({ name: e.target.value })}
-                            placeholder="Ideal Milk 160g x 48"
+                            placeholder="Milk 160g x 48"
                             className={inputBaseStyle}
                         />
                     </div>
@@ -228,7 +253,10 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                     <button
                                         key={type}
                                         type="button"
-                                        onClick={() => setActiveType(isCurrent ? '' : type)}
+                                        onClick={() => {
+                                            setActiveType(isCurrent ? '' : type);
+                                            setCustomAttrValue('');
+                                        }}
                                         className={`h-7 px-3 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 select-none ${isCurrent
                                             ? 'bg-indigo-600 text-white shadow-xs'
                                             : hasActiveSelections
@@ -293,8 +321,8 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                 </button>
                             </div>
 
-                            {/* Options Mapping Options Row */}
-                            <div className="flex flex-wrap gap-2 p-0.5">
+                            {/* Options Mapping Options Row + Integrated Custom Typing Form */}
+                            <div className="flex flex-wrap items-center gap-2 p-0.5">
                                 {AVAILABLE_ATTRIBUTES[activeType].map((option) => {
                                     const isSelected = v.attributes.some(
                                         attr => attr.type.toLowerCase() === activeType.toLowerCase() && attr.value.toLowerCase() === option.toLowerCase()
@@ -318,6 +346,27 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                         </button>
                                     );
                                 })}
+
+                                {/* Enhanced Custom Typing Input Div to avoid layout bubbling refreshes */}
+                                <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5 h-8 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
+                                    <input
+                                        type="text"
+                                        value={customAttrValue}
+                                        onChange={(e) => setCustomAttrValue(e.target.value)}
+                                        onKeyDown={handleKeyDownCustomInput}
+                                        placeholder={`Custom ${activeType}...`}
+                                        className="bg-transparent h-full px-2 text-xs font-medium text-slate-800 outline-none placeholder:text-slate-400 w-36"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAddCustomAttribute}
+                                        disabled={!customAttrValue.trim()}
+                                        className="h-full px-2 bg-indigo-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md flex items-center justify-center transition-all"
+                                        title="Add Custom Option"
+                                    >
+                                        <Plus size={14} strokeWidth={2.5} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

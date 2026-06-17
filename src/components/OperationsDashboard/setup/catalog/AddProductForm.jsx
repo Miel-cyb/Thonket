@@ -1,19 +1,14 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Save, ArrowLeft, Package, Layers, Tag, Info } from 'lucide-react';
-import { BulkProductRow } from './BulkProductRow'; // Imported existing component preserved intact
+import { BulkProductRow } from './BulkProductRow';
 
 /**
  * AddProductForm Component
- * @param {Array} categories - Array of hierarchical tree category objects passed from the parent page
- * @param {Function} onSave - Callback triggered on form submission with the built payload
- * @param {Function} onCancel - Callback triggered to close or slide back the form view
- * @param {boolean} loading - Global submission or processing loading flag
  */
 export const AddProductForm = ({ categories = [], onSave, onCancel, loading = false }) => {
-    // DOM reference anchor to capture the bulk row layout position
     const bulkRowRef = useRef(null);
 
-    // 1. Initialize Product Form state aligning with both schemas
+    // 1. Unified state configuration alignment
     const [product, setProduct] = useState({
         name: '',
         slug: '',
@@ -24,25 +19,17 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         isActive: true,
         variants: [
             {
-                id: crypto.randomUUID(), // UI tracker key
                 sku: '',
                 attribute: '',
                 value: '',
                 uom: 'pcs',
-                stock: 0,
-                price: 0,
-                status: 'Active',
-                image: null,
                 weightKg: 0,
-                volumeM3: 0
+                volumeM3: 0,
+                status: 'Active' // Default set to 'Active'
             }
         ]
     });
 
-    /**
-     * Helper to recursively flatten hierarchical categories into readable options with branch indicators.
-     * Maps item trees seamlessly to: "Parent Category → Sub Category → Leaf Node"
-     */
     const flattenedCategoryOptions = useMemo(() => {
         const results = [];
         const recurse = (nodes, currentPath = []) => {
@@ -63,20 +50,24 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         return results;
     }, [categories]);
 
-    // 2. Handle modifications dispatched from BulkProductRow & execute auto-focus scroll
     const handleProductUpdate = (updatedProduct) => {
+        const currentCount = product.variants?.length || 0;
+        const newCount = updatedProduct.variants?.length || 0;
+
         setProduct(updatedProduct);
 
-        // Trigger smooth native layout viewport scrolling upon variant changes/clicks
-        if (bulkRowRef.current) {
-            bulkRowRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start' // Aligns the top of the section with the top of the viewport
+        if (newCount > currentCount && bulkRowRef.current) {
+            requestAnimationFrame(() => {
+                if (bulkRowRef.current) {
+                    bulkRowRef.current.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+                }
             });
         }
     };
 
-    // 3. Clear/Reset form if the item row remove button is triggered
     const handleProductRemove = () => {
         if (window.confirm("Are you sure you want to clear the current product data?")) {
             setProduct({
@@ -92,7 +83,6 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         }
     };
 
-    // 4. Handle top-level meta updates (Description, Brand, Status, Category selection)
     const handleMetaChange = (e) => {
         const { name, value, type, checked } = e.target;
 
@@ -112,7 +102,67 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         }));
     };
 
-    // 5. Handle submission payload cleanup & normalization
+    // const handleSubmit = (e) => {
+    //     e.preventDefault();
+    //     if (!product.name?.trim()) {
+    //         alert("Product Name is a required field.");
+    //         return;
+    //     }
+    //     if (!product.categoryId) {
+    //         alert("Please map this product to an operations Category entry.");
+    //         return;
+    //     }
+
+    //     const finalSlug = product.slug?.trim()
+    //         ? product.slug.trim()
+    //         : product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+
+    //     // Secure baseline brand value assertion. Defaults to "nile" if empty/blank
+    //     const finalBrand = product.brand && product.brand.trim() !== "" ? product.brand.trim() : "nile";
+
+    //     const submissionPayload = {
+    //         name: product.name.trim(),
+    //         slug: finalSlug,
+    //         description: product.description?.trim() || "",
+    //         categoryId: product.categoryId,
+    //         categoryTree: product.categoryTree,
+    //         brand: finalBrand,
+    //         isActive: product.isActive,
+    //         // Variants constructed cleanly to support your precise model fields
+    //         variants: (product.variants || []).map(v => {
+    //             const attributesMap = {};
+    //             if (Array.isArray(v.attributes)) {
+    //                 v.attributes.forEach(attr => {
+    //                     if (attr.type && attr.value) {
+    //                         attributesMap[attr.type] = attr.value;
+    //                     }
+    //                 });
+    //             } else if (v.attribute && v.value) {
+    //                 attributesMap[v.attribute] = v.value;
+    //             }
+
+    //             // Defensive normalization logic handling both direct Boolean or String values ('Active'/'active'/true)
+    //             let isVariantActive = true;
+    //             if (v.status !== undefined && v.status !== null) {
+    //                 isVariantActive = v.status.toString().toLowerCase() === 'active' || v.status.toString() === 'true';
+    //             } else if (v.isActive !== undefined) {
+    //                 isVariantActive = v.isActive.toString().toLowerCase() === 'active' || v.isActive.toString() === 'true';
+    //             }
+
+    //             return {
+    //                 sku: v.sku?.trim() || "",
+    //                 name: v.sku?.trim() ? `${product.name?.trim()} - ${v.sku?.trim()}` : product.name?.trim(),
+    //                 unitOfMeasure: (v.uom || 'pcs').toLowerCase(),
+    //                 weightKg: Number(v.weightKg || 0),
+    //                 volumeM3: Number(v.volumeM3 || 0),
+    //                 attributes: attributesMap,
+    //                 isActive: isVariantActive
+    //             };
+    //         })
+    //     };
+
+    //     if (onSave) onSave(submissionPayload);
+    // };
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!product.name?.trim()) {
@@ -124,23 +174,51 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
             return;
         }
 
-        // Generate slug automatically if left empty
         const finalSlug = product.slug?.trim()
             ? product.slug.trim()
             : product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
+        // Secure baseline brand value assertion. Defaults to "nile" if empty/blank
+        const finalBrand = product.brand && product.brand.trim() !== "" ? product.brand.trim() : "nile";
+
+        // EXPLICIT STRUCTURING: No loose object spreading to eliminate ghost property injection
         const submissionPayload = {
-            ...product,
+            name: product.name.trim(),
             slug: finalSlug,
-            variants: (product.variants || []).map(v => ({
-                ...v,
-                sku: v.sku?.trim(),
-                stock: Number(v.stock || 0),
-                price: Number(v.price || 0),
-                weightKg: Number(v.weightKg || 0),
-                volumeM3: Number(v.volumeM3 || 0),
-                isActive: v.status === 'Active'
-            }))
+            description: product.description?.trim() || "",
+            categoryId: product.categoryId,
+            categoryTree: product.categoryTree || [],
+            brand: finalBrand, // Explicitly mapped right here
+            isActive: typeof product.isActive === 'boolean' ? product.isActive : true,
+            variants: (product.variants || []).map(v => {
+                const attributesMap = {};
+                if (Array.isArray(v.attributes)) {
+                    v.attributes.forEach(attr => {
+                        if (attr.type && attr.value) {
+                            attributesMap[attr.type] = attr.value;
+                        }
+                    });
+                } else if (v.attribute && v.value) {
+                    attributesMap[v.attribute] = v.value;
+                }
+
+                let isVariantActive = true;
+                if (v.status !== undefined && v.status !== null) {
+                    isVariantActive = v.status.toString().toLowerCase() === 'active' || v.status.toString() === 'true';
+                } else if (v.isActive !== undefined) {
+                    isVariantActive = v.isActive.toString().toLowerCase() === 'active' || v.isActive.toString() === 'true';
+                }
+
+                return {
+                    sku: v.sku?.trim() || "",
+                    name: v.sku?.trim() ? `${product.name?.trim()} - ${v.sku?.trim()}` : product.name?.trim(),
+                    unitOfMeasure: (v.uom || 'pcs').toLowerCase(),
+                    weightKg: Number(v.weightKg || 0),
+                    volumeM3: Number(v.volumeM3 || 0),
+                    attributes: attributesMap,
+                    isActive: isVariantActive
+                };
+            })
         };
 
         if (onSave) onSave(submissionPayload);
@@ -148,7 +226,6 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
 
     return (
         <form onSubmit={handleSubmit} className="w-full space-y-6">
-
             {/* ACTION BAR HOOK */}
             <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -169,7 +246,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                 </button>
             </div>
 
-            {/* EXTENDED META FIELDS LAYOUT - NOW RENDERS FIRST */}
+            {/* EXTENDED META FIELDS LAYOUT */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center gap-2">
                     <Info size={16} className="text-indigo-600" />
@@ -189,7 +266,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                                 <input
                                     type="text"
                                     name="name"
-                                    value={product.name}
+                                    value={product.name || ''}
                                     onChange={handleMetaChange}
                                     placeholder="e.g., Custard Premium"
                                     className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-slate-50/50 border-slate-300 text-slate-900 placeholder-slate-400 font-medium transition-all"
@@ -208,7 +285,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                                 </span>
                                 <select
                                     name="categoryId"
-                                    value={product.categoryId}
+                                    value={product.categoryId || ''}
                                     onChange={handleMetaChange}
                                     className="w-full pl-10 pr-10 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-slate-50/50 border-slate-300 text-slate-900 font-medium transition-all appearance-none"
                                     required
@@ -233,7 +310,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                             <input
                                 type="text"
                                 name="slug"
-                                value={product.slug}
+                                value={product.slug || ''}
                                 onChange={handleMetaChange}
                                 placeholder="e.g., custard-premium-powder"
                                 className="w-full px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-slate-50/50 border-slate-300 text-slate-900 placeholder-slate-400 font-medium transition-all"
@@ -249,15 +326,14 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                                 <input
                                     type="text"
                                     name="brand"
-                                    value={product.brand}
+                                    value={product.brand || ''}
                                     onChange={handleMetaChange}
-                                    placeholder="e.g., Organic & Health"
+                                    placeholder="e.g., Nile"
                                     className="w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none bg-slate-50/50 border-slate-300 text-slate-900 placeholder-slate-400 font-medium transition-all"
                                 />
                             </div>
                         </div>
 
-                        {/* OPTIMIZED COMPACT CATALOG TOGGLE BUTTON CHIP */}
                         <div className="flex items-end">
                             <label
                                 className={`flex items-center justify-between cursor-pointer border rounded-xl px-4 h-[42px] w-full select-none text-sm font-semibold transition-all duration-150 ${product.isActive
@@ -270,7 +346,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                                     id="isActiveProduct"
                                     type="checkbox"
                                     name="isActive"
-                                    checked={product.isActive}
+                                    checked={!!product.isActive}
                                     onChange={handleMetaChange}
                                     className="w-4 h-4 text-emerald-600 border-slate-400 rounded focus:ring-emerald-500 transition-colors"
                                 />
@@ -282,7 +358,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Product Context / Description</label>
                         <textarea
                             name="description"
-                            value={product.description}
+                            value={product.description || ''}
                             onChange={handleMetaChange}
                             placeholder="Enter short description notes or content descriptions..."
                             rows={3}
@@ -301,7 +377,6 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                     onRemove={handleProductRemove}
                 />
             </div>
-
         </form>
     );
 };

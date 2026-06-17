@@ -67,6 +67,8 @@ const ProductsPage = () => {
             const { data } = await axios.get(`${PRODUCT_BASE}/catalog`, { params });
             const raw = Array.isArray(data) ? data : (data?.data || []);
 
+            console.log(`this is the product list `, data)
+
             setProducts(raw);
 
             const elapsed = Date.now() - start;
@@ -96,6 +98,7 @@ const ProductsPage = () => {
     // CORE LOGIC: CREATE / UPDATE API
     // =====================================================
     const handleSaveProduct = async (formData) => {
+        // console.log('has this request been made ?', formData);
         // Fallback to activeProduct reference if direct payload is omitted
         const productPayload = formData || activeProduct;
 
@@ -403,9 +406,9 @@ const ProductsPage = () => {
                                 <AddProductForm
                                     initialData={activeProduct}
                                     categories={categories}
-                                    isLoading={loading}
+                                    loading={loading}
                                     onCancel={() => setActiveProduct(null)}
-                                    onSubmit={handleSaveProduct}
+                                    onSave={handleSaveProduct}
                                 />
                             </div>
                         </div>

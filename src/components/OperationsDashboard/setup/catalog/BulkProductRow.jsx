@@ -1,18 +1,12 @@
 import React from 'react';
-import { X, Package, ImageIcon, ChevronDown, Plus } from 'lucide-react';
+import { X, ImageIcon, ChevronDown, Plus } from 'lucide-react';
 import { ProductVariantElement } from './ProductVariant';
 
 /**
  * BulkProductRow
- * Master container for product name, category selection, and variant management.
- * @param {Object} product - The current product state
- * @param {Array} rawCategories - The hierarchical category list from the API
- * @param {Function} onUpdate - Updates the product state in the parent
- * @param {Function} onRemove - Closes/removes this product entry
  */
 export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove }) => {
 
-    // 1. HELPER: Flatten the category tree for a clean dropdown list
     const flattenCategories = (cats, prefix = '') => {
         let items = [];
         cats.forEach(cat => {
@@ -27,7 +21,6 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
 
     const categoryOptions = flattenCategories(rawCategories);
 
-    // 2. HANDLER: Update category and the visual breadcrumb tree
     const handleCategoryChange = (e) => {
         const selectedId = e.target.value;
         const selectedOption = categoryOptions.find(opt => opt.id === selectedId);
@@ -36,30 +29,29 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
             onUpdate({
                 ...product,
                 categoryId: selectedId,
-                // We split the label into an array for the UI tags/breadcrumbs
                 categoryTree: selectedOption.label.split(' > ')
             });
         }
     };
 
     const addVariant = () => {
+        // Variant generation properties stripped down to match schema attributes map
         const newVariant = {
             id: crypto.randomUUID(),
             sku: '',
-            attribute: '',
+            attribute: 'size',
             value: '',
-            uom: 'pcs',
-            stock: 0,
-            price: 0,
-            status: 'Active',
-            image: null
+            uom: 'pcs',       // Aligned strictly to model enums ["pcs", "kg", "l", "box"]
+            weightKg: 0,
+            volumeM3: 0,
+            isActive: 'true'
         };
         const currentVariants = product.variants || [];
         onUpdate({ ...product, variants: [...currentVariants, newVariant] });
     };
 
     const updateVariant = (vId, updatedData) => {
-        const newVariants = product.variants.map(v => v.id === vId ? updatedData : v);
+        const newVariants = product.variants.map(v => v.id === vId ? { ...v, ...updatedData } : v);
         onUpdate({ ...product, variants: newVariants });
     };
 
@@ -74,7 +66,7 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
             {/* Row Header Block */}
             <div className="flex flex-col md:flex-row md:items-center gap-4 p-5 bg-white border-b border-slate-100">
 
-                {/* Master Image Preview */}
+                {/* Master Image Preview Area */}
                 <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 shrink-0 shadow-sm">
                     <ImageIcon size={22} className="text-slate-400" />
                 </div>
@@ -90,7 +82,6 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
                     />
 
                     <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        {/* THE DROPDOWN SELECTOR */}
                         <div className="relative group shrink-0">
                             <select
                                 value={product.categoryId || ''}
@@ -107,7 +98,6 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
                             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500" />
                         </div>
 
-                        {/* Visual Path Display (Breadcrumbs) */}
                         {product.categoryTree && product.categoryTree.length > 0 && (
                             <div className="flex items-center flex-wrap gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
                                 {product.categoryTree.map((cat, idx) => (

@@ -10,6 +10,7 @@ import {
 import { CategoryItem } from '../components/OperationsDashboard/setup/catalog/CategoryItem.jsx';
 import { StatCard } from '../components/OperationsDashboard/setup/catalog/StatCard.jsx';
 import { AddProductForm } from '../components/OperationsDashboard/setup/catalog/AddProductForm.jsx';
+import { EditProductForm } from '../components/OperationsDashboard/setup/catalog/EditProductForm.jsx'; // Imported EditProductForm
 import { API_ENDPOINTS } from '../utils/urls';
 
 // =====================================================
@@ -67,7 +68,7 @@ const ProductsPage = () => {
             const { data } = await axios.get(`${PRODUCT_BASE}/catalog`, { params });
             const raw = Array.isArray(data) ? data : (data?.data || []);
 
-            console.log(`this is the product list `, data)
+            console.log(`this is the product list `, data);
 
             setProducts(raw);
 
@@ -98,8 +99,6 @@ const ProductsPage = () => {
     // CORE LOGIC: CREATE / UPDATE API
     // =====================================================
     const handleSaveProduct = async (formData) => {
-        // console.log('has this request been made ?', formData);
-        // Fallback to activeProduct reference if direct payload is omitted
         const productPayload = formData || activeProduct;
 
         if (!productPayload.name || !productPayload.categoryId) {
@@ -401,15 +400,26 @@ const ProductsPage = () => {
                                 </div>
                             </div>
 
-                            {/* CORE REFACTOR: ADDPRODUCTFORM WORKSPACE */}
+                            {/* CORE REFACTOR: CONDITIONAL WORKSPACE SWITCH */}
                             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8">
-                                <AddProductForm
-                                    initialData={activeProduct}
-                                    categories={categories}
-                                    loading={loading}
-                                    onCancel={() => setActiveProduct(null)}
-                                    onSave={handleSaveProduct}
-                                />
+                                {activeProduct._id ? (
+                                    <EditProductForm
+                                        key={activeProduct._id}
+                                        initialData={activeProduct}
+                                        categories={categories}
+                                        loading={loading}
+                                        onCancel={() => setActiveProduct(null)}
+                                        onSave={handleSaveProduct}
+                                    />
+                                ) : (
+                                    <AddProductForm
+                                        initialData={activeProduct}
+                                        categories={categories}
+                                        loading={loading}
+                                        onCancel={() => setActiveProduct(null)}
+                                        onSave={handleSaveProduct}
+                                    />
+                                )}
                             </div>
                         </div>
                     )}

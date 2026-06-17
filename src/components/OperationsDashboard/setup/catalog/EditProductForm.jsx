@@ -1,14 +1,21 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Save, ArrowLeft, Package, Layers, Tag, Info } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Save, ArrowLeft, Package, Layers, Tag, Info, Trash2 } from 'lucide-react';
 import { BulkProductRow } from './BulkProductRow';
 
 /**
- * AddProductForm Component
+ * EditProductForm Component
  */
-export const AddProductForm = ({ categories = [], onSave, onCancel, loading = false }) => {
+export const EditProductForm = ({
+    initialData,
+    categories = [],
+    onSave,
+    onDelete,
+    onCancel,
+    loading = false
+}) => {
     const bulkRowRef = useRef(null);
 
-    // 1. Unified state configuration alignment
+    // 1. Initialize State Structure matching your Schema blueprint
     const [product, setProduct] = useState({
         name: '',
         slug: '',
@@ -17,19 +24,10 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         categoryTree: [],
         brand: '',
         isActive: true,
-        variants: [
-            {
-                sku: '',
-                attribute: '',
-                value: '',
-                uom: 'pcs',
-                weightKg: 0,
-                volumeM3: 0,
-                status: 'Active' // Default set to 'Active'
-            }
-        ]
+        variants: []
     });
 
+    // 2. Flatten category tree nodes into a single array list for lookups
     const flattenedCategoryOptions = useMemo(() => {
         const results = [];
         const recurse = (nodes, currentPath = []) => {
@@ -50,6 +48,63 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         return results;
     }, [categories]);
 
+    // 3. Synchronize Incoming Record Data on Load / Parameter Changes
+    useEffect(() => {
+        if (initialData) {
+            // Determine structural source layout for categoryId (handles strings or fully populated sub-documents)
+            let resolvedCategoryId = '';
+            if (initialData.categoryId) {
+                resolvedCategoryId = typeof initialData.categoryId === 'object'
+                    ? initialData.categoryId._id || ''
+                    : initialData.categoryId;
+            }
+
+            // Fallback strategy if categoryTree array is missing from the parent data instance
+            let resolvedTree = initialData.categoryTree || [];
+            if (resolvedTree.length === 0 && resolvedCategoryId) {
+                const match = flattenedCategoryOptions.find(cat => cat._id === resolvedCategoryId);
+                if (match) resolvedTree = match.tree;
+            }
+
+            // Mapping back variant structures safely
+            const formattedVariants = (initialData.variants || []).map(v => {
+                let attributeKey = '';
+                let attributeValue = '';
+
+                if (v.attributes && typeof v.attributes === 'object' && !Array.isArray(v.attributes)) {
+                    const keys = Object.keys(v.attributes);
+                    if (keys.length > 0) {
+                        attributeKey = keys[0];
+                        attributeValue = v.attributes[keys[0]];
+                    }
+                }
+
+                return {
+                    ...v,
+                    sku: v.sku || '',
+                    uom: v.unitOfMeasure || 'pcs',
+                    weightKg: v.weightKg || 0,
+                    volumeM3: v.volumeM3 || 0,
+                    attribute: v.attribute || attributeKey,
+                    value: v.value || attributeValue,
+                    status: v.isActive ? 'Active' : 'Inactive'
+                };
+            });
+
+            setProduct({
+                ...initialData,
+                name: initialData.name || '',
+                slug: initialData.slug || '',
+                description: initialData.description || '',
+                categoryId: resolvedCategoryId,
+                categoryTree: resolvedTree,
+                brand: initialData.brand || '',
+                isActive: initialData.isActive !== undefined ? initialData.isActive : true,
+                variants: formattedVariants
+            });
+        }
+    }, [initialData, flattenedCategoryOptions]);
+
     const handleProductUpdate = (updatedProduct) => {
         const currentCount = product.variants?.length || 0;
         const newCount = updatedProduct.variants?.length || 0;
@@ -69,17 +124,11 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
     };
 
     const handleProductRemove = () => {
-        if (window.confirm("Are you sure you want to clear the current product data?")) {
-            setProduct({
-                name: '',
-                slug: '',
-                description: '',
-                categoryId: '',
-                categoryTree: [],
-                brand: '',
-                isActive: true,
+        if (window.confirm("Are you sure you want to clear the current variant rows?")) {
+            setProduct(prev => ({
+                ...prev,
                 variants: []
-            });
+            }));
         }
     };
 
@@ -102,6 +151,12 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
         }));
     };
 
+    const handleDeleteClick = () => {
+        if (window.confirm(`Are you sure you want to permanently delete "${product.name || 'this product'}"? This action cannot be undone.`)) {
+            if (onDelete) onDelete(product._id || product.id);
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!product.name?.trim()) {
@@ -117,10 +172,10 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
             ? product.slug.trim()
             : product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
-        // Secure baseline brand value assertion. Defaults to "nile" if empty/blank
         const finalBrand = product.brand && product.brand.trim() !== "" ? product.brand.trim() : "nile";
 
         const submissionPayload = {
+            ...product,
             name: product.name.trim(),
             slug: finalSlug,
             description: product.description?.trim() || "",
@@ -128,7 +183,6 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
             categoryTree: product.categoryTree,
             brand: finalBrand,
             isActive: product.isActive,
-            // Variants constructed cleanly to support your precise model fields
             variants: (product.variants || []).map(v => {
                 const attributesMap = {};
                 if (Array.isArray(v.attributes)) {
@@ -139,9 +193,10 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                     });
                 } else if (v.attribute && v.value) {
                     attributesMap[v.attribute] = v.value;
+                } else if (v.attributes && typeof v.attributes === 'object') {
+                    Object.assign(attributesMap, v.attributes);
                 }
 
-                // Defensive normalization logic handling both direct Boolean or String values ('Active'/'active'/true)
                 let isVariantActive = true;
                 if (v.status !== undefined && v.status !== null) {
                     isVariantActive = v.status.toString().toLowerCase() === 'active' || v.status.toString() === 'true';
@@ -166,7 +221,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
 
     return (
         <form onSubmit={handleSubmit} className="w-full space-y-6">
-            {/* ACTION BAR HOOK */}
+            {/* ACTION BAR */}
             <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-3">
                     <button
@@ -174,23 +229,35 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                         onClick={onCancel}
                         className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-4 py-2.5 rounded-xl border border-slate-200 transition-colors"
                     >
-                        <ArrowLeft size={16} /> Close Form
+                        <ArrowLeft size={16} /> Return to Listing
                     </button>
                 </div>
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-100 disabled:opacity-50 transition-all transform active:scale-95"
-                >
-                    <Save size={18} /> {loading ? 'Committing Data...' : 'Commit New Product'}
-                </button>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={handleDeleteClick}
+                        disabled={loading}
+                        className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 py-2.5 rounded-xl text-sm font-bold border border-rose-200 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <Trash2 size={16} /> Delete Product
+                    </button>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-100 disabled:opacity-50 transition-all transform active:scale-95"
+                    >
+                        <Save size={18} /> {loading ? 'Saving Changes...' : 'Update Product Record'}
+                    </button>
+                </div>
             </div>
 
-            {/* EXTENDED META FIELDS LAYOUT */}
+            {/* MAIN METADATA CONFIGURATION */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex items-center gap-2">
                     <Info size={16} className="text-indigo-600" />
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Primary Record Definition</h3>
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Modify Existing Core Parameters</h3>
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -308,7 +375,7 @@ export const AddProductForm = ({ categories = [], onSave, onCancel, loading = fa
                 </div>
             </div>
 
-            {/* INTEGRATED BULK ROW COMPONENT CONTAINER WITH SCROLL REF */}
+            {/* VARIANT MANAGEMENT ROW CONTROLLER */}
             <div ref={bulkRowRef} className="scroll-mt-6">
                 <BulkProductRow
                     product={product}

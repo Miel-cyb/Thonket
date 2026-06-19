@@ -81,7 +81,7 @@ export const PriceVariantRow = ({ variant, onUpdate, onRemove }) => {
                         <span className="font-semibold text-slate-700 truncate max-w-[140px]">{variant.sku || '---'}</span>
                     </div>
 
-                    <div className="space-y-1">
+                    {/* <div className="space-y-1">
                         <select
                             value={basePricing.scope || "VARIANT"}
                             onChange={(e) => {
@@ -93,7 +93,7 @@ export const PriceVariantRow = ({ variant, onUpdate, onRemove }) => {
                             <option value="VARIANT">Specific Variant</option>
                             <option value="PRODUCT">Global (Product)</option>
                         </select>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* SECTION 2: BASE PRICE MODEL */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom'; // 1. Added React Router Navigation Hook
 import axios from 'axios';
 import {
     ArrowLeftCircle, Search, Package, ChevronDown,
@@ -8,18 +9,15 @@ import {
 import { CategoryItem } from '../components/OperationsDashboard/setup/catalog/CategoryItem.jsx';
 import { StatCard } from '../components/OperationsDashboard/setup/catalog/StatCard.jsx';
 import { ProductPriceCard } from '../components/OperationsDashboard/setup/catalog/ProductPriceCard.jsx';
-import PriceDetailPage from './PriceDetailPage.jsx'; // Importing the isolated page
 import { API_ENDPOINTS } from '../utils/urls';
 
 const PriceManagementPage = () => {
+    const navigate = useNavigate(); // 2. Initialized Router Context
     const [categories, setCategories] = useState([]);
     const [selectedCategoryObj, setSelectedCategoryObj] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
-
-    // Tracks the targeted database ID to toggle the detailed product workspace view
-    const [selectedProductId, setSelectedProductId] = useState(null);
 
     const ITEMS_PER_PAGE = 12;
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -149,7 +147,7 @@ const PriceManagementPage = () => {
         <div className="h-screen bg-[#F8FAFC] flex flex-col text-slate-900 overflow-hidden font-sans">
             <header className="h-20 bg-white border-b px-8 flex items-center justify-between shadow-sm shrink-0 z-20">
                 <div className="flex items-center gap-6">
-                    <button onClick={() => window.history.back()} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                         <ArrowLeftCircle size={28} />
                     </button>
                     <div className="flex items-center gap-3">
@@ -163,52 +161,47 @@ const PriceManagementPage = () => {
                     </div>
                 </div>
 
-                {!selectedProductId && (
-                    <div className="relative group">
-                        <Search size={16} className="absolute left-3 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-                        <input
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search SKU, name or brand..."
-                            className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl w-80 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all"
-                        />
-                    </div>
-                )}
+                <div className="relative group">
+                    <Search size={16} className="absolute left-3 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search SKU, name or brand..."
+                        className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl w-80 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all"
+                    />
+                </div>
             </header>
 
             <div className="flex flex-1 overflow-hidden">
-                {!selectedProductId && (
-                    <aside className="w-80 bg-white border-r flex flex-col shrink-0">
-                        <div className="p-5 flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Market Hierarchy</h4>
-                                {selectedCategoryObj && (
-                                    <button
-                                        onClick={() => setSelectedCategoryObj(null)}
-                                        className="text-xs font-semibold text-indigo-600 hover:underline"
-                                    >
-                                        Clear Filter
-                                    </button>
-                                )}
-                            </div>
-                            <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex-1 overflow-y-auto custom-scrollbar">
-                                {categories.map(cat => (
-                                    <CategoryItem
-                                        key={cat._id}
-                                        item={cat}
-                                        onSelect={setSelectedCategoryObj}
-                                        selectedId={selectedCategoryObj?._id}
-                                    />
-                                ))}
-                            </div>
+                <aside className="w-80 bg-white border-r flex flex-col shrink-0">
+                    <div className="p-5 flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Market Hierarchy</h4>
+                            {selectedCategoryObj && (
+                                <button
+                                    onClick={() => setSelectedCategoryObj(null)}
+                                    className="text-xs font-semibold text-indigo-600 hover:underline"
+                                >
+                                    Clear Filter
+                                </button>
+                            )}
                         </div>
-                    </aside>
-                )}
+                        <div className="bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex-1 overflow-y-auto custom-scrollbar">
+                            {categories.map(cat => (
+                                <CategoryItem
+                                    key={cat._id}
+                                    item={cat}
+                                    onSelect={setSelectedCategoryObj}
+                                    selectedId={selectedCategoryObj?._id}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </aside>
 
                 <main className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
                     <div className="max-w-[1600px] mx-auto space-y-8">
-
-                        {/* Always visible statistical operational card layers */}
+                        {/* Statistical Overview Layer */}
                         <div className="flex flex-wrap gap-4 items-stretch w-full">
                             <StatCard icon={Package} label="Priced SKUs" value={priceStats.pricedSKUs} color="bg-indigo-600 text-white shadow-indigo-100" />
                             <StatCard icon={AlertTriangle} label="Missing Prices" value={priceStats.missingPrices} color="bg-amber-500 text-white shadow-amber-100" detail={priceStats.missingPrices > 0 ? "Action Req" : null} />
@@ -218,52 +211,44 @@ const PriceManagementPage = () => {
                             <StatCard icon={CheckCircle2} label="Sale-Ready" value={priceStats.saleReadyProducts} color="bg-slate-900 text-white shadow-slate-200" />
                         </div>
 
-                        {!selectedProductId ? (
-                            <div className="space-y-8">
-                                {loading && paginatedProducts.length === 0 ? (
-                                    <div className="flex items-center justify-center py-24 text-slate-400 text-sm font-medium">
-                                        Loading Price Catalogs...
+                        <div className="space-y-8">
+                            {loading && paginatedProducts.length === 0 ? (
+                                <div className="flex items-center justify-center py-24 text-slate-400 text-sm font-medium">
+                                    Loading Price Catalogs...
+                                </div>
+                            ) : paginatedProducts.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400">
+                                    <Package size={40} className="text-slate-300 mb-2" />
+                                    <p className="text-sm font-medium">No matches found matching your filters.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                        {paginatedProducts.map(p => (
+                                             
+                                            <ProductPriceCard
+                                                key={p._id}
+                                                product={p}
+                                               
+                                                // 3. Changed from state selection to real route transitions
+                                                onSelect={(prod) => navigate(`/price/${prod._id}`)}
+                                            />
+                                        ))}
                                     </div>
-                                ) : paginatedProducts.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400">
-                                        <Package size={40} className="text-slate-300 mb-2" />
-                                        <p className="text-sm font-medium">No matches found matching your filters.</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                            {paginatedProducts.map(p => (
-                                                <ProductPriceCard
-                                                    key={p._id}
-                                                    product={p}
-                                                    onSelect={(prod) => setSelectedProductId(prod._id)}
-                                                />
-                                            ))}
-                                        </div>
 
-                                        {hasMore && (
-                                            <div className="flex justify-center pt-4">
-                                                <button
-                                                    onClick={handleLoadMore}
-                                                    className="flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-300 shadow-xs text-slate-700 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
-                                                >
-                                                    Load More Products <ChevronDown size={16} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        ) : (
-                            /* Sub-isolated product management page module layout */
-                            <PriceDetailPage
-                                productId={selectedProductId}
-                                onBack={() => setSelectedProductId(null)}
-                                onSyncSuccess={() => {
-                                    fetchPriceCatalog(); // Re-index inventory on nested changes
-                                }}
-                            />
-                        )}
+                                    {hasMore && (
+                                        <div className="flex justify-center pt-4">
+                                            <button
+                                                onClick={handleLoadMore}
+                                                className="flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-300 shadow-xs text-slate-700 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                                            >
+                                                Load More Products <ChevronDown size={16} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </main>
             </div>

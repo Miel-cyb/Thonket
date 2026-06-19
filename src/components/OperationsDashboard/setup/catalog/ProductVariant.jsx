@@ -55,7 +55,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
     }, [variant.volumeM3]);
 
     // Distribution packaging tiers
-    const units = ['PCS', 'KG', 'L', 'BOX', 'CASE', 'PALLET'];
+    const units = ['PCS', 'TIN', 'KG', 'L', 'BOX', 'CASE', 'PALLET'];
 
     // Pure Logistics & Multi-Attribute Structural State Matrix
     const v = {

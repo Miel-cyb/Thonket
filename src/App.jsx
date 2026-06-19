@@ -22,6 +22,7 @@ import SupplierOnboardingPage from './pages/SupplierOnboardingPage';
 import SupplierList from './pages/SuppliersPage'
 import SupplierDetailPage from './pages/SupplierDetailPage';
 import PurchaseCreatePage from './pages/PurchaseCreatePage';
+import PriceDetailPage from './pages/PriceDetailPage'
 
 
 
@@ -87,6 +88,8 @@ function App() {
           element={<ProductsPage />}
         />
 
+
+
         <Route
           path="/finance"
           element={<FinanceDashboardPage />}
@@ -115,6 +118,11 @@ function App() {
         <Route
           path="/supplier/:supplierId"
           element={<SupplierDetailPage />}
+        />
+
+        <Route
+          path="/price/:id"
+          element={<PriceDetailPage />}
         />
 
         <Route

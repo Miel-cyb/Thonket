@@ -7,10 +7,13 @@ export const ProductPriceCard = ({ product, onSelect }) => {
     const visibleVariants = variantList.slice(0, maxVisibleVariants);
     const hiddenVariantsCount = variantList.length - maxVisibleVariants;
 
+    // 1. Extract Master Product Level Catalog Price
     const rawProductPriceObj = product.productPrices?.find(pr => pr.scope === 'PRODUCT' && pr.isActive) || product.productPrices?.[0];
     const productBasePrice = rawProductPriceObj
         ? `${rawProductPriceObj.currency || 'GHS'} ${Number(rawProductPriceObj.basePrice).toFixed(2)}`
         : 'No Base Price';
+
+    console.log('this is the details of the selected product', product);
 
     return (
         <div
@@ -36,8 +39,8 @@ export const ProductPriceCard = ({ product, onSelect }) => {
 
                     <div className="flex flex-col items-end gap-2 shrink-0">
                         <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold tracking-wide ${product.isActive
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                : 'bg-slate-50 text-slate-500 border border-slate-200'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                            : 'bg-slate-50 text-slate-500 border border-slate-200'
                             }`}>
                             {product.isActive ? 'Active' : 'Inactive'}
                         </span>
@@ -75,11 +78,16 @@ export const ProductPriceCard = ({ product, onSelect }) => {
                         visibleVariants.map(v => {
                             const attributeBadges = v.attributes ? Object.entries(v.attributes).map(([key, val]) => `${key}: ${val}`) : [];
 
+                            // 2. EXTRACT VARIANT LEVEL BASE PRICE CORRECTLY
+                            const variantPriceObj = v.prices?.find(p => p.scope === 'VARIANT' && p.isActive) || v.prices?.[0];
+                            const variantPriceDisplay = variantPriceObj
+                                ? `${variantPriceObj.currency || 'GHS'} ${Number(variantPriceObj.basePrice).toFixed(2)}`
+                                : 'Unpriced';
+
                             return (
                                 <div
                                     key={v._id}
                                     onClick={(e) => {
-                                        // Stop card click events when interacting directly with variants if needed
                                         e.stopPropagation();
                                         onSelect(product);
                                     }}
@@ -100,17 +108,24 @@ export const ProductPriceCard = ({ product, onSelect }) => {
                                                 {attributeBadges.map((badge, bIdx) => (
                                                     <span
                                                         key={bIdx}
-                                                        className="text-xs font-medium bg-slate-50 text-slate-500 px-2 py-0.5 rounded border border-slate-100"
+                                                        className="text-[11px] font-medium bg-slate-50 text-slate-500 px-2 py-0.5 rounded border border-slate-100"
                                                     >
                                                         {badge}
                                                     </span>
                                                 ))}
                                             </div>
                                         )}
+
+                                        {/* Logistics metadata layout style fix */}
+                                        <div className="mt-1.5 text-xs text-slate-400 font-medium">
+                                            {v.weightKg || 0}kg • {v.volumeM3 || 0}m³ • {v.unitOfMeasure || 'pcs'}
+                                        </div>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <span className="font-mono text-sm font-medium text-slate-400">
-                                            {v.weightKg || 0}kg / {v.unitOfMeasure || 'pcs'}
+
+                                    {/* 3. DISPLAY THE VARIANT PRICE TAG */}
+                                    <div className="text-right shrink-0 bg-slate-50/80 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                        <span className="font-mono text-sm font-bold text-slate-800 block">
+                                            {variantPriceDisplay}
                                         </span>
                                     </div>
                                 </div>

@@ -2,13 +2,22 @@ import React, { useMemo } from "react";
 import { ProductVariantElement } from "../OperationsDashboard/setup/catalog/ProductVariant";
 
 /**
- * Converts StepItem form state <-> ProductVariantElement schema
- * This is the ONLY transformation layer
+ * StepItemVariantBridge
+ * Streamlined interface component. Relies on state passed down from parent context,
+ * formatting parameters to fulfill the ProductVariantElement validation signature.
  */
-export default function StepItemVariantBridge({ newItem, setNewItem, product }) {
+export default function StepItemVariantBridge({ newItem, setNewItem }) {
 
-    // Convert flat state → ProductVariantElement format
-    const variant = useMemo(() => ({
+    // Format downstream data structures into the product payload format
+    const productContext = useMemo(() => ({
+        name: newItem.productName || newItem.desc || "",
+        categoryId: newItem.categoryId || "",
+        categoryTree: newItem.categoryTree || [],
+        brand: newItem.brand || "nile"
+    }), [newItem.productName, newItem.desc, newItem.categoryId, newItem.categoryTree, newItem.brand]);
+
+    // Flatten localized values out to match standard variant object shapes
+    const variantContext = useMemo(() => ({
         sku: newItem.sku || "",
         barcode: newItem.barcode || "",
         unitOfMeasure: newItem.unitOfMeasure || "CASE",
@@ -25,22 +34,21 @@ export default function StepItemVariantBridge({ newItem, setNewItem, product }) 
         ]
     }), [newItem]);
 
-    // Convert ProductVariantElement → flat state
-    const handleUpdate = (updated) => {
-        const attrs = updated.attributes || [];
+    const handleUpdate = (updatedFields) => {
+        const attrs = updatedFields.attributes || [];
 
         setNewItem(prev => ({
             ...prev,
-            sku: updated.sku ?? prev.sku,
-            barcode: updated.barcode ?? prev.barcode,
-            unitOfMeasure: updated.unitOfMeasure ?? prev.unitOfMeasure,
-            packagingFactor: updated.packagingFactor ?? prev.packagingFactor,
-            weightKg: updated.weightKg ?? prev.weightKg,
-            volumeM3: updated.volumeM3 ?? prev.volumeM3,
-            isActive: updated.isActive ?? prev.isActive,
-            image: updated.image ?? prev.image,
+            sku: updatedFields.sku ?? prev.sku,
+            barcode: updatedFields.barcode ?? prev.barcode,
+            unitOfMeasure: updatedFields.unitOfMeasure ?? prev.unitOfMeasure,
+            packagingFactor: updatedFields.packagingFactor ?? prev.packagingFactor,
+            weightKg: updatedFields.weightKg ?? prev.weightKg,
+            volumeM3: updatedFields.volumeM3 ?? prev.volumeM3,
+            isActive: updatedFields.isActive ?? prev.isActive,
+            image: updatedFields.image ?? prev.image,
 
-            // Re-map attributes cleanly back to flat keys by ignoring case mismatch traps
+            // Parse complex attribute variants back to plain form paths
             variantSize: attrs.find(a => a.type.toLowerCase() === "size")?.value || "",
             variantColor: attrs.find(a => a.type.toLowerCase() === "color")?.value || "",
             variantMaterial: attrs.find(a => a.type.toLowerCase() === "material")?.value || "",
@@ -51,6 +59,8 @@ export default function StepItemVariantBridge({ newItem, setNewItem, product }) 
     const handleClear = () => {
         setNewItem(prev => ({
             ...prev,
+            productName: "",
+            brand: "",
             variantSize: "",
             variantColor: "",
             variantMaterial: "",
@@ -59,10 +69,13 @@ export default function StepItemVariantBridge({ newItem, setNewItem, product }) 
     };
 
     return (
-        <div className="border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/50">
+        <div className="border border-dashed border-slate-200 rounded-xl p-4 bg-slate-50/40">
+            <div className="mb-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest px-1">
+                Live Working Workspace Sync View
+            </div>
             <ProductVariantElement
-                variant={variant}
-                product={product}
+                variant={variantContext}
+                product={productContext}
                 onUpdate={handleUpdate}
                 onRemove={handleClear}
             />

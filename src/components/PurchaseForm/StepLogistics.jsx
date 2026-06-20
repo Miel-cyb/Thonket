@@ -1,9 +1,14 @@
-import React from "react";
-import { Truck, MapPin, Calendar } from "lucide-react";
+'use client';
+
+import React, { useState } from "react";
+import { Truck, MapPin, Calendar, ChevronDown, LocateFixed } from "lucide-react";
+// Import the map picker modal from your separate components directory
+import MapPickerModal from "../Map/MapPickerModal";
 
 // STEP LOGISTICS - DELIVERY OPTIONS AND SCHEDULING FOR PURCHASE ORDERS
 export default function StepLogistics({ form, setForm }) {
     const logistics = form?.logistics || {};
+    const [isMapOpen, setIsMapOpen] = useState(false);
 
     // IMMUTABLE DISPATCH UPDATER FUNCTION TO ENFORCE CLEAN STATE CLOSURES
     const updateLogisticsField = (field, value) => {
@@ -16,7 +21,22 @@ export default function StepLogistics({ form, setForm }) {
         }));
     };
 
-    // SYSTEM TIMESTAMP CALCULATION TO ENFORCE FUTURE DEADLINE SELECTION
+    // HANDLES CONFIRMED GEOLOCATIONS RETURNED FROM THE IMPORTED MODAL
+    const handleMapConfirm = (data) => {
+        // Fallback hierarchy: prioritizes specific named address properties if present in modal output
+        const cleanAddressName = data.addressName || data.placeName || data.address || "";
+
+        setForm((prev) => ({
+            ...prev,
+            logistics: {
+                ...(prev?.logistics || {}),
+                location: cleanAddressName,
+                coordinates: data.coordinates
+            }
+        }));
+    };
+
+    // SYSTEM TIMESTAMP CALCULATION TO ENFORCE FUTURE DEADLINE SELECTION (LOCAL-SAFE)
     const getTodayISOString = () => {
         const today = new Date();
         const year = today.getFullYear();
@@ -26,7 +46,7 @@ export default function StepLogistics({ form, setForm }) {
     };
 
     return (
-        <div className="space-y-6 animate-fadeIn max-w-[1660px] mx-auto p-1">
+        <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto p-6 bg-white border border-slate-200/80 rounded-xl shadow-sm">
 
             {/* GRID LAYOUT SPLIT */}
             <div className="grid grid-cols-12 gap-5">
@@ -36,16 +56,16 @@ export default function StepLogistics({ form, setForm }) {
                     <label htmlFor="delivery-type" className="text-sm font-semibold tracking-tight text-slate-700">
                         Fulfillment Model
                     </label>
-                    <div className="relative">
+                    <div className="relative flex items-center">
                         <Truck
                             size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none z-10"
+                            className="absolute left-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none z-10"
                         />
                         <select
                             id="delivery-type"
                             value={logistics.deliveryType || ""}
                             onChange={(e) => updateLogisticsField("deliveryType", e.target.value)}
-                            className="w-full text-base bg-white border border-slate-200 text-slate-900 rounded-xl pl-11 pr-10 py-3 shadow-sm appearance-none cursor-pointer focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[48px]"
+                            className="w-full text-base bg-white border border-slate-200 text-slate-900 rounded-xl pl-11 pr-12 py-3 shadow-sm appearance-none cursor-pointer focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[48px] z-0"
                         >
                             <option value="" disabled hidden>Select Allocation Routing</option>
                             <option value="supplier">Supplier Managed Logistics</option>
@@ -53,11 +73,8 @@ export default function StepLogistics({ form, setForm }) {
                             <option value="pickup">Internal Factory Pickup</option>
                         </select>
 
-                        {/* DROPDOWN CHEVRON ICON */}
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                            </svg>
+                        <div className="pointer-events-none absolute right-4 flex items-center text-slate-400 group-focus-within:text-indigo-500 transition-colors z-10">
+                            <ChevronDown size={18} strokeWidth={2} />
                         </div>
                     </div>
                 </div>
@@ -67,10 +84,10 @@ export default function StepLogistics({ form, setForm }) {
                     <label htmlFor="delivery-date" className="text-sm font-semibold tracking-tight text-slate-700">
                         Target Delivery Date
                     </label>
-                    <div className="relative">
+                    <div className="relative flex items-center">
                         <Calendar
                             size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none z-10"
+                            className="absolute left-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none z-10"
                         />
                         <input
                             id="delivery-date"
@@ -78,17 +95,26 @@ export default function StepLogistics({ form, setForm }) {
                             min={getTodayISOString()}
                             value={logistics.date || ""}
                             onChange={(e) => updateLogisticsField("date", e.target.value)}
-                            className="w-full text-base bg-white border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[48px] relative cursor-pointer
-              [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:bg-transparent [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                            className="w-full text-base bg-white border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[48px] cursor-pointer
+                              [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
                         />
                     </div>
                 </div>
 
-                {/* TEXT COMPONENT: MASTER HUB DESTINATION ADDRESS */}
+                {/* TEXT COMPONENT: MASTER HUB DESTINATION ADDRESS WITH EXTERNAL MAP LAUNCHER */}
                 <div className="col-span-12 flex flex-col gap-2 group">
-                    <label htmlFor="delivery-location" className="text-sm font-semibold tracking-tight text-slate-700">
-                        Destination Discharge Address
-                    </label>
+                    <div className="flex items-center justify-between">
+                        <label htmlFor="delivery-location" className="text-sm font-semibold tracking-tight text-slate-700">
+                            Destination Discharge Address
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => setIsMapOpen(true)}
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100"
+                        >
+                            <LocateFixed size={14} /> Use Map Picker
+                        </button>
+                    </div>
                     <div className="relative">
                         <MapPin
                             size={18}
@@ -103,12 +129,20 @@ export default function StepLogistics({ form, setForm }) {
                             className="w-full text-base bg-white border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 shadow-sm placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none leading-relaxed"
                         />
                     </div>
-                    <p className="text-xs text-slate-500 leading-normal">
+                    <p className="text-sm text-slate-500 leading-normal">
                         Specify exact site locations, building units, or cargo drop bay indicators to prevent routing delays.
                     </p>
                 </div>
 
             </div>
+
+            {/* EXTERNAL IMPORTED MAP PICKER INTERACTION LAYER */}
+            <MapPickerModal
+                isOpen={isMapOpen}
+                onClose={() => setIsMapOpen(false)}
+                onConfirm={handleMapConfirm}
+                initialLocation={logistics.coordinates}
+            />
         </div>
     );
 }

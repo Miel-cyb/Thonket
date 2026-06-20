@@ -9,25 +9,24 @@ import StepPurchaseContext from "../components/PurchaseForm/StepPurchaseContext"
 import StepSupplierSelect from "../components/PurchaseForm/StepSupplierSelect";
 import StepPurchaseIntent from "../components/PurchaseForm/StepPurchaseIntent";
 import StepItemsBuilder from "../components/PurchaseForm/StepItemsBuilder";
-import StepOptionalManufacturer from "../components/PurchaseForm/StepOptionalManufacturer";
-import StepPricingControl from "../components/PurchaseForm/StepPricingControl";
+import StepWarehouseAllocation from "../components/PurchaseForm/StepWarehouseAllocation"; // Imported Allocation Stage
 import StepLogistics from "../components/PurchaseForm/StepLogistics";
 import StepPaymentTerms from "../components/PurchaseForm/StepPaymentTerms";
 import StepReviewSubmit from "../components/PurchaseForm/StepReviewSubmit";
 
 export default function PurchaseCreatePage() {
     const [step, setStep] = useState(1);
-    const totalSteps = 9;
+    const totalSteps = 8; // Incremented total count from 7 to 8
 
     const [form, setForm] = useState({
         context: {},
         supplier: null,
         intent: {},
         items: [],
-        manufacturer: {},
-        pricing: {},
+        allocations: {}, // Structured matrix store for downstream warehouse distribution splits
         logistics: {},
-        payment: {}
+        payment: {},
+        currency: "GHS" // Configured to Ghana Cedis
     });
 
     const next = () => setStep((s) => Math.min(s + 1, totalSteps));
@@ -35,16 +34,16 @@ export default function PurchaseCreatePage() {
 
     const stepProps = { form, setForm, next, back };
 
+    // Meta pipelines mapped explicitly to reflect step insertions
     const stepsMeta = [
         { id: 1, label: "Purchase Context", desc: "Scope & department" },
         { id: 2, label: "Supplier Selection", desc: "Partner vendor matching" },
         { id: 3, label: "Purchase Intent", desc: "Justification & urgency" },
         { id: 4, label: "Line Items Builder", desc: "SKU quantity definitions" },
-        { id: 5, label: "Manufacturer Details", desc: "Optional origin tracking" },
-        { id: 6, label: "Pricing Controls", desc: "Rates & tiered adjustments" },
-        { id: 7, label: "Logistics & Freight", desc: "Routing & fulfillment" },
-        { id: 8, label: "Payment Terms", desc: "Milestones & accounting" },
-        { id: 9, label: "Review & Submit", desc: "Audit trail validation" }
+        { id: 5, label: "Warehouse Allocation", desc: "Downstream stock splits" },
+        { id: 6, label: "Logistics & Freight", desc: "Routing & fulfillment" },
+        { id: 7, label: "Payment Terms", desc: "Milestones & accounting" },
+        { id: 8, label: "Review & Submit", desc: "Audit trail validation" }
     ];
 
     return (
@@ -61,7 +60,6 @@ export default function PurchaseCreatePage() {
             <div className="max-w-[1660px] w-full mx-auto p-6 flex flex-col lg:flex-row gap-6 items-start flex-1">
 
                 {/* LEFT COLUMN: VISUALLY BALANCED STEP TIMELINE */}
-                {/* IMPROVED: Removed arbitrary inner overflows that mask or break custom sub-component layout rendering */}
                 <nav
                     aria-label="Progress tracking pipeline"
                     className="w-full lg:w-80 bg-white border border-slate-200 rounded-2xl p-4 lg:sticky lg:top-24 shadow-3xs shrink-0 block"
@@ -70,7 +68,6 @@ export default function PurchaseCreatePage() {
                         Execution Milestones
                     </p>
 
-                    {/* IMPROVED: Refined mobile horizontal margins to prevent card shadows from hitting outer layout edges */}
                     <ol role="list" className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-3 lg:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:display-none snap-x">
                         {stepsMeta.map((s) => {
                             const isCompleted = step > s.id;
@@ -115,7 +112,6 @@ export default function PurchaseCreatePage() {
                 </nav>
 
                 {/* RIGHT COLUMN: MAIN FORM WINDOW CONTAINER */}
-                {/* IMPROVED: Added absolute stacking root context wrapper space rules to protect dropdown overlays */}
                 <main className="relative flex-1 w-full bg-white border border-slate-200 rounded-2xl shadow-xs p-6 sm:p-8 lg:p-10 flex flex-col justify-between transition-all duration-150 min-h-[620px]">
 
                     <div className="focus:outline-none" id="form-stage-focus">
@@ -141,11 +137,10 @@ export default function PurchaseCreatePage() {
                             {step === 2 && <StepSupplierSelect {...stepProps} />}
                             {step === 3 && <StepPurchaseIntent {...stepProps} />}
                             {step === 4 && <StepItemsBuilder {...stepProps} />}
-                            {step === 5 && <StepOptionalManufacturer {...stepProps} />}
-                            {step === 6 && <StepPricingControl {...stepProps} />}
-                            {step === 7 && <StepLogistics {...stepProps} />}
-                            {step === 8 && <StepPaymentTerms {...stepProps} />}
-                            {step === 9 && <StepReviewSubmit {...stepProps} />}
+                            {step === 5 && <StepWarehouseAllocation {...stepProps} />}
+                            {step === 6 && <StepLogistics {...stepProps} />}
+                            {step === 7 && <StepPaymentTerms {...stepProps} />}
+                            {step === 8 && <StepReviewSubmit {...stepProps} />}
                         </div>
                     </div>
 

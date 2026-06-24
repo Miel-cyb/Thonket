@@ -5,6 +5,7 @@ import {
     Package,
     CheckCircle,
     ArrowRight,
+    AlertTriangle,
 } from "lucide-react";
 
 // PROCUREMENT FLOW NAVIGATOR - PREMIUM STEP NAVIGATION BAR
@@ -17,6 +18,7 @@ export default function ProcurementFlowNavigator({
         { id: "approved", label: "Approved", icon: CheckCircle, color: "emerald" },
         { id: "transit", label: "In Transit", icon: Truck, color: "blue" },
         { id: "receiving", label: "Receiving", icon: Package, color: "amber" },
+        { id: "issues", label: "Receiving Issues", icon: AlertTriangle, color: "rose" },
         { id: "completed", label: "Completed", icon: CheckCircle, color: "emerald" },
     ];
 
@@ -26,6 +28,7 @@ export default function ProcurementFlowNavigator({
             emerald: "bg-emerald-600 text-white shadow-md",
             blue: "bg-blue-600 text-white shadow-md",
             amber: "bg-amber-500 text-white shadow-md",
+            rose: "bg-rose-600 text-white shadow-md",
         };
         return map[color] || map.slate;
     };
@@ -53,6 +56,7 @@ export default function ProcurementFlowNavigator({
                         <React.Fragment key={stage.id}>
 
                             <button
+                                type="button"
                                 onClick={() => setActiveStage(stage.id)}
                                 className={`
                                     group flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-semibold transition-all duration-200
@@ -74,7 +78,7 @@ export default function ProcurementFlowNavigator({
 
                             {/* Connector Line */}
                             {index < stages.length - 1 && (
-                                <div className="hidden md:block h-px w-6 bg-slate-200" />
+                                <div className="hidden md:block h-px w-6 bg-slate-200 shrink-0" />
                             )}
                         </React.Fragment>
                     );

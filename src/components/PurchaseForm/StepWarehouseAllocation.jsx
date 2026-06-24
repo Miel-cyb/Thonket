@@ -1,4 +1,3 @@
-// File: ../components/PurchaseForm/StepWarehouseAllocation.jsx
 import React from "react";
 import { Warehouse, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 

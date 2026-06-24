@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // ✅ 1. IMPORT NAVIGATE HOOK
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 
 // GLOBAL RUNTIME SYSTEM IMPORT
 import WizardHeader from "../components/PurchaseForm/WizardHeader";
@@ -9,32 +10,189 @@ import StepPurchaseContext from "../components/PurchaseForm/StepPurchaseContext"
 import StepSupplierSelect from "../components/PurchaseForm/StepSupplierSelect";
 import StepPurchaseIntent from "../components/PurchaseForm/StepPurchaseIntent";
 import StepItemsBuilder from "../components/PurchaseForm/StepItemsBuilder";
-import StepWarehouseAllocation from "../components/PurchaseForm/StepWarehouseAllocation"; // Imported Allocation Stage
+import StepWarehouseAllocation from "../components/PurchaseForm/StepWarehouseAllocation";
 import StepLogistics from "../components/PurchaseForm/StepLogistics";
 import StepPaymentTerms from "../components/PurchaseForm/StepPaymentTerms";
 import StepReviewSubmit from "../components/PurchaseForm/StepReviewSubmit";
+import { API_ENDPOINTS } from "../utils/urls";
 
 export default function PurchaseCreatePage() {
+    const navigate = useNavigate(); // ✅ 2. INITIALIZE NAVIGATION ROUTER
     const [step, setStep] = useState(1);
-    const totalSteps = 8; // Incremented total count from 7 to 8
+    const [loading, setLoading] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
+    const totalSteps = 8;
+
+    // --- USER SESSION PROFILE ---
+    const currentUser = {
+        userId: "usr-active-99231",
+        username: "operations_admin",
+        role: "admin"
+    };
 
     const [form, setForm] = useState({
         context: {},
         supplier: null,
         intent: {},
         items: [],
-        allocations: {}, // Structured matrix store for downstream warehouse distribution splits
+        allocations: {},
         logistics: {},
         payment: {},
-        currency: "GHS" // Configured to Ghana Cedis
+        currency: "GHS"
     });
 
     const next = () => setStep((s) => Math.min(s + 1, totalSteps));
     const back = () => setStep((s) => Math.max(s - 1, 1));
 
+    const warehouseKeys = ["wh-accra", "wh-kumasi", "wh-takoradi", "wh-tamale"];
+
+    const validateFormData = () => {
+        if (!form.context || Object.keys(form.context).length === 0) return "Missing purchase context details.";
+        if (!form.supplier) return "Please select a partner vendor supplier.";
+        if (!form.intent || Object.keys(form.intent).length === 0) return "Purchase justification intent is required.";
+        if (!form.items || form.items.length === 0) return "Line Items Builder must have at least 1 SKU item.";
+
+        if (!form.allocations || Object.keys(form.allocations).length === 0) {
+            return "Warehouse allocation distributions are unassigned.";
+        }
+
+        for (const item of form.items) {
+            const targetQty = parseInt(item.qty) || 0;
+            const itemAllocations = form.allocations[item.id] || {};
+
+            const totalAllocated = warehouseKeys.reduce((sum, key) => {
+                return sum + (parseInt(itemAllocations[key]) || 0);
+            }, 0);
+
+            if (totalAllocated !== targetQty) {
+                return `Allocation imbalance found: SKU "${item.sku || "Unknown"}" requires exactly ${targetQty} units allocated, but has ${totalAllocated} assigned.`;
+            }
+        }
+
+        if (!form.logistics || Object.keys(form.logistics).length === 0) return "Fulfillment logistics configurations are missing.";
+        if (!form.payment || Object.keys(form.payment).length === 0) return "Accounting payment milestones are unassigned.";
+        return null;
+    };
+
+    const handleSubmit = async () => {
+        setSubmitError(null);
+
+        const validationError = validateFormData();
+        if (validationError) {
+            setSubmitError(validationError);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            let runningOrderTotal = 0;
+            const synchronizedItems = form.items.map((item) => {
+                const qtyOrdered = parseInt(item.qty) || 0;
+                const unitPrice = parseFloat(item.price || item.unitPrice) || 0;
+                const totalCalculatedLine = qtyOrdered * unitPrice;
+
+                runningOrderTotal += totalCalculatedLine;
+
+                return {
+                    itemId: String(item.id || item.itemId || ''),
+                    productId: String(item.productId || ''),
+                    variantId: String(item.variantId || ''),
+                    sku: item.sku || 'N/A',
+                    desc: item.desc || '',
+                    productName: item.productName || item.name || '',
+                    brand: item.brand || '',
+                    unitOfMeasure: item.unitOfMeasure || 'PCS',
+                    qtyOrdered: qtyOrdered,
+                    unitPrice: unitPrice,
+                    lineTotal: totalCalculatedLine
+                };
+            });
+
+            const synchronizedAllocations = [];
+            if (form.allocations) {
+                Object.entries(form.allocations).forEach(([itemId, targetWarehouses]) => {
+                    Object.entries(targetWarehouses).forEach(([warehouseId, quantity]) => {
+                        const parsedQty = parseInt(quantity) || 0;
+                        if (parsedQty > 0) {
+                            synchronizedAllocations.push({
+                                itemId: itemId,
+                                warehouseId: warehouseId,
+                                quantity: parsedQty
+                            });
+                        }
+                    });
+                });
+            }
+
+            const payload = {
+                createdBy: {
+                    userId: currentUser.userId,
+                    username: currentUser.username,
+                    role: currentUser.role
+                },
+                context: {
+                    title: form.context.title || "Bulk Oil Order",
+                    type: form.context.type || "Bulk Restock"
+                },
+                intent: {
+                    description: form.intent.description || "",
+                    priority: form.intent.priority || "routine"
+                },
+                supplier: {
+                    supplierId: form.supplier?.id || form.supplier?.supplierId || null,
+                    name: form.supplier?.name || "",
+                    location: form.supplier?.location || "",
+                    businessType: form.supplier?.businessType || "",
+                    riskLevel: form.supplier?.riskLevel || ""
+                },
+                items: synchronizedItems,
+                allocations: synchronizedAllocations,
+                logistics: {
+                    deliveryType: form.logistics.deliveryType || "supplier",
+                    expectedDispatchDate: form.logistics.expectedDispatchDate ? new Date(form.logistics.expectedDispatchDate) : null,
+                    expectedDeliveryDate: form.logistics.expectedDeliveryDate ? new Date(form.logistics.expectedDeliveryDate) : null,
+                    destination: form.logistics.destination || ""
+                },
+                payment: {
+                    method: form.payment.method || "",
+                    terms: form.payment.terms || "upfront",
+                    advance: Number(form.payment.advance) || 0
+                },
+                pricing: {
+                    currency: form.currency || "GHS",
+                    totalCost: runningOrderTotal
+                },
+                documentStatus: "submitted"
+            };
+
+            const purchaseApi = API_ENDPOINTS.PURCHASE_ORDERS;
+            const response = await fetch(purchaseApi, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.message || `Server execution error status: ${response.status}`);
+            }
+
+            await response.json();
+
+            // ✅ 3. REDIRECT USER UPON SUCCESS
+            navigate("/procurement");
+
+        } catch (err) {
+            setSubmitError(err.message || "An unexpected error occurred during submission.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const stepProps = { form, setForm, next, back };
 
-    // Meta pipelines mapped explicitly to reflect step insertions
     const stepsMeta = [
         { id: 1, label: "Purchase Context", desc: "Scope & department" },
         { id: 2, label: "Supplier Selection", desc: "Partner vendor matching" },
@@ -49,17 +207,14 @@ export default function PurchaseCreatePage() {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-indigo-100 flex flex-col font-normal text-base">
 
-            {/* INTEGRATED STANDALONE MODULAR HEADER */}
             <WizardHeader
                 currentStep={step}
                 totalSteps={totalSteps}
                 onBack={back}
             />
 
-            {/* UNCLAMPED TWO-COLUMN WORKSPACE WRAPPER */}
             <div className="max-w-[1660px] w-full mx-auto p-6 flex flex-col lg:flex-row gap-6 items-start flex-1">
 
-                {/* LEFT COLUMN: VISUALLY BALANCED STEP TIMELINE */}
                 <nav
                     aria-label="Progress tracking pipeline"
                     className="w-full lg:w-80 bg-white border border-slate-200 rounded-2xl p-4 lg:sticky lg:top-24 shadow-3xs shrink-0 block"
@@ -76,7 +231,7 @@ export default function PurchaseCreatePage() {
                             return (
                                 <li key={s.id} className="snap-center shrink-0 min-w-[220px] lg:min-w-0 w-auto lg:w-full">
                                     <button
-                                        disabled={s.id > step}
+                                        disabled={s.id > step || loading}
                                         onClick={() => setStep(s.id)}
                                         className={`w-full flex items-center gap-3.5 p-3 rounded-xl border text-left transition-all duration-150 outline-none ${isActive
                                             ? "bg-slate-900 border-slate-900 text-white font-semibold shadow-xs"
@@ -111,12 +266,10 @@ export default function PurchaseCreatePage() {
                     </ol>
                 </nav>
 
-                {/* RIGHT COLUMN: MAIN FORM WINDOW CONTAINER */}
                 <main className="relative flex-1 w-full bg-white border border-slate-200 rounded-2xl shadow-xs p-6 sm:p-8 lg:p-10 flex flex-col justify-between transition-all duration-150 min-h-[620px]">
 
                     <div className="focus:outline-none" id="form-stage-focus">
 
-                        {/* CLEAN INTERNAL PANEL HEADER */}
                         <header className="mb-6 pb-4 border-b border-slate-100 flex items-end justify-between gap-4">
                             <div>
                                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 block mb-1">
@@ -131,7 +284,12 @@ export default function PurchaseCreatePage() {
                             </span>
                         </header>
 
-                        {/* HOUSES INNER DYNAMIC COMPONENT MODULES */}
+                        {submitError && (
+                            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-sm font-medium">
+                                {submitError}
+                            </div>
+                        )}
+
                         <div className="text-slate-700 font-normal text-base">
                             {step === 1 && <StepPurchaseContext {...stepProps} />}
                             {step === 2 && <StepSupplierSelect {...stepProps} />}
@@ -144,12 +302,12 @@ export default function PurchaseCreatePage() {
                         </div>
                     </div>
 
-                    {/* CONTROL FOOTER BAR */}
                     <footer className="flex items-center justify-between border-t border-slate-100 pt-6 mt-10 z-10 bg-white">
                         <button
+                            type="button"
                             onClick={back}
-                            disabled={step === 1}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150 ${step === 1
+                            disabled={step === 1 || loading}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all duration-150 ${step === 1 || loading
                                 ? "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
                                 : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-3xs"
                                 }`}
@@ -159,15 +317,27 @@ export default function PurchaseCreatePage() {
                         </button>
 
                         <button
-                            onClick={next}
-                            disabled={step === totalSteps}
+                            type="button"
+                            onClick={step === totalSteps ? handleSubmit : next}
+                            disabled={loading}
                             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 shadow-3xs ${step === totalSteps
-                                ? "bg-slate-50 border border-slate-100 text-slate-300 cursor-not-allowed"
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-600/10"
                                 : "bg-slate-900 text-white hover:bg-slate-800 focus:ring-4 focus:ring-slate-900/10"
-                                }`}
+                                } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
                         >
-                            {step === totalSteps ? "Review Completed" : "Save & Continue"}
-                            {step !== totalSteps && <ArrowRight size={16} />}
+                            {loading ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Processing...
+                                </>
+                            ) : step === totalSteps ? (
+                                "Submit Purchase Order"
+                            ) : (
+                                <>
+                                    Save & Continue
+                                    <ArrowRight size={16} />
+                                </>
+                            )}
                         </button>
                     </footer>
                 </main>

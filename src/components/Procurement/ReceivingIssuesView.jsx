@@ -1,41 +1,49 @@
+
 import React from "react";
 import {
-    Boxes,
-    AlertCircle,
+    AlertTriangle,
     ArrowUpRight,
     MoreHorizontal,
-    Activity,
     PackageX,
-    CheckCircle2
+    ShieldAlert,
+    Info
 } from "lucide-react";
 
-// WAREHOUSE RECEIVING VIEW - LIVE DATA STATE SYNCHRONIZED VERSION
-export default function WarehouseReceivingView({ orders = [], selectedPO, setSelectedPO }) {
+// RECEIVING ISSUES VIEW - LIVE DISCREPANCY STATE SYNCHRONIZED VERSION
+export default function ReceivingIssuesView({ orders = [], selectedPO, setSelectedPO }) {
+
+    // Helper formatter for premium currency rendering
+    const formatCurrency = (amount, currencyCode = "GHS") => {
+        return new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: currencyCode,
+        }).format(amount);
+    };
 
     return (
-        <div className="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200/70 bg-white shadow-xs">
+        <div className="flex h-full min-h-0 flex-col rounded-3xl border border-rose-100 bg-white shadow-xs">
 
             {/* HEADER */}
-            <div className="shrink-0 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-white px-6 py-4">
+            <div className="shrink-0 border-b border-rose-100 bg-gradient-to-r from-rose-50 via-white to-white px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                            <Boxes size={20} />
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+                            <AlertTriangle size={20} />
                         </div>
                         <div>
                             <h2 className="text-base font-bold tracking-tight text-slate-900">
-                                Warehouse Receiving
+                                Receiving Issues
                             </h2>
                             <p className="mt-0.5 text-xs text-slate-400 font-medium">
-                                Inbound manifests requiring matching and physical inventory reconciliation.
+                                Active shipment discrepancies, shortfalls, and item exceptions.
                             </p>
                         </div>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/70 px-3 py-1.5">
-                        <Activity size={13} className="text-indigo-600 animate-pulse" />
-                        <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wide">
-                            {Number(orders?.length || 0)} Active Intakes
+                    <div className="hidden md:flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50/70 px-3 py-1.5">
+                        <ShieldAlert size={13} className="text-rose-600 animate-pulse" />
+                        <span className="text-[11px] font-bold text-rose-800 uppercase tracking-wide">
+                            {Number(orders?.length || 0)} Needs Attention
                         </span>
                     </div>
                 </div>
@@ -51,9 +59,9 @@ export default function WarehouseReceivingView({ orders = [], selectedPO, setSel
                             <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-3">
                                 <PackageX size={20} />
                             </div>
-                            <h3 className="text-sm font-bold text-slate-800">No Orders Available for Intake</h3>
+                            <h3 className="text-sm font-bold text-slate-800">No Discrepancies Found</h3>
                             <p className="text-xs text-slate-400 max-w-xs mt-1">
-                                Freight manifest documents auto-populate here once shipments have been processed or released from carriers.
+                                Excellent! All recent freight gate arrivals match their purchase order parameters completely.
                             </p>
                         </div>
                     ) : (
@@ -61,46 +69,21 @@ export default function WarehouseReceivingView({ orders = [], selectedPO, setSel
                             {orders.map((po) => {
                                 if (!po || !po._id) return null;
 
+                                // Dynamically tally up items to highlight the magnitude of the receiving shortfall
                                 const lineItems = po.items || [];
+                                const totalOrdered = lineItems.reduce((sum, item) => sum + (item.quantity || item.qtyOrdered || 0), 0);
+                                const totalAccepted = lineItems.reduce((sum, item) => sum + (item.qtyAccepted ?? item.quantity ?? item.qtyOrdered ?? 0), 0);
+                                const missingCount = Math.max(0, totalOrdered - totalAccepted);
 
-                                // LIFECYCLE: Calculate targeted vs scanned quantities dynamically
-                                const totalTargetQty = lineItems.reduce((sum, item) => sum + (item.quantity || item.qtyOrdered || 0), 0);
-                                const totalScannedQty = lineItems.reduce((sum, item) => sum + (item.scannedQty || 0), 0);
-
-                                // LIFECYCLE: Match parameters to discover system discrepancies
-                                const itemsWithDiscrepancies = lineItems.filter(
-                                    item => (item.scannedQty || 0) > (item.quantity || item.qtyOrdered || 0) || item.discrepancy === true
-                                );
-
-                                const hasDiscrepancyAlert = itemsWithDiscrepancies.length > 0;
-                                const isFullyReceived = totalTargetQty > 0 && totalScannedQty === totalTargetQty && !hasDiscrepancyAlert;
+                                const isHighPriority = po.intent?.priority === "critical" || missingCount > 5;
                                 const isSelected = selectedPO?._id === po._id;
-
-                                // LIFECYCLE: State Machine for Badge UI presentation mapping
-                                let statusLabel = "PENDING";
-                                let statusStyles = "bg-slate-100 text-slate-600 border-slate-200";
-                                let avatarStyles = "bg-slate-100 text-slate-600 group-hover:bg-slate-200/80";
-
-                                if (hasDiscrepancyAlert) {
-                                    statusLabel = "DISCREPANCY";
-                                    statusStyles = "bg-amber-50 text-amber-700 border-amber-200 animate-pulse";
-                                    avatarStyles = "bg-amber-50 text-amber-600 group-hover:bg-amber-100";
-                                } else if (isFullyReceived) {
-                                    statusLabel = "RECONCILED";
-                                    statusStyles = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    avatarStyles = "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100";
-                                } else if (totalScannedQty > 0) {
-                                    statusLabel = "PARTIAL";
-                                    statusStyles = "bg-blue-50 text-blue-700 border-blue-200";
-                                    avatarStyles = "bg-blue-50 text-blue-600 group-hover:bg-blue-100";
-                                }
 
                                 return (
                                     <div
                                         key={String(po._id)}
                                         onClick={() => setSelectedPO?.(po)}
                                         className={`group rounded-2xl border p-4 transition-all duration-200 cursor-pointer ${isSelected
-                                            ? "border-indigo-600 bg-indigo-50/30 shadow-xs ring-1 ring-indigo-600/20"
+                                            ? "border-rose-600 bg-rose-50/20 shadow-xs ring-1 ring-rose-600/20"
                                             : "border-slate-200 bg-white shadow-3xs hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
                                             }`}
                                     >
@@ -108,14 +91,17 @@ export default function WarehouseReceivingView({ orders = [], selectedPO, setSel
 
                                             {/* LEFT TEXT CONTENT SUMMARY */}
                                             <div className="flex items-start gap-4 min-w-0">
-                                                <div className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors ${avatarStyles}`}>
-                                                    <Boxes size={18} />
+                                                <div className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors ${isHighPriority
+                                                    ? "bg-rose-100 text-rose-600 group-hover:bg-rose-200"
+                                                    : "bg-amber-50 text-amber-600 group-hover:bg-amber-100"
+                                                    }`}>
+                                                    <AlertTriangle size={18} />
                                                 </div>
 
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <h3 className="text-sm font-bold text-slate-900 truncate">
-                                                            {String(po.context?.title || "Untitled Intake Manifest")}
+                                                            {String(po.supplier || po.context?.title || "Unknown Supplier")}
                                                         </h3>
                                                         <ArrowUpRight
                                                             size={14}
@@ -124,16 +110,25 @@ export default function WarehouseReceivingView({ orders = [], selectedPO, setSel
                                                     </div>
 
                                                     <p className="text-[11px] font-medium text-slate-400 mt-0.5 truncate">
-                                                        Supplier: <span className="text-slate-600">{String(po.supplier || po.context?.type || "Standard Vendor")}</span> • ID: <span className="font-mono">{String(po._id).slice(-6).toUpperCase()}</span>
+                                                        PO Source: <span className="text-slate-600 font-mono">{String(po._id).slice(-6).toUpperCase()}</span> • Handler: <span className="text-slate-600">{String(po.context?.type || "Standard")}</span>
                                                     </p>
 
-                                                    {/* RECEIVING PROGRESS READOUT LIFECYCLE BAR */}
-                                                    <div className="mt-2.5 flex items-center gap-3 text-xs font-semibold text-slate-500">
+                                                    {/* SHORTFALL COUNTERS */}
+                                                    <div className="mt-2.5 flex items-center gap-2 flex-wrap text-xs font-semibold">
                                                         <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">
-                                                            {lineItems.length} {lineItems.length === 1 ? 'line item' : 'line items'}
+                                                            Received {totalAccepted}/{totalOrdered} Items
                                                         </span>
-                                                        <span className="text-slate-400 font-medium">
-                                                            Progress: <span className="text-slate-900 font-bold">{Number(totalScannedQty)}</span> / <span className="text-slate-700 font-bold">{Number(totalTargetQty)} received</span>
+                                                        {missingCount > 0 ? (
+                                                            <span className="bg-rose-50 text-rose-700 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                <Info size={10} /> Shortfallage (-{missingCount})
+                                                            </span>
+                                                        ) : (
+                                                            <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md">
+                                                                Damaged Variant Exception
+                                                            </span>
+                                                        )}
+                                                        <span className="text-slate-900 font-bold ml-1">
+                                                            {formatCurrency(po.pricing?.totalCost || 0, po.pricing?.currency)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -141,10 +136,11 @@ export default function WarehouseReceivingView({ orders = [], selectedPO, setSel
 
                                             {/* RIGHT INTERACTIVE STATUS CONTROLS */}
                                             <div className="flex items-center gap-2 shrink-0">
-                                                <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider border ${statusStyles}`}>
-                                                    {hasDiscrepancyAlert && <AlertCircle size={11} />}
-                                                    {isFullyReceived && <CheckCircle2 size={11} />}
-                                                    {statusLabel}
+                                                <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider ${isHighPriority
+                                                    ? "bg-rose-100 text-rose-700 animate-pulse"
+                                                    : "bg-amber-100 text-amber-800"
+                                                    }`}>
+                                                    {isHighPriority ? "CRITICAL DISCREPANCY" : "UNDER REVIEW"}
                                                 </span>
 
                                                 <button

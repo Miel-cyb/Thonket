@@ -7,9 +7,11 @@ import {
     Clock,
     ShoppingBag,
 } from "lucide-react";
+// Import your detailed visualization component 
+import PurchaseOrderDetailView from "../../pages/PurchaseOrderDetailView";
 
 // PURCHASE REQUESTS VIEW - LIVE DATA STATE SYNCHRONIZED VERSION
-export default function PurchaseRequestsView({ orders = [], selectedPO, setSelectedPO }) {
+export default function PurchaseRequestsView({ orders = [], selectedPO, setSelectedPO, onUpdateCycleState }) {
 
     // Helper formatter for pricing displays
     const formatCurrency = (amount, currencyCode = "GHS") => {
@@ -18,6 +20,17 @@ export default function PurchaseRequestsView({ orders = [], selectedPO, setSelec
             currency: currencyCode,
         }).format(amount);
     };
+
+    // --- CONDITIONALLY RENDER DETAIL ROUTE IF AN ENTRY IS SELECTED ---
+    if (selectedPO) {
+        return (
+            <PurchaseOrderDetailView
+                selectedPO={selectedPO}
+                onClose={() => setSelectedPO?.(null)}
+                onUpdateCycleState={onUpdateCycleState}
+            />
+        );
+    }
 
     return (
         <div className="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200/70 bg-white shadow-xs">
@@ -66,9 +79,15 @@ export default function PurchaseRequestsView({ orders = [], selectedPO, setSelec
                     ) : (
                         <div className="space-y-3.5">
                             {orders.map((po) => {
-                                const itemCount = po.items?.reduce((sum, item) => sum + (item.qtyOrdered || 0), 0) || 0;
+                                const itemCount = po.items?.reduce((sum, item) => sum + (item.qtyOrdered || item.quantity || 0), 0) || 0;
                                 const isCritical = po.intent?.priority === "critical";
                                 const isSelected = selectedPO?._id === po._id;
+
+                                // Safe supplier name evaluation parser to prevent rendering an Object node
+                                const derivedSupplierName =
+                                    po.supplier && typeof po.supplier === "string"
+                                        ? po.supplier
+                                        : (po.context?.title || po.supplier?.name || `PO Asset Line (ID: ${String(po._id).slice(-4)})`);
 
                                 return (
                                     <div
@@ -96,7 +115,7 @@ export default function PurchaseRequestsView({ orders = [], selectedPO, setSelec
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <h3 className="text-sm font-bold text-slate-900 truncate">
-                                                            {po.context?.title || "Untitled Purchase Intent"}
+                                                            {derivedSupplierName}
                                                         </h3>
                                                         <ArrowUpRight
                                                             size={14}
@@ -133,9 +152,10 @@ export default function PurchaseRequestsView({ orders = [], selectedPO, setSelec
                                                 </span>
 
                                                 <button
+                                                    type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        // Strategy hook for sub-level menu context triggers
+                                                        setSelectedPO?.(po);
                                                     }}
                                                     className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                                                 >

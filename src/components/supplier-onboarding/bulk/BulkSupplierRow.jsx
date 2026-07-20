@@ -6,7 +6,7 @@ import StepContactInformation from "../single/StepContactInformation";
 import StepLocationDetails from "../single/StepLocationDetails";
 import StepSupplyCapability from "../single/StepSupplyCapability";
 import StepCoverageLogistics from "../single/StepCoverageLogistics";
-import StepComplianceRisk from "../single/StepComplianceRisk";
+import StepSupplierType from "../single/StepSupplierType";
 import StepReview from "../single/StepReview";
 
 export default function BulkSupplierRow({
@@ -30,7 +30,7 @@ export default function BulkSupplierRow({
         { id: "locationDetails", name: "Location", component: StepLocationDetails },
         { id: "supplyCapability", name: "Supply", component: StepSupplyCapability },
         { id: "coverageLogistics", name: "Logistics", component: StepCoverageLogistics },
-        { id: "complianceRisk", name: "Compliance", component: StepComplianceRisk },
+        { id: "supplierType", name: "Payment Profile", component: StepSupplierType },
         { id: "review", name: "Review", component: StepReview },
     ];
 

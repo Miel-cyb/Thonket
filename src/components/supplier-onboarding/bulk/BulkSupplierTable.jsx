@@ -5,7 +5,7 @@ import BulkSupplierSubmitBar from "./BulkSupplierSubmitBar";
 import { API_ENDPOINTS } from "../../../utils/urls";
 
 export default function BulkSupplierTable() {
-    // Cleaned schema layout blueprint mirroring operational field settings
+    // Cleaned schema layout blueprint mirroring operational field settings exactly
     const createEmptySupplierTemplate = () => ({
         id: Date.now() + Math.random(),
         businessIdentity: {
@@ -25,28 +25,33 @@ export default function BulkSupplierTable() {
             emailAddress: "",
             phoneNumber: "",
             whatsappNumber: "",
+            secondaryContacts: [], // Preserved collection wrapper array
         },
         locationDetails: {
             headOfficeAddress: "",
             cityRegion: "",
-            country: "",
+            warehouseLocations: "",
         },
         coverageLogistics: {
-            deliveryType: "",
-            deliveryCapability: "",
-            operatingHours: "",
+            deliveryType: "supplier",
+            deliveryCapability: "local",
+            operatingDays: [], // Split from generic operatingHours
+            operatingHoursStart: "",
+            operatingHoursEnd: "",
             coverageAreas: "",
         },
         supplyCapability: {
-            productCategories: [],
+            productCategories: "",
             brandsHandled: "",
-            capacity: { value: 0, unit: "units" },
+            capacity: { value: "", unit: "units" },
             availabilityType: "always",
         },
-        complianceRisk: {
-            verificationStatus: "pending",
-            riskLevel: "medium",
-            complianceNotes: "",
+        supplierType: { // Injected commercial terms state slice registry
+            paymentTermsType: "",
+            creditTermsWindow: "",
+            creditTermsWindowCustom: "",
+            creditLimitAmount: "",
+            billingNotes: "",
         }
     });
 
@@ -71,7 +76,7 @@ export default function BulkSupplierTable() {
                 const updatedRow = { ...row };
 
                 Object.keys(updatedFields).forEach((key) => {
-                    if (typeof updatedFields[key] === "object" && updatedFields[key] !== null) {
+                    if (typeof updatedFields[key] === "object" && updatedFields[key] !== null && !Array.isArray(updatedFields[key])) {
                         updatedRow[key] = {
                             ...(updatedRow[key] || {}),
                             ...updatedFields[key]
@@ -122,7 +127,7 @@ export default function BulkSupplierTable() {
                 throw new Error(`Server responded with layout state code: ${response.status}`);
             }
 
-            // Client routing redirection fallback engine to step over framework variants (Next.js vs React Router)
+            // Client routing redirection fallback engine
             if (typeof window !== "undefined") {
                 window.location.href = "/suppliers";
             }
@@ -152,7 +157,7 @@ export default function BulkSupplierTable() {
                 </div>
             </div>
 
-            {/* Form Row Layout Scroll Area with Custom Chrome Track Injections */}
+            {/* Form Row Layout Scroll Area */}
             <div className="divide-y divide-slate-100 bg-white max-h-[60vh] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent">
                 {suppliers.map((supplier, index) => (
                     <BulkSupplierRow

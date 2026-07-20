@@ -108,11 +108,23 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
 
     // Helper handler managing capacity nesting structures safely
     const handleNestedCapacityChange = (nestedKey, value) => {
-        const currentCapacity = localData.capacity || { value: 0, unit: "units" };
+        const currentCapacity = localData.capacity || { value: "", unit: "units" };
+
+        let processedValue = value;
+        if (nestedKey === "value") {
+            // Check if input is empty first to allow clearing the field completely
+            if (value === "") {
+                processedValue = "";
+            } else {
+                const parsed = Number(value);
+                processedValue = isNaN(parsed) ? value : parsed;
+            }
+        }
+
         updateFormData("supplyCapability", {
             capacity: {
                 ...currentCapacity,
-                [nestedKey]: nestedKey === "value" ? Number(value) || 0 : value
+                [nestedKey]: processedValue
             }
         });
     };
@@ -237,7 +249,7 @@ export default function StepSupplyCapability({ formData, updateFormData }) {
                             type="number"
                             name="capacityValue"
                             min="0"
-                            value={(localData.capacity && localData.capacity.value) ?? ""}
+                            value={(localData.capacity && localData.capacity.value) !== undefined ? localData.capacity.value : ""}
                             onChange={(e) => handleNestedCapacityChange("value", e.target.value)}
                             placeholder="e.g., 25000"
                             className="w-full pl-4 pr-3 py-2.5 text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"

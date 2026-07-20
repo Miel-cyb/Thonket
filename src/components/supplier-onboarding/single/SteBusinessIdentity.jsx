@@ -98,7 +98,7 @@ export default function StepBusinessIdentity({ formData, updateFormData }) {
                         name="countryOfOperation"
                         value={localData.countryOfOperation || ""}
                         onChange={handleChange}
-                        placeholder="e.g., United Kingdom"
+                        placeholder="e.g., Ghana"
                         className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all shadow-sm"
                         required
                     />

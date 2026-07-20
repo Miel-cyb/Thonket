@@ -7,7 +7,7 @@ import StepContactInformation from "../single/StepContactInformation";
 import StepLocationDetails from "../single/StepLocationDetails";
 import StepSupplyCapability from "../single/StepSupplyCapability";
 import StepCoverageLogistics from "../single/StepCoverageLogistics";
-import StepComplianceRisk from "../single/StepComplianceRisk";
+import StepSupplierType from "../single/StepSupplierType";
 import StepReview from "../single/StepReview";
 import { API_ENDPOINTS } from "../../../utils/urls";
 
@@ -58,7 +58,7 @@ export default function SingleSupplierWizard() {
             },
             availabilityType: "always",
         },
-        complianceRisk: {
+        supplierType: {
             verificationStatus: "pending", // Schema fallback defaults
             riskLevel: "medium",
             complianceNotes: "",
@@ -72,7 +72,7 @@ export default function SingleSupplierWizard() {
         { id: "location", name: "Location", component: StepLocationDetails },
         { id: "supply", name: "Supply", component: StepSupplyCapability },
         { id: "logistics", name: "Logistics", component: StepCoverageLogistics },
-        { id: "compliance", name: "Compliance", component: StepComplianceRisk },
+        { id: "payment-profile", name: "Payment Profile", component: StepSupplierType },
         { id: "review", name: "Review", component: StepReview },
     ];
 

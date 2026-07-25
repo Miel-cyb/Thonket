@@ -10,6 +10,7 @@ import WarehousePage from './pages/WarehousePage';
 import productsData from "@/data/products";
 import AdminPage from './admin/AdminPage';
 import ProductPricing from './components/WarehouseOverview/ProductPricing.jsx';
+import ExpectedDeliveriesPage from './pages/ExpectedDelivery.jsx';
 import CategoriesPage from './pages/CategoriesPage';
 import ProductsPage from './pages/ProductPage';
 import FleetDashboardPage from './pages/FleetDashboardPage';
@@ -146,6 +147,11 @@ function App() {
               onReportSubmit={handleReportSubmit}
             />
           }
+        />
+
+        <Route
+          path="/expected-deliveries"
+          element={<ExpectedDeliveriesPage />}
         />
         <Route
           path="/fleet/manager"

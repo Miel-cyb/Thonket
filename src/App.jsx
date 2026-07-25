@@ -24,6 +24,7 @@ import SupplierList from './pages/SuppliersPage'
 import SupplierDetailPage from './pages/SupplierDetailPage';
 import PurchaseCreatePage from './pages/PurchaseCreatePage';
 import PriceDetailPage from './pages/PriceDetailPage'
+import ReceivingDeliveriesPage from './pages/InboundDeliveryPage'
 
 
 
@@ -153,6 +154,13 @@ function App() {
           path="/expected-deliveries"
           element={<ExpectedDeliveriesPage />}
         />
+
+        <Route
+          path="/inbound-deliveries"
+          element={<ReceivingDeliveriesPage />}
+        />
+
+
         <Route
           path="/fleet/manager"
           element={<FleetDashboardPage userRole="manager" />}

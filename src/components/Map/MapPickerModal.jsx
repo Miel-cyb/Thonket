@@ -2,46 +2,74 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
-import { X, MapPin, Search, Navigation, CheckCircle2, Loader2, LocateFixed } from "lucide-react";
+import { X, MapPin, Search, Navigation, CheckCircle2, Loader2, LocateFixed, AlertTriangle } from "lucide-react";
 
+// Kept outside component scope to maintain strict reference equality
 const LIBRARIES = ['places'];
 const MAP_STYLES = [
     { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-    { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] }
+    { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off text" }] }
 ];
 
+const DEFAULT_COORDS = { lat: 5.6037, lng: -0.1870 }; // Default: Accra, Ghana
+
 export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLocation }) {
+    // Read Next.js public env variable safely
+    const apiKey = "AIzaSyB-uZ5sb5KzDCf3Fjx-mZvD8_XaNhC0qyk"; // process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    // process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
-        googleMapsApiKey: 'AIzaSyB-uZ5sb5KzDCf3Fjx-mZvD8_XaNhC0qyk',
+        googleMapsApiKey: apiKey,
         libraries: LIBRARIES
     });
 
     const [map, setMap] = useState(null);
     const [autocomplete, setAutocomplete] = useState(null);
-    const [tempCoords, setTempCoords] = useState({ lat: 5.6037, lng: -0.1870 });
+    const [tempCoords, setTempCoords] = useState(DEFAULT_COORDS);
     const [resolvedAddress, setResolvedAddress] = useState("Locating...");
+    const [searchValue, setSearchValue] = useState("");
 
-    // Crucial: This ref prevents handleIdle from overwriting search results
     const skipNextGeocode = useRef(false);
     const isPanning = useRef(false);
+    const debounceTimer = useRef(null);
+    const geocodeRequestId = useRef(0);
 
     const mapOptions = useMemo(() => ({
         disableDefaultUI: true,
         clickableIcons: false,
         styles: MAP_STYLES,
-        gestureHandling: "greedy"
+        gestureHandling: "cooperative"
     }), []);
 
+    // Helper to sanitize incoming location formats (handles objects vs array [lng, lat])
+    const parseLocation = useCallback((loc) => {
+        if (!loc) return DEFAULT_COORDS;
+        if (Array.isArray(loc) && loc.length >= 2) {
+            return { lng: Number(loc[0]) || DEFAULT_COORDS.lng, lat: Number(loc[1]) || DEFAULT_COORDS.lat };
+        }
+        if (typeof loc === 'object' && loc.lat !== undefined && loc.lng !== undefined) {
+            return { lat: Number(loc.lat), lng: Number(loc.lng) };
+        }
+        return DEFAULT_COORDS;
+    }, []);
+
     const fetchAddress = useCallback((lat, lng) => {
-        if (!window.google || !window.google.maps) return;
+        if (typeof window === 'undefined' || !window.google || !window.google.maps) return;
+
+        const currentRequestId = ++geocodeRequestId.current;
         const geocoder = new window.google.maps.Geocoder();
 
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === "OK" && results[0]) {
-                setResolvedAddress(results[0].formatted_address);
+            if (currentRequestId !== geocodeRequestId.current) return;
+
+            if (status === "OK" && Array.isArray(results) && results[0]?.formatted_address) {
+                const formatted = results[0].formatted_address;
+                setResolvedAddress(formatted);
+                setSearchValue(formatted);
+            } else if (status === "OVER_QUERY_LIMIT") {
+                setResolvedAddress(`Location near ${lat.toFixed(4)}, ${lng.toFixed(4)} (Rate limited)`);
             } else {
-                // Instead of "Unknown", show the coordinates so the user knows it's working
                 setResolvedAddress(`Location near ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
             }
         });
@@ -49,33 +77,40 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
 
     useEffect(() => {
         if (isOpen && isLoaded) {
-            const coords = initialLocation?.lat ? initialLocation : { lat: 5.6037, lng: -0.1870 };
+            const coords = parseLocation(initialLocation);
             setTempCoords(coords);
             fetchAddress(coords.lat, coords.lng);
         }
-    }, [isOpen, isLoaded, initialLocation, fetchAddress]);
+    }, [isOpen, isLoaded, initialLocation, fetchAddress, parseLocation]);
 
     const handleIdle = () => {
         if (map && !isPanning.current) {
-            // If we just selected a place from Autocomplete, DON'T reverse geocode
             if (skipNextGeocode.current) {
                 skipNextGeocode.current = false;
                 return;
             }
-            const newCenter = map.getCenter().toJSON();
+
+            const center = map.getCenter();
+            if (!center) return;
+
+            const newCenter = center.toJSON();
             setTempCoords(newCenter);
-            fetchAddress(newCenter.lat, newCenter.lng);
+
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            debounceTimer.current = setTimeout(() => {
+                fetchAddress(newCenter.lat, newCenter.lng);
+            }, 300);
         }
         isPanning.current = false;
     };
 
     const onPlaceChanged = () => {
-        if (autocomplete !== null && map) {
+        if (autocomplete && map) {
             const place = autocomplete.getPlace();
-            if (place.geometry && place.geometry.location) {
+            if (place?.geometry?.location) {
                 const location = place.geometry.location.toJSON();
+                const addressText = place.formatted_address || place.name || "Selected Location";
 
-                // Lock the geocoder! We already have the address from the search result.
                 skipNextGeocode.current = true;
                 isPanning.current = true;
 
@@ -83,32 +118,66 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
                 map.setZoom(17);
 
                 setTempCoords(location);
-                setResolvedAddress(place.formatted_address || place.name || "Selected Location");
+                setResolvedAddress(addressText);
+                setSearchValue(addressText);
             }
         }
     };
 
     const handleCurrentLocation = () => {
-        if (navigator.geolocation && map) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-                isPanning.current = true;
-                // We want to geocode current location because it's a raw coordinate
-                skipNextGeocode.current = false;
-                map.panTo(pos);
-                map.setZoom(17);
-                setTempCoords(pos);
-                fetchAddress(pos.lat, pos.lng);
-            });
+        if (typeof window !== 'undefined' && navigator.geolocation && map) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    isPanning.current = true;
+                    skipNextGeocode.current = false;
+
+                    map.panTo(pos);
+                    map.setZoom(17);
+                    setTempCoords(pos);
+                    fetchAddress(pos.lat, pos.lng);
+                },
+                (error) => {
+                    console.error("Error retrieving current location:", error);
+                }
+            );
         }
     };
 
     const handleConfirm = () => {
-        onConfirm({ coordinates: tempCoords, address: resolvedAddress });
+        if (onConfirm) {
+            onConfirm({ coordinates: tempCoords, address: resolvedAddress });
+        }
         onClose();
     };
 
     if (!isOpen) return null;
+
+    // Graceful error UI when Google Maps fails to load or API key is missing
+    if (loadError || !apiKey) {
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
+                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Map Service Unavailable</h3>
+                    <p className="text-xs text-slate-500">
+                        {!apiKey
+                            ? "Google Maps API Key is missing. Check your NEXT_PUBLIC_GOOGLE_MAPS_API_KEY environment variable."
+                            : "Failed to load Google Maps script."}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-2.5 bg-slate-100 rounded-xl font-bold text-xs text-slate-700 hover:bg-slate-200 transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
@@ -127,6 +196,8 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
                                     <input
                                         type="text"
                                         placeholder="Search for a place..."
+                                        value={searchValue}
+                                        onChange={(e) => setSearchValue(e.target.value)}
                                         className="w-full bg-white/95 backdrop-blur-md border border-slate-200 py-5 pl-14 pr-6 rounded-2xl shadow-2xl focus:outline-none font-bold text-sm text-slate-900"
                                         onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                                     />
@@ -134,7 +205,11 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
                             </Autocomplete>
                         )}
                     </div>
-                    <button onClick={onClose} className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl text-slate-400 hover:text-red-500 transition-colors">
+                    <button
+                        onClick={onClose}
+                        type="button"
+                        className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center shadow-xl text-slate-400 hover:text-red-500 transition-colors"
+                    >
                         <X size={24} />
                     </button>
                 </div>
@@ -150,7 +225,11 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
                             onIdle={handleIdle}
                             options={mapOptions}
                         />
-                    ) : <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin" /></div>}
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <Loader2 className="animate-spin text-indigo-600" size={32} />
+                        </div>
+                    )}
 
                     {/* CENTER PIN */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
@@ -162,7 +241,11 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
                         </div>
                     </div>
 
-                    <button onClick={handleCurrentLocation} className="absolute bottom-8 right-8 h-14 w-14 bg-indigo-600 text-white rounded-2xl shadow-2xl flex items-center justify-center hover:bg-indigo-700 transition-all z-30">
+                    <button
+                        onClick={handleCurrentLocation}
+                        type="button"
+                        className="absolute bottom-8 right-8 h-14 w-14 bg-indigo-600 text-white rounded-2xl shadow-2xl flex items-center justify-center hover:bg-indigo-700 transition-all z-30"
+                    >
                         <LocateFixed size={24} />
                     </button>
                 </div>
@@ -184,8 +267,18 @@ export default function MapPickerModal({ isOpen, onClose, onConfirm, initialLoca
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <button onClick={onClose} className="px-8 py-5 rounded-2xl font-black text-[11px] uppercase text-slate-400">Cancel</button>
-                            <button onClick={handleConfirm} className="px-12 py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-8 py-5 rounded-2xl font-black text-[11px] uppercase text-slate-400"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirm}
+                                className="px-12 py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-2xl flex items-center gap-3"
+                            >
                                 <CheckCircle2 size={20} /> Confirm Selection
                             </button>
                         </div>

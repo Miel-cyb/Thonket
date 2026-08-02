@@ -1,19 +1,35 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
-  SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, useSidebar,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarProvider,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  Menu, Package, Truck, Boxes, ClipboardList,
-  BarChart, LayoutDashboard, Loader2, Settings
+  Menu,
+  Truck,
+  Boxes,
+  Calendar,
+  PackagePlus,
+  LayoutDashboard,
+  Loader2,
+  Settings,
 } from "lucide-react";
 
 // Components
-import Products from "@/components/WarehouseOverview/Products";
 import Dashboard from "@/components/WarehouseOverview/WarehouseDashboard/Dashboard";
 import StockControl from "@/components/WarehouseOverview/StockControl";
 import OrderManagement from "@/components/WarehouseOverview/OrderManagement/OrderManagement";
-import SupportPage from "@/components/WarehouseOverview/SupportPage";
+import ExpectedDeliveriesPage from "@/pages/ExpectedDelivery";
+import ReceivingDeliveriesPage from "@/pages/InboundDeliveryPage";
 import UserMenu from "@/components/UserMenu";
 
 // Styles & Data
@@ -21,7 +37,12 @@ import initialDrivers from "@/data/drivers.json";
 
 const API_BASE_URL = "https://thonket-product-price-service.onrender.com/api";
 
-const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit }) => {
+const WarehouseManagerPortal = ({
+  products = [],
+  setProducts = () => { },
+  reports = [],
+  onReportSubmit = () => { },
+}) => {
   const [activePage, setActivePage] = useState("Dashboard");
   const [orders, setOrders] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -32,21 +53,20 @@ const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit
   const fetchWarehouseData = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Fetch orders from your specific endpoint
       const response = await fetch(`${API_BASE_URL}/warehouse`);
       if (!response.ok) throw new Error("Failed to fetch");
 
       const data = await response.json();
-      const initializedOrders = data.map(o => ({
+      const initializedOrders = (Array.isArray(data) ? data : []).map((o) => ({
         ...o,
-        status: o.status || 'Pending',
-        driver: o.driver || null
+        status: o.status || "Pending",
+        driver: o.driver || null,
       }));
 
       setOrders(initializedOrders);
-      setDrivers(initialDrivers);
+      setDrivers(initialDrivers || []);
     } catch (error) {
-      console.error('Portal Data Error:', error);
+      console.error("Portal Data Error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -56,39 +76,47 @@ const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit
     fetchWarehouseData();
   }, [fetchWarehouseData]);
 
-  // Handler for state updates
+  // Handlers for state updates
   const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setOrders(prev => prev.map(order =>
-      order.orderId === orderId ? { ...order, status: newStatus } : order
-    ));
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.orderId === orderId ? { ...order, status: newStatus } : order
+      )
+    );
   };
 
   const handleAssignDriver = (orderId, driverId) => {
-    setOrders(prev => prev.map(order =>
-      order.orderId === orderId ? { ...order, driver: String(driverId), status: "Approved" } : order
-    ));
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.orderId === orderId
+          ? { ...order, driver: String(driverId), status: "Approved" }
+          : order
+      )
+    );
   };
 
+  // Updated Subpages: Removed "Products" & "Reporting", updated delivery labels
   const subpages = [
     { title: "Dashboard", icon: LayoutDashboard },
-    { title: "Products", icon: Package },
-    // { title: "Pricing", icon: PriceTag },
     { title: "Stock", icon: Boxes },
     { title: "Orders", icon: Truck },
-    { title: "Reporting", icon: BarChart },
+    { title: "Inbound Schedule", icon: Calendar },
+    { title: "Goods Receiving", icon: PackagePlus },
   ];
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-[#F8FAFC]">
-        {/* Sidebar with refined styling */}
+      <div className="flex h-screen w-full bg-[#F8FAFC] font-sans overflow-hidden">
+        {/* Sidebar */}
         <Sidebar className="border-r border-slate-200 shadow-xl bg-white/50 backdrop-blur-md">
           <SidebarHeader className="py-6 px-4">
             <div className="flex items-center gap-3">
               <div className="bg-primary h-8 w-8 rounded-lg flex items-center justify-center shadow-lg shadow-primary/30">
                 <Boxes className="text-white h-5 w-5" />
               </div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-800">Thonket</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-800">
+                Thonket
+              </h1>
             </div>
           </SidebarHeader>
 
@@ -114,18 +142,12 @@ const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-slate-100">
-            <div className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-all">
-              <div className="h-8 w-8 rounded-full bg-slate-200 overflow-hidden border border-white shadow-sm" />
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-700">Admin Portal</span>
-                <span className="text-[10px] text-slate-400">Manage Warehouse</span>
-              </div>
-            </div>
+            <UserMenu />
           </SidebarFooter>
         </Sidebar>
 
         {/* Main Content Viewport */}
-        <div className="flex flex-1 flex-col min-w-0">
+        <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
           <Header activePage={activePage} />
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -133,16 +155,38 @@ const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit
               <div className="flex h-full w-full items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-                  <p className="text-slate-400 text-sm animate-pulse">Synchronizing Inventory...</p>
+                  <p className="text-slate-400 text-sm animate-pulse">
+                    Synchronizing Inventory...
+                  </p>
                 </div>
               </div>
             ) : (
               <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
-                {activePage === "Dashboard" && <Dashboard orders={orders} drivers={drivers} date={date} setDate={setDate} setActivePage={setActivePage} products={products} reports={reports} />}
-                {activePage === "Products" && <Products products={products} setProducts={setProducts} />}
-                {activePage === "Stock" && <StockControl products={products} setProducts={setProducts} />}
-                {activePage === "Orders" && <OrderManagement orders={orders} drivers={drivers} onUpdateStatus={handleUpdateOrderStatus} onAssignDriver={handleAssignDriver} onSaveDriver={handleAssignDriver} />}
-                {activePage === "Reporting" && <SupportPage onReportSubmit={onReportSubmit} />}
+                {activePage === "Dashboard" && (
+                  <Dashboard
+                    orders={orders}
+                    drivers={drivers}
+                    date={date}
+                    setDate={setDate}
+                    setActivePage={setActivePage}
+                    products={products}
+                    reports={reports}
+                  />
+                )}
+                {activePage === "Stock" && (
+                  <StockControl products={products} setProducts={setProducts} />
+                )}
+                {activePage === "Orders" && (
+                  <OrderManagement
+                    orders={orders}
+                    drivers={drivers}
+                    onUpdateStatus={handleUpdateOrderStatus}
+                    onAssignDriver={handleAssignDriver}
+                    onSaveDriver={handleAssignDriver}
+                  />
+                )}
+                {activePage === "Inbound Schedule" && <ExpectedDeliveriesPage />}
+                {activePage === "Goods Receiving" && <ReceivingDeliveriesPage />}
               </div>
             )}
           </div>
@@ -152,24 +196,43 @@ const WarehouseManagerPortal = ({ products, setProducts, reports, onReportSubmit
   );
 };
 
-// --- Sub-components for Cleanliness ---
+// --- Helper Components ---
 
 const Header = ({ activePage }) => {
   const { toggleSidebar } = useSidebar();
   return (
     <header className="bg-white/80 backdrop-blur-sm sticky top-0 z-20 border-b border-slate-100 p-4 flex justify-between items-center shadow-sm px-8">
       <div className="flex items-center gap-4">
-        <button onClick={toggleSidebar} className="md:hidden p-2 hover:bg-slate-50 rounded-lg">
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label="Toggle Sidebar"
+          className="md:hidden p-2 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+        >
           <Menu className="h-5 w-5 text-slate-600" />
         </button>
-        <h2 className="text-lg font-semibold text-slate-800 tracking-tight">{activePage}</h2>
+        <h2 className="text-lg font-semibold text-slate-800 tracking-tight">
+          {activePage}
+        </h2>
       </div>
       <div className="flex items-center gap-4">
         <div className="hidden sm:flex flex-col items-end mr-2">
-          <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Live Connection</span>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">
+              Live Connection
+            </span>
+          </div>
           <span className="text-[9px] text-slate-400">render-api-service</span>
         </div>
-        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
+        <button
+          type="button"
+          aria-label="Settings"
+          className="p-2 text-slate-400 hover:text-primary transition-colors cursor-pointer rounded-lg hover:bg-slate-50"
+        >
           <Settings className="h-5 w-5" />
         </button>
       </div>
@@ -183,14 +246,16 @@ const SidebarItemButton = ({ item, activePage, setActivePage }) => {
 
   const handleClick = () => {
     setActivePage(item.title);
-    setOpenMobile(false);
+    if (setOpenMobile) {
+      setOpenMobile(false);
+    }
   };
 
   return (
     <SidebarMenuButton
       onClick={handleClick}
       isActive={isActive}
-      className={`relative h-11 px-4 mb-1 transition-all rounded-xl ${isActive
+      className={`relative h-11 px-4 mb-1 transition-all rounded-xl cursor-pointer ${isActive
         ? "bg-primary/10 text-primary shadow-sm font-semibold"
         : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
         }`}

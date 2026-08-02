@@ -25,6 +25,7 @@ import SupplierDetailPage from './pages/SupplierDetailPage';
 import PurchaseCreatePage from './pages/PurchaseCreatePage';
 import PriceDetailPage from './pages/PriceDetailPage'
 import ReceivingDeliveriesPage from './pages/InboundDeliveryPage'
+import WarehouseManagement from './pages/WarehouseManagement';
 
 
 
@@ -149,6 +150,12 @@ function App() {
             />
           }
         />
+        <Route
+          path="/warehouse-management"
+          element={<WarehouseManagement />}
+        />
+
+        //
 
         <Route
           path="/expected-deliveries"

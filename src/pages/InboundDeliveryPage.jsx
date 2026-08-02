@@ -1,5 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Building2, Download, Plus, ArrowLeft, PackageCheck } from 'lucide-react';
+import {
+    Building2,
+    Download,
+    Plus,
+    ArrowLeft,
+    PackageCheck,
+    Sparkles,
+    CheckCircle2,
+    FileText
+} from 'lucide-react';
 
 // Import Modularized Components
 import DeliveryList from '../components/Inbound-Delivery/DeliveryList';
@@ -247,8 +256,8 @@ export default function ReceivingDeliveriesPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 lg:p-8">
-            {/* Header */}
-            <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-5">
+            {/* Main Header */}
+            <header className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-5">
                 <div>
                     <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
                         <Building2 className="w-4 h-4" /> Warehouse Logistics & Operations
@@ -260,10 +269,16 @@ export default function ReceivingDeliveriesPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button onClick={() => window.print()} className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-lg text-sm transition shadow-sm">
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm transition shadow-sm hover:border-slate-400"
+                    >
                         <Download className="w-4 h-4" /> Export Report
                     </button>
-                    <button onClick={() => setShowNewIntakeModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition shadow-sm">
+                    <button
+                        onClick={() => setShowNewIntakeModal(true)}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition shadow-sm shadow-indigo-100"
+                    >
                         <Plus className="w-4 h-4" /> New Delivery Intake
                     </button>
                 </div>
@@ -271,11 +286,11 @@ export default function ReceivingDeliveriesPage() {
 
             {/* --- VIEW 1: OVERVIEW PAGE (Metrics Summary + Centered Delivery Cards) --- */}
             {!selectedPOId && (
-                <div className="max-w-5xl mx-auto space-y-6">
+                <div className="max-w-6xl mx-auto space-y-6">
                     {/* Overall Metrics Summary across all inbound deliveries */}
                     <MetricsSummary metrics={overallMetrics} />
 
-                    <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
+                    <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between shadow-xs">
                         <div className="flex items-center gap-3">
                             <PackageCheck className="w-5 h-5 text-indigo-600 shrink-0" />
                             <div>
@@ -299,35 +314,63 @@ export default function ReceivingDeliveriesPage() {
 
             {/* --- VIEW 2: ISOLATED SINGLE ORDER DETAIL VIEW --- */}
             {selectedPOId && activePO && (
-                <div className="max-w-6xl mx-auto space-y-6">
-                    {/* Return Navigation */}
-                    <div className="flex items-center justify-between">
-                        <button
-                            onClick={() => setSelectedPOId(null)}
-                            className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-white border border-slate-200 px-3.5 py-2 rounded-lg transition shadow-sm hover:border-slate-300"
-                        >
-                            <ArrowLeft className="w-4 h-4" /> Back to All Deliveries
-                        </button>
+                <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+                    {/* Navigation & Context Bar */}
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setSelectedPOId(null)}
+                                className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200/60 px-3.5 py-2 rounded-xl transition cursor-pointer"
+                            >
+                                <ArrowLeft className="w-4 h-4" /> Back to Deliveries
+                            </button>
+                            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 font-medium">Clearance Manifest:</span>
+                                <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200/60">
+                                    {activePO.id}
+                                </span>
+                            </div>
+                        </div>
 
-                        <span className="text-xs text-slate-400 font-medium">
-                            Viewing details for <strong className="text-slate-700">{activePO.id}</strong>
-                        </span>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 font-medium px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Active Inspection Session
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Single Order Details Body */}
-                    <div className="flex flex-col gap-6">
+                    {/* Order Details Structured Layout */}
+                    <div className="space-y-6">
+                        {/* 1. Header Information & Actions */}
                         <OrderHeader activePO={activePO} onStatusChange={handleStatusChange} />
-                        <InventoryTable
-                            items={activePO.items}
-                            onItemChange={handleItemChange}
-                            onAddItem={handleAddItem}
-                            onRemoveItem={handleRemoveItem}
-                        />
-                        <OrderNotesFooter
-                            notes={activePO.notes}
-                            onNotesChange={handleNotesChange}
-                            onOpenConfirmModal={() => setShowConfirmModal(true)}
-                        />
+
+                        {/* 2. PO Specific Live Metrics Summary */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-500" /> Live Audit Summary for {activePO.id}
+                            </div>
+                            <MetricsSummary metrics={activePOMetrics} />
+                        </div>
+
+                        {/* 3. Main Itemized Verification & Inventory Table */}
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+                            <InventoryTable
+                                items={activePO.items}
+                                onItemChange={handleItemChange}
+                                onAddItem={handleAddItem}
+                                onRemoveItem={handleRemoveItem}
+                            />
+                        </div>
+
+                        {/* 4. Dock Notes & Final Confirmation Section */}
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+                            <OrderNotesFooter
+                                notes={activePO.notes}
+                                onNotesChange={handleNotesChange}
+                                onOpenConfirmModal={() => setShowConfirmModal(true)}
+                            />
+                        </div>
                     </div>
                 </div>
             )}

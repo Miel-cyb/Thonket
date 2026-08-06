@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     X,
     MapPin,
@@ -8,19 +8,59 @@ import {
     Snowflake,
     Globe,
     Hash,
-    Compass,
+    Loader2,
+    AlertCircle,
 } from "lucide-react";
 // Import your map component here
 import LocationPickerMap from "../../Map/MapPickerModal";
+import { API_ENDPOINTS } from "../../../utils/urls";
+
+const initialFormState = {
+    organizationId: "Thonket-1233",
+    createdBy: "System",
+    name: "",
+    code: "",
+    geoLocation: {
+        type: "Point",
+        coordinates: [0, 0],
+    },
+    address: {
+        street: "",
+        city: "",
+        region: "",
+        digitalAddress: "",
+    },
+    storageCapacity: {
+        maxPalletCapacity: 0,
+    },
+    storageFeatures: {
+        hasColdStorage: false,
+    },
+};
 
 export default function WarehouseFormModal({
     isOpen,
     onClose,
-    onSubmit,
-    formData,
-    setFormData,
-    isEditing,
+    onSuccess, // Callback after successful creation/update (e.g. to refresh list)
+    initialData = null, // Optional initial data for editing mode
+    isEditing = false,
 }) {
+    const [formData, setFormData] = useState(initialFormState);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Sync state when editing data changes or modal opens
+    useEffect(() => {
+        if (isOpen) {
+            if (isEditing && initialData) {
+                setFormData(initialData);
+            } else {
+                setFormData(initialFormState);
+            }
+            setError(null);
+        }
+    }, [isOpen, isEditing, initialData]);
+
     if (!isOpen) return null;
 
     // Standardized address state updates
@@ -61,6 +101,50 @@ export default function WarehouseFormModal({
         }));
     };
 
+    // Form submission & HTTP Request Handler
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        const endpoint = isEditing
+            ? `${API_ENDPOINTS.WAREHOUSES}/${formData.id || formData._id}` // Adjust your update endpoint as needed
+            : API_ENDPOINTS.WAREHOUSES;
+
+        const method = isEditing ? "PATCH" : "POST";
+
+        try {
+            const response = await fetch(endpoint, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json",
+                    // Authorization: `Bearer ${yourToken}`, // Add headers if required
+                },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            console.log("Warehouse Form Submission Response:", formData);
+
+            console.log("Warehouse Form Submission Response:", data);
+
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to submit warehouse data.");
+            }
+
+            // Success trigger
+            if (onSuccess) {
+                onSuccess(data);
+            }
+            onClose();
+        } catch (err) {
+            setError(err.message || "An unexpected error occurred. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const [lng, lat] = formData?.geoLocation?.coordinates || [0, 0];
     const currentLocationLabel = formData?.address?.street
         ? `${formData.address.street}${formData.address.city ? `, ${formData.address.city}` : ""
@@ -70,7 +154,6 @@ export default function WarehouseFormModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md transition-all duration-200">
             <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[92vh] flex flex-col border border-slate-100 overflow-hidden font-sans">
-
                 {/* Header */}
                 <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                     <div className="flex items-center gap-3.5">
@@ -89,14 +172,22 @@ export default function WarehouseFormModal({
                     <button
                         onClick={onClose}
                         type="button"
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-150"
+                        disabled={isLoading}
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-150 disabled:opacity-50"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Scrollable Form Body */}
-                <form onSubmit={onSubmit} className="overflow-y-auto p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-6">
+                    {/* Error Banner */}
+                    {error && (
+                        <div className="p-4 bg-rose-50 border border-rose-200/80 rounded-xl flex items-start gap-3 text-rose-800">
+                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                            <div className="text-sm font-medium">{error}</div>
+                        </div>
+                    )}
 
                     {/* General Metadata Section */}
                     <div className="space-y-4">
@@ -116,11 +207,12 @@ export default function WarehouseFormModal({
                                     <input
                                         type="text"
                                         required
+                                        disabled={isLoading}
                                         value={formData.name || ""}
                                         onChange={(e) =>
-                                            setFormData({ ...formData, name: e.target.value })
+                                            setFormData((prev) => ({ ...prev, name: e.target.value }))
                                         }
-                                        className="w-full pl-3.5 pr-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                        className="w-full pl-3.5 pr-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal disabled:opacity-60"
                                         placeholder="e.g. Takoradi Port Depot"
                                     />
                                 </div>
@@ -134,14 +226,15 @@ export default function WarehouseFormModal({
                                     <input
                                         type="text"
                                         required
+                                        disabled={isLoading}
                                         value={formData.code || ""}
                                         onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
+                                            setFormData((prev) => ({
+                                                ...prev,
                                                 code: e.target.value.toUpperCase(),
-                                            })
+                                            }))
                                         }
-                                        className="w-full pl-9 pr-3.5 py-3 text-sm font-mono tracking-wider font-semibold uppercase text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                        className="w-full pl-9 pr-3.5 py-3 text-sm font-mono tracking-wider font-semibold uppercase text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal disabled:opacity-60"
                                         placeholder="TKD-PORT-03"
                                     />
                                     <Hash className="w-4 h-4 text-slate-400 absolute left-3 top-4 pointer-events-none" />
@@ -166,6 +259,7 @@ export default function WarehouseFormModal({
                             <LocationPickerMap
                                 coordinates={[lng, lat]}
                                 onSelectLocation={({ coordinates, placeDetails }) => {
+                                    if (isLoading) return;
                                     const [selectedLng, selectedLat] = coordinates || [0, 0];
                                     handleSelectLocation({
                                         lng: selectedLng,
@@ -210,11 +304,12 @@ export default function WarehouseFormModal({
                                     type="text"
                                     placeholder="e.g. 12 Harbour Road, Sector 4"
                                     required
+                                    disabled={isLoading}
                                     value={formData.address?.street || ""}
                                     onChange={(e) =>
                                         handleAddressChange("street", e.target.value)
                                     }
-                                    className="w-full px-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                    className="w-full px-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal disabled:opacity-60"
                                 />
                             </div>
 
@@ -226,11 +321,12 @@ export default function WarehouseFormModal({
                                     type="text"
                                     placeholder="e.g. Takoradi"
                                     required
+                                    disabled={isLoading}
                                     value={formData.address?.city || ""}
                                     onChange={(e) =>
                                         handleAddressChange("city", e.target.value)
                                     }
-                                    className="w-full px-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                    className="w-full px-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal disabled:opacity-60"
                                 />
                             </div>
 
@@ -242,11 +338,12 @@ export default function WarehouseFormModal({
                                     type="text"
                                     placeholder="e.g. Western Region"
                                     required
+                                    disabled={isLoading}
                                     value={formData.address?.region || ""}
                                     onChange={(e) =>
                                         handleAddressChange("region", e.target.value)
                                     }
-                                    className="w-full px-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                    className="w-full px-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal disabled:opacity-60"
                                 />
                             </div>
 
@@ -259,11 +356,12 @@ export default function WarehouseFormModal({
                                         type="text"
                                         placeholder="e.g. WS-000-0000"
                                         required
+                                        disabled={isLoading}
                                         value={formData.address?.digitalAddress || ""}
                                         onChange={(e) =>
                                             handleAddressChange("digitalAddress", e.target.value)
                                         }
-                                        className="w-full pl-9 pr-3.5 py-3 text-sm font-mono text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal"
+                                        className="w-full pl-9 pr-3.5 py-3 text-sm font-mono text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all placeholder:text-slate-400 placeholder:font-normal disabled:opacity-60"
                                     />
                                     <Globe className="w-4 h-4 text-slate-400 absolute left-3 top-4 pointer-events-none" />
                                 </div>
@@ -290,6 +388,7 @@ export default function WarehouseFormModal({
                                         type="number"
                                         required
                                         min="0"
+                                        disabled={isLoading}
                                         value={
                                             formData.storageCapacity?.maxPalletCapacity ?? ""
                                         }
@@ -302,7 +401,7 @@ export default function WarehouseFormModal({
                                                 },
                                             }))
                                         }
-                                        className="w-full pl-9 pr-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all"
+                                        className="w-full pl-9 pr-3.5 py-3 text-base font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:outline-none transition-all disabled:opacity-60"
                                         placeholder="0"
                                     />
                                     <Boxes className="w-4 h-4 text-slate-400 absolute left-3 top-4 pointer-events-none" />
@@ -313,7 +412,8 @@ export default function WarehouseFormModal({
                             <div className="sm:mt-6">
                                 <label
                                     htmlFor="hasColdStorage"
-                                    className={`flex items-center gap-3.5 p-3.5 rounded-xl border transition-all cursor-pointer select-none ${formData.storageFeatures?.hasColdStorage
+                                    className={`flex items-center gap-3.5 p-3.5 rounded-xl border transition-all cursor-pointer select-none ${isLoading ? "opacity-60 pointer-events-none" : ""
+                                        } ${formData.storageFeatures?.hasColdStorage
                                             ? "bg-cyan-50/60 border-cyan-200 text-cyan-900"
                                             : "bg-slate-50/50 border-slate-200 text-slate-600 hover:bg-slate-100/50"
                                         }`}
@@ -321,6 +421,7 @@ export default function WarehouseFormModal({
                                     <input
                                         type="checkbox"
                                         id="hasColdStorage"
+                                        disabled={isLoading}
                                         checked={
                                             formData.storageFeatures?.hasColdStorage || false
                                         }
@@ -337,8 +438,8 @@ export default function WarehouseFormModal({
                                     />
                                     <div
                                         className={`p-2.5 rounded-xl ${formData.storageFeatures?.hasColdStorage
-                                                ? "bg-cyan-500 text-white"
-                                                : "bg-slate-200 text-slate-500"
+                                            ? "bg-cyan-500 text-white"
+                                            : "bg-slate-200 text-slate-500"
                                             }`}
                                     >
                                         <Snowflake className="w-5 h-5" />
@@ -361,15 +462,24 @@ export default function WarehouseFormModal({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-3 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"
+                            disabled={isLoading}
+                            className="px-5 py-3 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all disabled:opacity-50"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-3 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl shadow-sm shadow-indigo-200 transition-all focus:ring-2 focus:ring-indigo-500/20"
+                            disabled={isLoading}
+                            className="px-6 py-3 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl shadow-sm shadow-indigo-200 transition-all focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 flex items-center gap-2"
                         >
-                            {isEditing ? "Save Changes" : "Create Warehouse"}
+                            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {isEditing
+                                ? isLoading
+                                    ? "Saving..."
+                                    : "Save Changes"
+                                : isLoading
+                                    ? "Creating..."
+                                    : "Create Warehouse"}
                         </button>
                     </div>
                 </form>

@@ -8,6 +8,7 @@ import {
     RefreshCw,
 } from "lucide-react";
 
+import { API_ENDPOINTS } from "../../src/utils/urls";
 import WarehouseHeader from "../components/WarehouseOverview/WarehouseManagement/WarehouseHeader";
 import WarehouseFilters from "../components/WarehouseOverview/WarehouseManagement/WarehouseFilters";
 import WarehouseCard from "../components/WarehouseOverview/WarehouseManagement/WarehouseCard";
@@ -36,7 +37,7 @@ const initialFormState = {
     },
 };
 
-export default function WarehouseManagement({ organizationId = "org_logistics_001" }) {
+export default function WarehouseManagement({ organizationId = "Thonket-1233" }) {
     // Main Data & UI States
     const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -64,92 +65,25 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
         setLoading(true);
         setError(null);
         try {
-            // Simulated API Delay & Data Fetch
-            await new Promise((resolve) => setTimeout(resolve, 600));
+            const response = await fetch(
+                `${API_ENDPOINTS.WAREHOUSES}/${encodeURIComponent(organizationId)}`
+            );
 
-            const mockData = [
-                {
-                    _id: "wh_1",
-                    organizationId,
-                    name: "Accra Central Distribution Hub",
-                    code: "ACC-HUB-01",
-                    status: "active",
-                    isDeleted: false,
-                    address: {
-                        street: "Plot 14 Heavy Industrial Area",
-                        city: "Accra",
-                        region: "Greater Accra",
-                        digitalAddress: "GA-102-4589",
-                    },
-                    geoLocation: { coordinates: [-0.186964, 5.603717] },
-                    storageCapacity: { maxPalletCapacity: 12500, currentOccupancy: 8400 },
-                    storageFeatures: { hasColdStorage: true },
-                    staffAssignments: [
-                        { userId: "usr_sup_101", role: "Warehouse Supervisor", isPrimary: true, isActive: true },
-                        { userId: "usr_log_104", role: "Inventory Lead", isPrimary: false, isActive: true },
-                    ],
-                },
-                {
-                    _id: "wh_2",
-                    organizationId,
-                    name: "Kumasi Cold Storage Depot",
-                    code: "KMS-COLD-02",
-                    status: "active",
-                    isDeleted: false,
-                    address: {
-                        street: "Block B Kaase Industrial Zone",
-                        city: "Kumasi",
-                        region: "Ashanti",
-                        digitalAddress: "AK-039-1120",
-                    },
-                    geoLocation: { coordinates: [-1.624411, 6.6666] },
-                    storageCapacity: { maxPalletCapacity: 4800, currentOccupancy: 3900 },
-                    storageFeatures: { hasColdStorage: true },
-                    staffAssignments: [
-                        { userId: "usr_sup_102", role: "Cold Chain Supervisor", isPrimary: true, isActive: true },
-                    ],
-                },
-                {
-                    _id: "wh_3",
-                    organizationId,
-                    name: "Takoradi Port Logistics Annex",
-                    code: "TKD-PORT-03",
-                    status: "inactive",
-                    isDeleted: false,
-                    address: {
-                        street: "Harbour Commercial Belt",
-                        city: "Takoradi",
-                        region: "Western",
-                        digitalAddress: "WS-012-9931",
-                    },
-                    geoLocation: { coordinates: [-1.754, 4.884] },
-                    storageCapacity: { maxPalletCapacity: 8000, currentOccupancy: 0 },
-                    storageFeatures: { hasColdStorage: false },
-                    staffAssignments: [],
-                },
-                {
-                    _id: "wh_4",
-                    organizationId,
-                    name: "Tema Export Transit Station",
-                    code: "TMA-EXP-04",
-                    status: "inactive",
-                    isDeleted: true, // Soft-deleted item
-                    address: {
-                        street: "Community 2 Logistics Park",
-                        city: "Tema",
-                        region: "Greater Accra",
-                        digitalAddress: "GT-004-1182",
-                    },
-                    geoLocation: { coordinates: [0.00, 5.67] },
-                    storageCapacity: { maxPalletCapacity: 6000, currentOccupancy: 0 },
-                    storageFeatures: { hasColdStorage: false },
-                    staffAssignments: [],
-                },
-            ];
-            setWarehouses(mockData);
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Extract items array from response wrapper
+            const list = Array.isArray(data)
+                ? data
+                : data.items || data.warehouses || data.data || [];
+
+            setWarehouses(list);
         } catch (err) {
             console.error("Failed to fetch warehouses:", err);
-            setError("Failed to load facilities. Please try again.");
+            setError("Failed to load facilities. Please check your connection and try again.");
         } finally {
             setLoading(false);
         }
@@ -178,7 +112,7 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
     const filteredWarehouses = useMemo(() => {
         return warehouses.filter((wh) => {
             // Tab condition
-            const matchesTab = activeTab === "deleted" ? wh.isDeleted : !wh.isDeleted;
+            const matchesTab = activeTab === "deleted" ? Boolean(wh.isDeleted) : !wh.isDeleted;
             if (!matchesTab) return false;
 
             // Search condition
@@ -187,6 +121,7 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
                 !query ||
                 wh.name?.toLowerCase().includes(query) ||
                 wh.code?.toLowerCase().includes(query) ||
+                wh.address?.street?.toLowerCase().includes(query) ||
                 wh.address?.city?.toLowerCase().includes(query) ||
                 wh.address?.region?.toLowerCase().includes(query) ||
                 wh.address?.digitalAddress?.toLowerCase().includes(query);
@@ -256,6 +191,8 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
                     organizationId,
                     isDeleted: false,
                     staffAssignments: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
                 };
                 setWarehouses((prev) => [newFacility, ...prev]);
             }
@@ -319,7 +256,7 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
                 if (wh._id === selectedWarehouseForStaff._id) {
                     const existingAssignments = wh.staffAssignments || [];
 
-                    // If new staff is primary, demote existing primary assignment
+                    // Demote existing primary assignment if new staff is primary
                     const updatedAssignments = existingAssignments.map((s) =>
                         newStaff.isPrimary ? { ...s, isPrimary: false } : s
                     );
@@ -340,7 +277,7 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 sm:p-6 md:p-10 font-sans text-slate-800">
+        <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 lg:p-8 font-sans text-slate-800 antialiased">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header Toolbar */}
                 <WarehouseHeader onAddClick={handleOpenCreateModal} />
@@ -363,44 +300,59 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
                 {/* Main Content Area */}
                 {loading ? (
                     /* Skeleton Loading Grid */
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((n) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[1, 2, 3, 4, 5, 6].map((n) => (
                             <div
                                 key={n}
-                                className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 animate-pulse"
+                                className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4 animate-pulse flex flex-col justify-between h-64"
                             >
-                                <div className="h-4 bg-slate-200 rounded w-1/3" />
-                                <div className="h-6 bg-slate-200 rounded w-3/4" />
-                                <div className="h-4 bg-slate-200 rounded w-1/2" />
-                                <div className="h-24 bg-slate-100 rounded-xl" />
-                                <div className="h-10 bg-slate-200 rounded-xl" />
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <div className="h-4 bg-slate-200 rounded-md w-1/4" />
+                                        <div className="h-5 bg-slate-100 rounded-full w-16" />
+                                    </div>
+                                    <div className="h-5 bg-slate-200 rounded-md w-3/4" />
+                                    <div className="h-3.5 bg-slate-100 rounded-md w-1/2" />
+                                </div>
+                                <div className="h-20 bg-slate-50 rounded-xl border border-slate-100 p-3 space-y-2">
+                                    <div className="h-3 bg-slate-200 rounded w-1/3" />
+                                    <div className="h-2 bg-slate-200 rounded-full w-full" />
+                                </div>
+                                <div className="h-9 bg-slate-100 rounded-xl w-full" />
                             </div>
                         ))}
                     </div>
                 ) : error ? (
                     /* Error State */
-                    <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center max-w-lg mx-auto my-12">
-                        <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-                        <h3 className="text-base font-bold text-rose-900">{error}</h3>
+                    <div className="bg-rose-50/60 border border-rose-200/80 rounded-2xl p-8 text-center max-w-md mx-auto my-12 shadow-xs">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+                            <AlertCircle className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900">{error}</h3>
+                        <p className="text-xs text-slate-500 mt-1 mb-5">
+                            There was an issue loading the warehouse repository.
+                        </p>
                         <button
                             type="button"
                             onClick={fetchWarehouses}
-                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer"
                         >
                             <RefreshCw className="w-3.5 h-3.5" /> Retry Loading
                         </button>
                     </div>
                 ) : filteredWarehouses.length === 0 ? (
                     /* Empty Results State */
-                    <div className="bg-white rounded-2xl p-12 text-center border border-dashed border-slate-300 shadow-xs">
+                    <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-slate-200/80 shadow-xs max-w-2xl mx-auto my-6">
                         {searchTerm || statusFilter !== "all" ? (
-                            <>
-                                <SearchX className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                <h3 className="text-lg font-bold text-slate-800">
+                            <div className="flex flex-col items-center">
+                                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                                    <SearchX className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900">
                                     No Matching Facilities Found
                                 </h3>
-                                <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                                    No facilities match your search criteria. Try adjusting your query or resetting filters.
+                                <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                                    No facilities match your active search filters. Try clearing your search term or status filter.
                                 </p>
                                 <button
                                     type="button"
@@ -408,43 +360,47 @@ export default function WarehouseManagement({ organizationId = "org_logistics_00
                                         setSearchTerm("");
                                         setStatusFilter("all");
                                     }}
-                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-xl transition-colors cursor-pointer"
+                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50/80 border border-indigo-100 hover:bg-indigo-100/80 rounded-xl transition-colors cursor-pointer"
                                 >
-                                    Reset Search & Filters
+                                    Reset Filters
                                 </button>
-                            </>
+                            </div>
                         ) : activeTab === "deleted" ? (
-                            <>
-                                <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                <h3 className="text-lg font-bold text-slate-800">
+                            <div className="flex flex-col items-center">
+                                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                                    <Building2 className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900">
                                     No Deactivated Facilities
                                 </h3>
-                                <p className="text-sm text-slate-500 mt-1">
+                                <p className="text-xs text-slate-500 mt-1">
                                     There are currently no archived or deactivated warehouses in the repository.
                                 </p>
-                            </>
+                            </div>
                         ) : (
-                            <>
-                                <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                <h3 className="text-lg font-bold text-slate-800">
+                            <div className="flex flex-col items-center">
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+                                    <Building2 className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900">
                                     No Active Facilities
                                 </h3>
-                                <p className="text-sm text-slate-500 mt-1">
-                                    Get started by adding your organization's first warehouse facility.
+                                <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                                    Get started by creating your organization's first warehouse facility.
                                 </p>
                                 <button
                                     type="button"
                                     onClick={handleOpenCreateModal}
-                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer"
                                 >
                                     <Plus className="w-4 h-4" /> Add New Warehouse
                                 </button>
-                            </>
+                            </div>
                         )}
                     </div>
                 ) : (
                     /* Cards Grid */
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {filteredWarehouses.map((wh) => (
                             <WarehouseCard
                                 key={wh._id}

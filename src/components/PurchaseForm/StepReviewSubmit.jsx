@@ -10,42 +10,174 @@ import {
     Clock,
     Zap,
     Warehouse,
-    Package
+    Package,
+    MapPin
 } from "lucide-react";
 
 export default function StepReviewSubmit({ form }) {
-    // STRUCTURAL EXTRACTORS WITH ROBUST COMPLIANCE FALLBACKS
-    const context = form?.context || {};
-    const intent = form?.intent || {};
-    const supplier = form?.supplier || null;
-    const items = form?.items || [];
-    const logistics = form?.logistics || {};
-    const payment = form?.payment || {};
-    const pricing = form?.pricing || {};
-    const manufacturer = form?.manufacturer || null;
+    // 1. UNIFIED STATE UNWRAPPING (Handles direct state, Formik, or React Hook Form wrappers)
+    const formData = form?.values || form?.formData || form?.data || form || {};
 
-    // Helper function to extract a clean string representation from string or object dynamic structures
+    const context = formData.context || {};
+    const intent = formData.intent || {};
+    const supplier = formData.supplier || null;
+    const items = formData.items || [];
+    const logistics = formData.logistics || formData.shipping || formData.delivery || {};
+    const payment = formData.payment || {};
+    const pricing = formData.pricing || {};
+    const manufacturer = formData.manufacturer || null;
+
+    // Recursive helper to safely extract string names from string, number, array, or object structures
     const getWarehouseString = (wh) => {
-        if (!wh) return null;
-        if (typeof wh === "string") return wh;
+        if (wh === null || wh === undefined) return null;
+        if (typeof wh === "string") {
+            const trimmed = wh.trim();
+            return trimmed.length > 0 ? trimmed : null;
+        }
+        if (typeof wh === "number") return String(wh);
+        if (Array.isArray(wh)) {
+            const list = wh.map((item) => getWarehouseString(item)).flat(Infinity).filter(Boolean);
+            return list.length > 0 ? list : null;
+        }
         if (typeof wh === "object") {
-            return (
+            const candidate =
                 wh.name ||
                 wh.label ||
                 wh.title ||
+                wh.allocatedWarehouse ||
+                wh.allocated_warehouse ||
+                wh.allocatedWarehouses ||
+                wh.allocated_warehouses ||
                 wh.warehouseName ||
+                wh.warehouse_name ||
+                wh.targetWarehouse ||
+                wh.target_warehouse ||
+                wh.destinationWarehouse ||
+                wh.destination_warehouse ||
+                wh.assignedWarehouse ||
+                wh.assigned_warehouse ||
+                wh.facility ||
+                wh.site ||
+                wh.location ||
+                wh.value ||
                 wh.code ||
+                wh.warehouseCode ||
+                wh.warehouse_code ||
                 wh.id ||
-                null
-            );
+                (wh.warehouse ? getWarehouseString(wh.warehouse) : null);
+
+            if (candidate) {
+                const resolved = getWarehouseString(candidate);
+                if (resolved) return resolved;
+            }
         }
-        return String(wh);
+        return null;
     };
 
-    // Default currency updated to Ghana Cedis (GHS)
+    // Extract warehouse code/ID safely
+    const getWarehouseCode = (wh) => {
+        if (!wh) return null;
+        if (Array.isArray(wh) && wh.length > 0) {
+            return getWarehouseCode(wh[0]);
+        }
+        if (typeof wh === "object") {
+            const code = wh.code || wh.warehouseCode || wh.warehouse_code || wh.id;
+            if (typeof code === "string" || typeof code === "number") return String(code);
+        }
+        return null;
+    };
+
+    // Deep search across logistics and root form objects for allocated/target warehouse data
+    const rawWarehouse =
+        logistics.allocatedWarehouse ||
+        logistics.allocated_warehouse ||
+        logistics.allocatedWarehouses ||
+        logistics.allocated_warehouses ||
+        logistics.assignedWarehouse ||
+        logistics.assigned_warehouse ||
+        logistics.warehouses ||
+        logistics.selectedWarehouses ||
+        logistics.warehouse ||
+        logistics.destinationWarehouse ||
+        logistics.destination_warehouse ||
+        logistics.warehouseName ||
+        logistics.warehouse_name ||
+        logistics.targetWarehouse ||
+        logistics.target_warehouse ||
+        logistics.selectedWarehouse ||
+        logistics.facility ||
+        logistics.site ||
+        logistics.warehouse_id ||
+        logistics.warehouseId ||
+        formData.allocatedWarehouse ||
+        formData.allocated_warehouse ||
+        formData.allocatedWarehouses ||
+        formData.allocated_warehouses ||
+        formData.assignedWarehouse ||
+        formData.assigned_warehouse ||
+        formData.warehouses ||
+        formData.selectedWarehouses ||
+        formData.warehouse ||
+        formData.selectedWarehouse ||
+        formData.warehouseName ||
+        formData.warehouse_name ||
+        formData.warehouseId ||
+        formData.warehouse_id;
+
+    // Helper for extracting warehouse string from line item using all known keys
+    const getItemWarehouseRaw = (item) => {
+        if (!item) return null;
+        return (
+            item.allocatedWarehouse ||
+            item.allocated_warehouse ||
+            item.assignedWarehouse ||
+            item.assigned_warehouse ||
+            item.warehouse ||
+            item.warehouseName ||
+            item.warehouse_name ||
+            item.destinationWarehouse ||
+            item.destination_warehouse ||
+            item.targetWarehouse ||
+            item.target_warehouse ||
+            item.facility ||
+            item.site ||
+            item.location ||
+            item.warehouseId ||
+            item.warehouse_id ||
+            item.warehouseCode ||
+            item.warehouse_code
+        );
+    };
+
+    // Parse extracted warehouses into a normalized array of display strings
+    const parsedWarehouses = (() => {
+        const result = getWarehouseString(rawWarehouse);
+        let list = [];
+        if (Array.isArray(result)) list = result;
+        else if (typeof result === "string" && result) list = [result];
+
+        if (list.length === 0) {
+            // Aggregate unique warehouses from line items if no root warehouse is present
+            const itemWhs = items
+                .map((i) => getWarehouseString(getItemWarehouseRaw(i)))
+                .flat(Infinity)
+                .filter((val) => typeof val === "string" && val.length > 0);
+
+            const uniqueItemWhs = Array.from(new Set(itemWhs));
+            if (uniqueItemWhs.length > 0) list = uniqueItemWhs;
+        }
+
+        return list.length > 0 ? list : ["Unassigned Warehouse"];
+    })();
+
+    const warehouseCode =
+        logistics.warehouseCode ||
+        logistics.warehouse_code ||
+        getWarehouseCode(rawWarehouse);
+
     const currentCurrency = pricing.currency || "GHS";
 
-    // INDEPENDENT LINE ITEM AGGREGATION AUDITING
+    // Item Calculations
     const totalCalculatedCost = items.reduce((sum, item) => {
         const q = parseFloat(item.allocatedQty ?? item.qty) || 0;
         const p = parseFloat(item.price) || 0;
@@ -55,7 +187,6 @@ export default function StepReviewSubmit({ form }) {
     const budgetCeiling = parseFloat(pricing.budget) || 0;
     const isOverBudget = budgetCeiling > 0 && totalCalculatedCost > budgetCeiling;
 
-    // MATCHING URGENCY BADGE RESOLVER
     const getPriorityBadge = (tier) => {
         if (tier === "critical")
             return {
@@ -79,26 +210,15 @@ export default function StepReviewSubmit({ form }) {
     const priority = getPriorityBadge(intent.priority);
     const PriorityIcon = priority.icon;
 
-    // Selected header warehouse resolution with deep fallback & object unwrapping
-    const rawWarehouse =
-        logistics.warehouse ||
-        logistics.destinationWarehouse ||
-        logistics.warehouseName ||
-        logistics.targetWarehouse ||
-        form?.warehouse;
-    const selectedWarehouse = getWarehouseString(rawWarehouse) || "Unassigned Warehouse";
-    const warehouseCode =
-        logistics.warehouseCode ||
-        (typeof rawWarehouse === "object" ? rawWarehouse.code : null);
-
     return (
         <div className="space-y-6 max-w-[1660px] mx-auto p-2 tracking-normal antialiased text-slate-900">
             {/* AUDIT SUMMARY STATUS BANNER */}
             <div
-                className={`p-5 rounded-xl border flex items-start gap-4 leading-relaxed shadow-xs ${isOverBudget
+                className={`p-5 rounded-xl border flex items-start gap-4 leading-relaxed shadow-xs ${
+                    isOverBudget
                         ? "bg-rose-50 border-rose-200 text-rose-950"
                         : "bg-indigo-50/60 border-indigo-100 text-indigo-950"
-                    }`}
+                }`}
             >
                 {isOverBudget ? (
                     <AlertTriangle
@@ -124,9 +244,9 @@ export default function StepReviewSubmit({ form }) {
 
             {/* TWO-COLUMN MATRIX SUMMARY GRID */}
             <div className="grid grid-cols-12 gap-6 items-stretch">
-                {/* COLUMN LEFT: REQUISITION METADATA CARDS */}
+                {/* LEFT COLUMN: REQUISITION METADATA */}
                 <div className="col-span-12 lg:col-span-6 space-y-6">
-                    {/* CARD 1: CORE WORKFLOW CONTEXT & INTENT */}
+                    {/* CARD 1: PROFILE CONTEXT */}
                     <div className="border border-slate-200 rounded-xl bg-white p-6 shadow-xs space-y-5">
                         <span className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                             <FileText size={16} className="text-slate-400" /> Profile Context
@@ -172,7 +292,7 @@ export default function StepReviewSubmit({ form }) {
                         )}
                     </div>
 
-                    {/* CARD 2: ASSIGNED SUPPLIER PARTNER */}
+                    {/* CARD 2: VENDOR ENTITY */}
                     <div className="border border-slate-200 rounded-xl bg-white p-6 shadow-xs space-y-5">
                         <span className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                             <User size={16} className="text-slate-400" /> Vendor Entity
@@ -212,32 +332,42 @@ export default function StepReviewSubmit({ form }) {
                         )}
                     </div>
 
-                    {/* CARD 3: LOGISTICS, WAREHOUSE & FULFILLMENT */}
+                    {/* CARD 3: LOGISTICS & WAREHOUSE ALLOCATION */}
                     <div className="border border-slate-200 rounded-xl bg-white p-6 shadow-xs space-y-5">
                         <span className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
                             <Truck size={16} className="text-slate-400" /> Logistics & Warehouse Allocation
                         </span>
 
-                        {/* TARGET WAREHOUSE BADGE DISPLAY */}
-                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-100 border border-indigo-200 rounded-lg text-indigo-700">
-                                    <Warehouse size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                                        Primary Target Warehouse
-                                    </p>
-                                    <p className="text-sm font-bold text-slate-900">
-                                        {selectedWarehouse}
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-indigo-100 border border-indigo-200 rounded-lg text-indigo-700 shrink-0">
+                                        <Warehouse size={18} />
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                                        {parsedWarehouses.length > 1
+                                            ? `Assigned Warehouses (${parsedWarehouses.length})`
+                                            : "Primary Target Warehouse"}
                                     </p>
                                 </div>
+                                {warehouseCode && (
+                                    <span className="text-xs font-mono font-bold bg-slate-200 text-slate-700 px-2.5 py-1 rounded">
+                                        {warehouseCode}
+                                    </span>
+                                )}
                             </div>
-                            {warehouseCode && (
-                                <span className="text-xs font-mono font-bold bg-slate-200 text-slate-700 px-2.5 py-1 rounded">
-                                    {warehouseCode}
-                                </span>
-                            )}
+
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {parsedWarehouses.map((whName, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center gap-1.5 bg-white border border-indigo-200/80 shadow-2xs px-3 py-1.5 rounded-lg text-slate-900"
+                                    >
+                                        <MapPin size={13} className="text-indigo-600 shrink-0" />
+                                        <span className="text-sm font-bold">{whName}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -269,9 +399,8 @@ export default function StepReviewSubmit({ form }) {
                     </div>
                 </div>
 
-                {/* COLUMN RIGHT: ITEM LIST & ACCOUNTING ACCRUAL RUNTIME AUDIT */}
+                {/* RIGHT COLUMN: ITEM MATRIX & FINANCIAL AUDIT */}
                 <div className="col-span-12 lg:col-span-6 flex flex-col h-full">
-                    {/* EXPANDED LINE ITEM SPECIFICATION SUMMARY DISPLAY */}
                     <div className="border border-slate-200 rounded-xl bg-white shadow-xs overflow-hidden flex flex-col h-full justify-between">
                         <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                             <span className="text-sm font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
@@ -282,7 +411,6 @@ export default function StepReviewSubmit({ form }) {
                             </span>
                         </div>
 
-                        {/* LINE SUB-STREAM SCROLL TRACK */}
                         <div className="divide-y divide-slate-100 max-h-[460px] min-h-[250px] overflow-y-auto px-6 bg-white flex-1">
                             {items.length > 0 ? (
                                 items.map((item, idx) => {
@@ -294,16 +422,10 @@ export default function StepReviewSubmit({ form }) {
                                     const unitPrice = parseFloat(item.price) || 0;
                                     const itemTotal = allocatedQty * unitPrice;
 
-                                    // Deep extract item-specific warehouse across all potential keys, falling back to header warehouse
-                                    const rawItemWarehouse =
-                                        item.warehouse ||
-                                        item.warehouseName ||
-                                        item.destinationWarehouse ||
-                                        item.targetWarehouse ||
-                                        item.location ||
-                                        item.warehouseId;
-                                    const itemWarehouse =
-                                        getWarehouseString(rawItemWarehouse) || selectedWarehouse;
+                                    const parsedItemWh = getWarehouseString(getItemWarehouseRaw(item));
+                                    const itemWarehouse = Array.isArray(parsedItemWh)
+                                        ? parsedItemWh.join(", ")
+                                        : (typeof parsedItemWh === "string" ? parsedItemWh : null) || parsedWarehouses[0] || "Unassigned";
 
                                     return (
                                         <div key={item.id || item.sku || idx} className="py-4 space-y-2">
@@ -322,7 +444,6 @@ export default function StepReviewSubmit({ form }) {
                                                 </div>
                                             </div>
 
-                                            {/* QUANTITY ALLOCATION & ITEM WAREHOUSE BADGES */}
                                             <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-indigo-700">
@@ -336,14 +457,12 @@ export default function StepReviewSubmit({ form }) {
                                                         )}
                                                     </span>
 
-                                                    {/* PRODUCT SPECIFIC WAREHOUSE BADGE */}
-                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600">
+                                                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">
                                                         <Warehouse size={12} className="text-slate-500" />
                                                         {itemWarehouse}
                                                     </span>
                                                 </div>
 
-                                                {/* Visual indicator if partially allocated */}
                                                 {requestedQty > allocatedQty && (
                                                     <span className="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
                                                         Partial Allocation
@@ -360,7 +479,6 @@ export default function StepReviewSubmit({ form }) {
                             )}
                         </div>
 
-                        {/* MASTER BALANCE COMPLIANCE RECONCILIATION SUMMARY */}
                         <div className="bg-slate-900 text-white p-6 space-y-5 rounded-b-xl">
                             <div className="flex justify-between items-center text-xs opacity-75 font-bold uppercase tracking-wider">
                                 <span>

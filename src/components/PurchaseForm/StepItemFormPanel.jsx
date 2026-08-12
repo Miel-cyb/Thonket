@@ -3,6 +3,8 @@ import StepItemVariantBridge from "./StepItemVariantBridge";
 import { Plus, LayoutGrid, PackageCheck } from "lucide-react";
 
 export default function StepItemFormPanel({ categories, products, setForm, globalLoading }) {
+    console.log('this is the category details passed to the StepItemFormPanel:', categories);
+    console.log('this is the product details passed to the StepItemFormPanel:', products);
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
     const [selectedProductId, setSelectedProductId] = useState("");
 
@@ -34,9 +36,12 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
     const flattenedCategories = useMemo(() => {
         const list = [];
         const walk = (cats) => {
+            if (!Array.isArray(cats)) return;
             cats.forEach(c => {
-                list.push(c);
-                if (c.children && Array.isArray(c.children)) walk(c.children);
+                if (c) {
+                    list.push(c);
+                    if (c.children && Array.isArray(c.children)) walk(c.children);
+                }
             });
         };
         walk(categories || []);
@@ -48,12 +53,12 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
         if (!selectedCategoryId) return [];
         return (products || []).filter(p => {
             const catId = typeof p.categoryId === "object" ? p.categoryId?._id : p.categoryId;
-            return catId === selectedCategoryId;
+            return String(catId) === String(selectedCategoryId);
         });
     }, [products, selectedCategoryId]);
 
     const currentProduct = useMemo(
-        () => (products || []).find(p => p._id === selectedProductId) || null,
+        () => (products || []).find(p => String(p._id) === String(selectedProductId)) || null,
         [selectedProductId, products]
     );
 
@@ -68,35 +73,46 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                 ...prev,
                 productName: currentProduct.name || "",
                 brand: currentProduct.brand || "nile",
-                categoryId: parsedCatId || prev.categoryId,
+                categoryId: parsedCatId ? String(parsedCatId) : prev.categoryId,
                 categoryTree: currentProduct.categoryTree || prev.categoryTree,
                 sku: currentProduct.slug ? currentProduct.slug.toUpperCase() : prev.sku,
                 desc: currentProduct.description || currentProduct.name || prev.desc
             }));
+        } else if (selectedCategoryId) {
+            // Reset product-specific fields when product is deselected, preserving category context
+            const matchedCat = flattenedCategories.find(c => String(c._id) === String(selectedCategoryId));
+            setNewItem(prev => ({
+                ...prev,
+                productName: "",
+                brand: "",
+                sku: "",
+                desc: "",
+                categoryId: selectedCategoryId,
+                categoryTree: matchedCat ? [matchedCat.name] : []
+            }));
         }
-    }, [currentProduct]);
+    }, [currentProduct, selectedCategoryId, flattenedCategories]);
 
     const handleCategoryClick = (catId) => {
-        const targetId = selectedCategoryId === catId ? "" : catId;
+        const targetId = String(selectedCategoryId) === String(catId) ? "" : catId;
         setSelectedCategoryId(targetId);
         setSelectedProductId("");
 
         if (!targetId) {
-            setNewItem(prev => ({ ...prev, ...initialItemState }));
+            setNewItem({ ...initialItemState });
             return;
         }
 
-        const matchedCat = flattenedCategories.find(c => c._id === targetId);
-        setNewItem(prev => ({
-            ...prev,
+        const matchedCat = flattenedCategories.find(c => String(c._id) === String(targetId));
+        setNewItem({
             ...initialItemState,
             categoryId: targetId,
             categoryTree: matchedCat ? [matchedCat.name] : []
-        }));
+        });
     };
 
     const handleProductClick = (prodId) => {
-        setSelectedProductId(selectedProductId === prodId ? "" : prodId);
+        setSelectedProductId(prev => String(prev) === String(prodId) ? "" : prodId);
     };
 
     const handleAdd = (e) => {
@@ -138,7 +154,7 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                             <span className="text-sm text-slate-400 m-auto py-1">No categories available</span>
                         ) : (
                             flattenedCategories.map(c => {
-                                const isSelected = selectedCategoryId === c._id;
+                                const isSelected = String(selectedCategoryId) === String(c._id);
                                 return (
                                     <button
                                         key={c._id}
@@ -170,7 +186,7 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                             <span className="text-sm text-slate-400 m-auto py-1">No products cataloged here</span>
                         ) : (
                             filteredProducts.map(p => {
-                                const isSelected = selectedProductId === p._id;
+                                const isSelected = String(selectedProductId) === String(p._id);
                                 return (
                                     <button
                                         key={p._id}
@@ -198,7 +214,7 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                     <input
                         placeholder="SKU Code"
                         value={newItem.sku}
-                        onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, sku: e.target.value }))}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-base text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-300"
                     />
                 </div>
@@ -208,7 +224,7 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                     <input
                         placeholder="Item details description"
                         value={newItem.desc}
-                        onChange={(e) => setNewItem({ ...newItem, desc: e.target.value })}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, desc: e.target.value }))}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-base text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-300"
                     />
                 </div>
@@ -220,7 +236,7 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                         placeholder="Qty"
                         min="1"
                         value={newItem.qty}
-                        onChange={(e) => setNewItem({ ...newItem, qty: e.target.value })}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, qty: e.target.value }))}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-base text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-300"
                     />
                 </div>
@@ -233,7 +249,7 @@ export default function StepItemFormPanel({ categories, products, setForm, globa
                         min="0"
                         step="0.01"
                         value={newItem.price}
-                        onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, price: e.target.value }))}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-base text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-300"
                     />
                 </div>

@@ -5,19 +5,20 @@ import {
     PackageCheck,
     AlertCircle,
     CheckCircle2,
-    Calendar,
     User,
     Building2,
     DollarSign,
     CornerDownLeft,
     Hash,
     Clock,
-    Layers,
     CreditCard,
     MapPin,
     History,
     ArrowRight
 } from "lucide-react";
+
+import CycleStateControl, { STAGES } from "../components/PurchaseForm/CycleStateControl";
+import { API_ENDPOINTS } from "../utils/urls";
 
 export default function PurchaseOrderDetailView({
     selectedPO,
@@ -25,6 +26,7 @@ export default function PurchaseOrderDetailView({
     onUpdateCycleState
 }) {
     const [isUpdating, setIsUpdating] = useState(false);
+    const [updateError, setUpdateError] = useState(null);
 
     // Guard fallback state
     if (!selectedPO) {
@@ -42,6 +44,7 @@ export default function PurchaseOrderDetailView({
     }
 
     const poId = selectedPO._id || "N/A";
+    const purchaseApi = `${API_ENDPOINTS.PURCHASE_ORDERS}/${poId}/cycle`;
 
     // Structural Extraction Mapping based on Backend Payloads
     const supplierDisplayName = selectedPO.context?.title || "Bulk Procurement Node";
@@ -77,28 +80,55 @@ export default function PurchaseOrderDetailView({
         });
     };
 
+    // PATCH Request Handler for Cycle State Transitions
     const handleStateTransition = async (nextState) => {
-        if (!onUpdateCycleState) return;
         setIsUpdating(true);
+        setUpdateError(null);
+
+        // Dummy User Payload Data
+        const dummyUser = {
+            userId: "usr_9988776655",
+            username: "Alex Morgan",
+            userrole: "Procurement Manager"
+        };
+
         try {
-            await onUpdateCycleState(poId, nextState);
+            const token = localStorage.getItem("token"); // Retrieve JWT token if applicable
+
+            const response = await fetch(purchaseApi, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token && { Authorization: `Bearer ${token}` })
+                },
+                body: JSON.stringify({
+                    cycleState: nextState,
+                    userId: dummyUser.userId,
+                    username: dummyUser.username,
+                    userRole: dummyUser.userrole
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to update state (${response.status})`);
+            }
+
+            const updatedPO = await response.json();
+
+            console.log('this is the updated purchase order after state transition:', updatedPO);
+
+            // Notify parent listener to refresh UI or update list state
+            if (onUpdateCycleState) {
+                await onUpdateCycleState(poId, nextState, updatedPO);
+            }
         } catch (err) {
-            console.error("Failed transition:", err);
+            console.error("State transition PATCH request failed:", err);
+            setUpdateError(err.message || "Failed to execute state transition.");
         } finally {
             setIsUpdating(false);
         }
     };
-
-    const stages = [
-        { key: "requested", label: "Request Init", icon: FileText },
-        { key: "approved", label: "Approved", icon: CheckCircle2 },
-        { key: "in_transit", label: "In Transit", icon: Truck },
-        { key: "receiving", label: "Gate Arrival", icon: PackageCheck },
-        { key: "has_issues", label: "Exception Review", icon: AlertCircle },
-        { key: "completed", label: "Closed/Archived", icon: CheckCircle2 }
-    ];
-
-    const currentStageObj = stages.find(s => s.key === currentStage) || stages[0];
 
     return (
         <div className="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden">
@@ -118,7 +148,7 @@ export default function PurchaseOrderDetailView({
                             <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-bold tracking-tight border border-slate-200">
                                 PO #{String(poId).slice(-8).toUpperCase()}
                             </span>
-                            <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${currentStage === 'has_issues'
+                            <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${currentStage === 'has_issues' || currentStage === 'cancelled'
                                 ? 'bg-rose-50 text-rose-700 border-rose-200'
                                 : 'bg-indigo-50 text-indigo-700 border-indigo-100'
                                 }`}>
@@ -137,12 +167,20 @@ export default function PurchaseOrderDetailView({
                     </div>
                 </div>
 
-                {isUpdating && (
-                    <div className="text-xs font-medium text-indigo-600 bg-indigo-50/60 px-3 py-1.5 rounded-xl border border-indigo-100 flex items-center gap-2 animate-pulse">
-                        <Clock size={14} className="animate-spin" />
-                        <span>Synchronizing Ledger Status...</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-3">
+                    {updateError && (
+                        <div className="text-xs font-medium text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 flex items-center gap-1.5">
+                            <AlertCircle size={14} />
+                            <span>{updateError}</span>
+                        </div>
+                    )}
+                    {isUpdating && (
+                        <div className="text-xs font-medium text-indigo-600 bg-indigo-50/60 px-3 py-1.5 rounded-xl border border-indigo-100 flex items-center gap-2 animate-pulse">
+                            <Clock size={14} className="animate-spin" />
+                            <span>Synchronizing Ledger Status...</span>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* DUAL WORKSPACE BODY LAYOUT */}
@@ -290,7 +328,7 @@ export default function PurchaseOrderDetailView({
                                         <div key={alloc._id || idx} className="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                                             <div className="min-w-0 pr-2">
                                                 <span className="font-semibold text-slate-800 text-xs block truncate">{matchingItem?.productName || "Product Reference"}</span>
-                                                <span className="text-[10px] font-mono text-indigo-600 font-bold uppercase mt-0.5 block">{alloc.warehouseId}</span>
+                                                <span className="text-[10px] font-mono text-indigo-600 font-bold uppercase mt-0.5 block">{alloc.warehouseName}</span>
                                             </div>
                                             <div className="shrink-0">
                                                 <span className="text-xs font-bold text-slate-800 bg-white px-2.5 py-1 rounded-lg shadow-sm border border-slate-200">
@@ -309,24 +347,28 @@ export default function PurchaseOrderDetailView({
                         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-5 flex items-center gap-2">
                             <Clock size={14} className="text-slate-400" /> Active Stage Tracking Lifecycle
                         </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 relative">
-                            {stages.map((stg, stageIndex) => {
+                        <div className="grid grid-cols-2 sm:grid-cols-7 gap-3 relative">
+                            {STAGES.map((stg, stageIndex) => {
                                 const IconComp = stg.icon;
-                                const currentIndex = stages.findIndex(s => s.key === currentStage);
+                                const currentIndex = STAGES.findIndex(s => s.key === currentStage);
                                 const isPassedOrCurrent = currentIndex >= stageIndex;
                                 const isCurrent = currentStage === stg.key;
 
                                 return (
                                     <div key={stg.key} className="flex flex-col items-center text-center p-3 rounded-xl border border-transparent bg-slate-50/50 relative">
                                         <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${isCurrent
-                                            ? "bg-indigo-600 text-white ring-4 ring-indigo-100 shadow-md scale-105"
+                                            ? currentStage === "cancelled"
+                                                ? "bg-rose-600 text-white ring-4 ring-rose-100 shadow-md scale-105"
+                                                : "bg-indigo-600 text-white ring-4 ring-indigo-100 shadow-md scale-105"
                                             : isPassedOrCurrent
                                                 ? "bg-slate-800 text-white"
                                                 : "bg-slate-100 text-slate-400 border border-slate-200"
                                             }`}>
                                             <IconComp size={16} />
                                         </div>
-                                        <p className={`text-[11px] font-bold mt-2.5 line-clamp-1 ${isCurrent ? 'text-indigo-600 font-black' : isPassedOrCurrent ? 'text-slate-800' : 'text-slate-400'
+                                        <p className={`text-[11px] font-bold mt-2.5 line-clamp-1 ${isCurrent
+                                            ? currentStage === "cancelled" ? 'text-rose-600 font-black' : 'text-indigo-600 font-black'
+                                            : isPassedOrCurrent ? 'text-slate-800' : 'text-slate-400'
                                             }`}>
                                             {stg.label}
                                         </p>
@@ -364,59 +406,12 @@ export default function PurchaseOrderDetailView({
                     )}
                 </div>
 
-                {/* RIGHT BLOCK: CONTEXT STATE ACTION PANEL */}
-                <div className="w-full lg:w-80 shrink-0 bg-slate-50/50 p-6 flex flex-col justify-between overflow-y-auto border-t lg:border-t-0 border-slate-200">
-                    <div className="space-y-5">
-                        <div>
-                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">State Control Center</h3>
-                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                                Authorize phase transitions manually across the procurement matrix lifecycle loop.
-                            </p>
-                        </div>
-
-                        {/* TRANSACTION CONTEXT ADAPTIVE ROUTER CONTROLS */}
-                        <div className="space-y-2">
-                            {currentStage === "requested" && (
-                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left mb-3">
-                                    <p className="text-[11px] leading-relaxed font-medium text-amber-800">
-                                        ⚠️ Awaiting internal managerial approval parameters prior to supplier dispatch channels.
-                                    </p>
-                                </div>
-                            )}
-
-                            {stages.map((stg) => {
-                                const IconComp = stg.icon;
-                                const isSelected = currentStage === stg.key;
-
-                                return (
-                                    <button
-                                        key={stg.key}
-                                        type="button"
-                                        disabled={isUpdating || isSelected}
-                                        onClick={() => handleStateTransition(stg.key)}
-                                        className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all ${isSelected
-                                            ? "bg-indigo-600 text-white border-indigo-700 shadow-md font-bold"
-                                            : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 shadow-sm active:scale-[0.99]"
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <IconComp size={15} className={isSelected ? "text-white" : "text-slate-400"} />
-                                            <span className="truncate">{stg.label}</span>
-                                        </div>
-                                        <span className={`text-[9px] font-mono shrink-0 ml-2 px-1.5 py-0.5 rounded ${isSelected ? "bg-indigo-700/60 text-indigo-100" : "bg-slate-100 text-slate-400"
-                                            }`}>
-                                            {isSelected ? "Active" : "Transition"}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="text-[10px] font-mono text-slate-400 mt-8 pt-4 border-t border-slate-200 text-center uppercase tracking-wider">
-                        Protected Ledger Node Document
-                    </div>
-                </div>
+                {/* RIGHT BLOCK: EXTRACTED CONTEXT STATE ACTION PANEL */}
+                <CycleStateControl
+                    currentStage={currentStage}
+                    isUpdating={isUpdating}
+                    onHandleStateTransition={handleStateTransition}
+                />
 
             </div>
         </div>

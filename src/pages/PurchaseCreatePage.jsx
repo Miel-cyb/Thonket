@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ 1. IMPORT NAVIGATE HOOK
+import { useNavigate } from "react-router-dom"; // ✅ ROUTER HOOK
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 
 // GLOBAL RUNTIME SYSTEM IMPORT
@@ -16,8 +16,23 @@ import StepPaymentTerms from "../components/PurchaseForm/StepPaymentTerms";
 import StepReviewSubmit from "../components/PurchaseForm/StepReviewSubmit";
 import { API_ENDPOINTS } from "../utils/urls";
 
+// ✅ WAREHOUSE NAME LOOKUP DICTIONARY
+const WAREHOUSE_NAME_MAP = {
+    "wh-accra": "Accra Central Warehouse",
+    "wh-kumasi": "Kumasi Regional Depot",
+    "wh-takoradi": "Takoradi Port Facility",
+    "wh-tamale": "Tamale Northern Hub"
+};
+
+// ✅ HELPER: SAFE ISO DATE FORMATTER TO PREVENT RUNTIME DATE PARSE ERRORS
+const formatSafeIsoDate = (dateVal) => {
+    if (!dateVal) return null;
+    const parsed = new Date(dateVal);
+    return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
 export default function PurchaseCreatePage() {
-    const navigate = useNavigate(); // ✅ 2. INITIALIZE NAVIGATION ROUTER
+    const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [submitError, setSubmitError] = useState(null);
@@ -33,11 +48,13 @@ export default function PurchaseCreatePage() {
     const [form, setForm] = useState({
         context: {},
         supplier: null,
+        manufacturer: null,
         intent: {},
         items: [],
         allocations: {},
         logistics: {},
         payment: {},
+        pricing: {},
         currency: "GHS"
     });
 
@@ -57,11 +74,20 @@ export default function PurchaseCreatePage() {
         }
 
         for (const item of form.items) {
-            const targetQty = parseInt(item.qty) || 0;
-            const itemAllocations = form.allocations[item.id] || {};
+            const targetQty = parseFloat(item.qty || item.qtyOrdered || item.quantity) || 0;
 
-            const totalAllocated = warehouseKeys.reduce((sum, key) => {
-                return sum + (parseInt(itemAllocations[key]) || 0);
+            // ✅ GAP FIX: Flexible item ID lookup for allocation matching
+            const itemKey = item.id || item.itemId || item.productId || item.product_id;
+            const itemAllocations = form.allocations[itemKey] || form.allocations[item.id] || {};
+
+            const keysToEvaluate = Object.keys(itemAllocations).length > 0
+                ? Object.keys(itemAllocations)
+                : warehouseKeys;
+
+            const totalAllocated = keysToEvaluate.reduce((sum, key) => {
+                const val = itemAllocations[key];
+                const qty = typeof val === 'object' && val !== null ? (val.quantity || val.qty) : val;
+                return sum + (parseFloat(qty) || 0);
             }, 0);
 
             if (totalAllocated !== targetQty) {
@@ -86,44 +112,104 @@ export default function PurchaseCreatePage() {
         setLoading(true);
         try {
             let runningOrderTotal = 0;
+
+            // ✅ GAP FIX: Robust item synchronization with fallback checks for productId, categoryId, etc.
             const synchronizedItems = form.items.map((item) => {
-                const qtyOrdered = parseInt(item.qty) || 0;
-                const unitPrice = parseFloat(item.price || item.unitPrice) || 0;
+                const qtyOrdered = parseFloat(item.qty || item.qtyOrdered || item.quantity) || 0;
+                const unitPrice = parseFloat(item.price || item.unitPrice || item.rate) || 0;
                 const totalCalculatedLine = qtyOrdered * unitPrice;
+
+                // Resolved Item Name
+                const resolvedItemName = item.itemName || item.productName || item.name || item.title || item.sku || 'Unnamed Item';
+
+                // Resolved Product ID (prevents empty string when ID key varies across components)
+                const resolvedProductId = String(
+                    item.productId || item.product_id || item.id || item.itemId || ''
+                );
+
+                // Resolved Category Details (supports nested category objects or flattened ID/Name properties)
+                const resolvedCategoryId = String(
+                    item.categoryId ||
+                    item.category_id ||
+                    (typeof item.category === 'object' ? item.category?.id : '') ||
+                    form.context?.categoryId ||
+                    form.context?.category_id ||
+                    ''
+                );
+
+                const resolvedCategoryName = typeof item.category === 'object'
+                    ? item.category?.name || ''
+                    : item.category || item.categoryName || form.context?.category || '';
 
                 runningOrderTotal += totalCalculatedLine;
 
                 return {
-                    itemId: String(item.id || item.itemId || ''),
-                    productId: String(item.productId || ''),
-                    variantId: String(item.variantId || ''),
+                    itemId: String(item.id || item.itemId || resolvedProductId || ''),
+                    productId: resolvedProductId, // ✅ GAP FIXED
+                    variantId: String(item.variantId || item.variant_id || ''),
                     sku: item.sku || 'N/A',
-                    desc: item.desc || '',
-                    productName: item.productName || item.name || '',
+                    itemName: resolvedItemName,
+                    productName: resolvedItemName,
+                    desc: item.desc || item.description || '',
                     brand: item.brand || '',
-                    unitOfMeasure: item.unitOfMeasure || 'PCS',
+                    categoryId: resolvedCategoryId, // ✅ GAP FIXED
+                    category: resolvedCategoryName, // ✅ GAP FIXED
+                    unitOfMeasure: item.unitOfMeasure || item.uom || item.unit || 'PCS',
                     qtyOrdered: qtyOrdered,
                     unitPrice: unitPrice,
-                    lineTotal: totalCalculatedLine
+                    lineTotal: totalCalculatedLine,
+                    specifications: item.specifications || item.specs || '',
+                    notes: item.notes || '',
+                    manufacturer: item.manufacturer || form.manufacturer || null
                 };
             });
 
+            // ✅ GAP FIX: Synchronize Allocations with flexible item lookup
             const synchronizedAllocations = [];
             if (form.allocations) {
                 Object.entries(form.allocations).forEach(([itemId, targetWarehouses]) => {
-                    Object.entries(targetWarehouses).forEach(([warehouseId, quantity]) => {
-                        const parsedQty = parseInt(quantity) || 0;
-                        if (parsedQty > 0) {
-                            synchronizedAllocations.push({
-                                itemId: itemId,
-                                warehouseId: warehouseId,
-                                quantity: parsedQty
-                            });
-                        }
-                    });
+                    const matchedItem = form.items.find((i) =>
+                        String(i.id || i.itemId || i.productId || i.product_id) === String(itemId)
+                    );
+                    const itemName = matchedItem
+                        ? (matchedItem.itemName || matchedItem.productName || matchedItem.name || matchedItem.title || matchedItem.sku || 'Unnamed Item')
+                        : 'Unnamed Item';
+
+                    if (typeof targetWarehouses === 'object' && targetWarehouses !== null) {
+                        Object.entries(targetWarehouses).forEach(([warehouseId, value]) => {
+                            let parsedQty = 0;
+                            let warehouseName = WAREHOUSE_NAME_MAP[warehouseId] || warehouseId;
+
+                            if (typeof value === 'object' && value !== null) {
+                                parsedQty = parseFloat(value.quantity || value.qty) || 0;
+                                if (value.warehouseName || value.name || value.label) {
+                                    warehouseName = value.warehouseName || value.name || value.label;
+                                }
+                            } else {
+                                parsedQty = parseFloat(value) || 0;
+                            }
+
+                            if (parsedQty > 0) {
+                                synchronizedAllocations.push({
+                                    itemId: String(itemId),
+                                    itemName: itemName,
+                                    warehouseId: String(warehouseId),
+                                    warehouseName: warehouseName,
+                                    quantity: parsedQty
+                                });
+                            }
+                        });
+                    }
                 });
             }
 
+            // Calculations for Freight, Tax, Subtotal & Budget
+            const shippingCost = Number(form.logistics?.shippingCost) || 0;
+            const estimatedTax = Number(form.pricing?.tax) || 0;
+            const totalCost = runningOrderTotal + shippingCost + estimatedTax;
+            const budgetCeiling = Number(form.intent?.budget || form.payment?.budget || form.pricing?.budget) || 0;
+
+            // ✅ Comprehensive Unified Post Payload
             const payload = {
                 createdBy: {
                     userId: currentUser.userId,
@@ -131,36 +217,69 @@ export default function PurchaseCreatePage() {
                     role: currentUser.role
                 },
                 context: {
-                    title: form.context.title || "Bulk Oil Order",
-                    type: form.context.type || "Bulk Restock"
+                    title: form.context?.title || "Bulk Order",
+                    type: form.context?.type || "Bulk Restock",
+                    department: form.context?.department || "",
+                    departmentId: form.context?.departmentId || form.context?.department_id || "",
+                    category: form.context?.category || form.context?.categoryName || "",
+                    categoryId: form.context?.categoryId || form.context?.category_id || "", // ✅ GAP FIXED
+                    requisitionNumber: form.context?.requisitionNumber || "",
+                    tags: form.context?.tags || []
                 },
                 intent: {
-                    description: form.intent.description || "",
-                    priority: form.intent.priority || "routine"
+                    description: form.intent?.description || "",
+                    priority: form.intent?.priority || "routine",
+                    justification: form.intent?.justification || form.intent?.description || "",
+                    urgencyReason: form.intent?.urgencyReason || "",
+                    budget: budgetCeiling,
+                    attachments: form.intent?.attachments || []
                 },
                 supplier: {
-                    supplierId: form.supplier?.id || form.supplier?.supplierId || null,
+                    supplierId: form.supplier?.id || form.supplier?.supplierId || form.supplier?.supplier_id || null, // ✅ GAP FIXED
                     name: form.supplier?.name || "",
                     location: form.supplier?.location || "",
                     businessType: form.supplier?.businessType || "",
-                    riskLevel: form.supplier?.riskLevel || ""
+                    riskLevel: form.supplier?.riskLevel || "",
+                    email: form.supplier?.email || "",
+                    phone: form.supplier?.phone || "",
+                    contactPerson: form.supplier?.contactPerson || form.supplier?.contact || "",
+                    taxId: form.supplier?.taxId || "",
+                    reliability: form.supplier?.reliability || ""
                 },
+                manufacturer: form.manufacturer ? {
+                    id: form.manufacturer.id || form.manufacturer.manufacturerId || form.manufacturer.manufacturer_id || null,
+                    name: form.manufacturer.name || "",
+                    code: form.manufacturer.code || ""
+                } : null,
                 items: synchronizedItems,
                 allocations: synchronizedAllocations,
                 logistics: {
-                    deliveryType: form.logistics.deliveryType || "supplier",
-                    expectedDispatchDate: form.logistics.expectedDispatchDate ? new Date(form.logistics.expectedDispatchDate) : null,
-                    expectedDeliveryDate: form.logistics.expectedDeliveryDate ? new Date(form.logistics.expectedDeliveryDate) : null,
-                    destination: form.logistics.destination || ""
+                    deliveryType: form.logistics?.deliveryType || "supplier",
+                    expectedDispatchDate: formatSafeIsoDate(form.logistics?.expectedDispatchDate), // ✅ GAP FIXED: SAFE DATE PARSING
+                    expectedDeliveryDate: formatSafeIsoDate(form.logistics?.expectedDeliveryDate), // ✅ GAP FIXED: SAFE DATE PARSING
+                    destination: form.logistics?.destination || form.logistics?.location || "",
+                    carrier: form.logistics?.carrier || "",
+                    shippingCost: shippingCost,
+                    incoterms: form.logistics?.incoterms || "",
+                    specialInstructions: form.logistics?.specialInstructions || form.logistics?.notes || "",
+                    warehouseCode: form.logistics?.warehouseCode || form.logistics?.warehouse_code || "",
+                    allocatedWarehouse: form.logistics?.allocatedWarehouse || form.logistics?.warehouse || ""
                 },
                 payment: {
-                    method: form.payment.method || "",
-                    terms: form.payment.terms || "upfront",
-                    advance: Number(form.payment.advance) || 0
+                    method: form.payment?.method || "",
+                    terms: form.payment?.terms || "upfront",
+                    advance: Number(form.payment?.advance) || 0,
+                    creditPeriodDays: Number(form.payment?.creditPeriodDays || form.payment?.creditDays) || 0,
+                    bankDetails: form.payment?.bankDetails || {},
+                    milestones: form.payment?.milestones || form.payment?.milestoneBreakdown || []
                 },
                 pricing: {
-                    currency: form.currency || "GHS",
-                    totalCost: runningOrderTotal
+                    currency: form.currency || form.pricing?.currency || "GHS",
+                    subtotal: runningOrderTotal,
+                    shippingCost: shippingCost,
+                    tax: estimatedTax,
+                    totalCost: totalCost,
+                    budgetCeiling: budgetCeiling
                 },
                 documentStatus: "submitted"
             };
@@ -181,7 +300,7 @@ export default function PurchaseCreatePage() {
 
             await response.json();
 
-            // ✅ 3. REDIRECT USER UPON SUCCESS
+            // ✅ REDIRECT USER UPON SUCCESS
             navigate("/procurement");
 
         } catch (err) {

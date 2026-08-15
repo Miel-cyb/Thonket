@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ArrowLeft, MapPin, Layers, Package, X
 } from 'lucide-react';
 
 // Import the GateSecurityControl component 
 import GateSecurityControl from './GateSecurityControl';
+import { API_ENDPOINTS } from '../../../utils/urls';
 
 export default function DeliveryDetailModal({
     delivery,
@@ -14,6 +15,10 @@ export default function DeliveryDetailModal({
     onConfirmArrival,
     onStartReceiving
 }) {
+    const InboundLogApi = `${API_ENDPOINTS.WAREHOUSES}/inbound/delivery/gate-check-in`;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
+
     // Handle ESC key press to close modal
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -43,6 +48,78 @@ export default function DeliveryDetailModal({
 
     const items = delivery.items || [];
     const totalQty = items.reduce((acc, curr) => acc + (curr.qtyExpected || 0), 0);
+
+    console.log('Delivery Detail Modal Rendered with delivery:', delivery);
+
+    // Handler function to process POST request during arrival confirmation
+    const handleConfirmArrivalWithPost = async (deliveryId) => {
+        setIsSubmitting(true);
+        setSubmitError(null);
+        try {
+            // Exclude trackPlate and extract driver details from form
+            const {
+                driverName,
+                driverPhone,
+                driverLicense,
+                driverId,
+                carrierName,
+                truckNumber,
+                waybillNumber,
+                sealNumber
+            } = form || {};
+
+            const dummyActor = {
+                userId: 'user-12345',
+                name: 'Jane Doe',
+                username: 'jdoe_sec',
+                role: 'Gate Security Officer',
+            };
+
+            const payload = {
+                organizationId: delivery.organizationId,
+                ledgerId: delivery.ledgerId,
+
+                logistics: {
+                    driverName,
+                    driverPhone,
+                    driverLicense,
+                    driverId,
+                    carrierName,
+                    truckNumber,
+                    waybillNumber,
+                    sealNumber
+                },
+                actor: dummyActor,
+            };
+
+            const response = await fetch(InboundLogApi, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Add 'Authorization': `Bearer ${token}` here if authentication headers are required
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to log inbound entry: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            console.log('Inbound log entry created successfully:', data);
+
+            // Trigger parent state update callback successfully
+            if (onConfirmArrival) {
+                onConfirmArrival(deliveryId || delivery.id, data);
+            }
+        } catch (err) {
+            console.error('Error executing inbound post request:', err);
+            setSubmitError(err.message || 'Network error occurred while saving inbound entry.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <div
@@ -90,6 +167,14 @@ export default function DeliveryDetailModal({
 
                 {/* Modal Body */}
                 <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-slate-50/60 dark:bg-slate-950/40">
+
+                    {/* Error Banner Alert */}
+                    {submitError && (
+                        <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 px-4 py-3 rounded-xl text-xs font-medium flex items-center justify-between shadow-xs">
+                            <span>{submitError}</span>
+                            <button onClick={() => setSubmitError(null)} className="font-bold underline text-xs ml-2 cursor-pointer">Dismiss</button>
+                        </div>
+                    )}
 
                     {/* Metadata Summary Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -186,13 +271,16 @@ export default function DeliveryDetailModal({
                     </div>
 
                     {/* Operational Gate Validation & Action Section (Modularized) */}
-                    <GateSecurityControl
-                        delivery={delivery}
-                        form={form}
-                        setForm={setForm}
-                        onConfirmArrival={onConfirmArrival}
-                        onStartReceiving={onStartReceiving}
-                    />
+                    <div className={isSubmitting ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
+                        <GateSecurityControl
+                            delivery={delivery}
+                            form={form}
+                            setForm={setForm}
+                            onConfirmArrival={handleConfirmArrivalWithPost}
+                            onStartReceiving={onStartReceiving}
+                            isSubmitting={isSubmitting}
+                        />
+                    </div>
 
                 </div>
             </div>

@@ -11,7 +11,7 @@ import {
     Truck,
     CheckCircle2,
     Package,
-    Calendar
+    Calendar,
 } from 'lucide-react';
 
 // Import local modularized presentational views
@@ -21,216 +21,527 @@ import DeliveryAnalyticsView from '../components/WarehouseOverview/ExpectedDeliv
 import { API_ENDPOINTS } from '../utils/urls';
 
 // ==========================================
-// DATA TRANSFORMER (Maps Raw Ledger API -> UI Model)
+// STATUS MAPPINGS
 // ==========================================
+
+const STATUS_OPTIONS = [
+    'All',
+    'Arrived',
+    'In Transit',
+    'Expected',
+    'Receiving',
+    'Completed',
+];
+
+const STATUS_API_MAP = {
+    Expected: 'EXPECTED',
+    'In Transit': 'IN_TRANSIT',
+    Arrived: 'ARRIVED',
+    Receiving: 'RECEIVING',
+    Completed: 'COMPLETED',
+};
+
+// ==========================================
+// SORTING & TIMESTAMP HELPERS
+// ==========================================
+
+const getDeliveryTimestamp = (delivery) => {
+    if (!delivery.expectedDate) return 0;
+    const dateStr = delivery.expectedDate;
+    const timeStr = delivery.expectedTime || '09:00 AM';
+    const parsed = new Date(`${dateStr} ${timeStr}`);
+    if (!isNaN(parsed.getTime())) return parsed.getTime();
+    const parsedDateOnly = new Date(dateStr);
+    return !isNaN(parsedDateOnly.getTime()) ? parsedDateOnly.getTime() : 0;
+};
+
+const sortDeliveries = (items) => {
+    return [...items].sort((a, b) => {
+        const getPriority = (status) => {
+            switch (status) {
+                case 'Arrived':
+                    return 1;
+                case 'In Transit':
+                    return 2;
+                case 'Expected':
+                    return 3;
+                case 'Receiving':
+                    return 4;
+                case 'Completed':
+                    return 5;
+                default:
+                    return 6;
+            }
+        };
+
+        const priorityA = getPriority(a.status);
+        const priorityB = getPriority(b.status);
+
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        // Within the same status, rank by date and timestamp (ascending: earliest first)
+        const timeA = getDeliveryTimestamp(a);
+        const timeB = getDeliveryTimestamp(b);
+        return timeA - timeB;
+    });
+};
+
+// ==========================================
+// FLATTEN SERVER RESPONSE
+// ==========================================
+
+const flattenDeliveryResponse = (response) => {
+    if (!response) return [];
+
+    // If the server response is wrapped in an envelope, extract the inner data property
+    const data = response.data !== undefined ? response.data : response;
+
+    if (Array.isArray(data)) return data;
+    if (typeof data !== 'object' || data === null) return [];
+
+    return Object.entries(data).flatMap(([status, group]) => {
+        if (
+            !group ||
+            typeof group !== 'object' ||
+            !Array.isArray(group.deliveries)
+        ) {
+            return [];
+        }
+
+        return group.deliveries.map((delivery) => ({
+            ...delivery,
+            lifecycleStatus: delivery.lifecycleStatus || status,
+        }));
+    });
+};
+
+// ==========================================
+// DATA TRANSFORMER
+// ==========================================
+
 const transformLedgerToDelivery = (raw) => {
-    // Return early if object is already in UI format (e.g. Fallback Data)
-    if (raw.expectedDate && raw.supplier && !raw.ledgerId) {
-        return raw;
+    if (!raw || typeof raw !== 'object') {
+        return {
+            id: 'PO-UNKNOWN',
+            supplier: 'Unknown Supplier',
+            expectedDate: new Date().toISOString().split('T')[0],
+            expectedTime: '09:00 AM',
+            itemsCount: 0,
+            status: 'Expected',
+            destinationWarehouse: 'Default Warehouse',
+            storageType: 'Ambient',
+            totalPallets: 1,
+            driverName: 'Unassigned',
+            truckPlate: 'Pending',
+            logisticsProvider: 'Standard Freight',
+            totalValue: 0,
+            currency: 'GHS',
+            items: [],
+            allocations: [],
+            lifecycleStatus: 'EXPECTED',
+        };
     }
 
-    // Parse Schedule Timestamps
-    const dateSource = raw.schedule?.approvedAt || raw.schedule?.requestedAt;
-    const dateObj = dateSource ? new Date(dateSource) : new Date();
-    const expectedDate = dateObj.toISOString().split('T')[0];
-    const expectedTime = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateSource =
+        raw.schedule?.approvedAt ||
+        raw.schedule?.requestedAt ||
+        raw.expectedDate;
 
-    // Infer Status from shipment summary / schedule
-    let inferredStatus = 'Expected';
-    if (raw.shipmentSummary?.totalShipmentsCount > 0) {
+    let expectedDate = raw.expectedDate;
+    let expectedTime = raw.expectedTime;
+
+    if (dateSource && !raw.expectedDate) {
+        const dateObj = new Date(dateSource);
+        if (!Number.isNaN(dateObj.getTime())) {
+            expectedDate = dateObj.toISOString().split('T')[0];
+            expectedTime = dateObj.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        }
+    }
+
+    expectedDate = expectedDate || new Date().toISOString().split('T')[0];
+    expectedTime = expectedTime || '09:00 AM';
+
+    let inferredStatus = raw.status || 'Expected';
+    const shipmentStatus = raw.shipmentSummary?.shipments?.[0]?.status;
+
+    if (shipmentStatus === 'GATE_CHECKED_IN') {
+        inferredStatus = 'Arrived';
+    } else if (shipmentStatus === 'RECEIVING') {
+        inferredStatus = 'Receiving';
+    } else if (
+        raw.shipmentSummary?.totalShipmentsCount > 0 &&
+        raw.lifecycleStatus === 'IN_TRANSIT'
+    ) {
         inferredStatus = 'In Transit';
+    } else if (raw.lifecycleStatus) {
+        const statusMap = {
+            EXPECTED: 'Expected',
+            IN_TRANSIT: 'In Transit',
+            ARRIVED: 'Arrived',
+            RECEIVING: 'Receiving',
+            COMPLETED: 'Completed',
+        };
+        inferredStatus = statusMap[raw.lifecycleStatus] || 'Expected';
     }
 
-    // Main Warehouse from allocations
-    const primaryWarehouse = raw.allocations?.[0]?.warehouseName || 'Default Warehouse';
+    const allocations = Array.isArray(raw.allocations) ? raw.allocations : [];
+    const uniqueWarehouses = [
+        ...new Set(
+            allocations
+                .map((allocation) => allocation?.warehouseName)
+                .filter(Boolean)
+        ),
+    ];
+
+    const primaryWarehouse =
+        raw.destinationWarehouse ||
+        (uniqueWarehouses.length > 0
+            ? uniqueWarehouses.length > 1
+                ? `${uniqueWarehouses[0]} (+${uniqueWarehouses.length - 1} more)`
+                : uniqueWarehouses[0]
+            : raw.warehouseId
+                ? `Warehouse ID: ${raw.warehouseId}`
+                : 'Default Warehouse');
+
+    const supplierDisplayName =
+        raw.supplier?.name ||
+        raw.supplierName ||
+        (typeof raw.supplier === 'string' ? raw.supplier : null) ||
+        raw.purchaseRequestId ||
+        (raw.supplierId ? `Supplier ID: ${raw.supplierId}` : 'Unknown Supplier');
+
+    const rawItems = Array.isArray(raw.items) ? raw.items : [];
+
+    const totalQty = rawItems.reduce((acc, item) => {
+        const quantity =
+            item?.expectedQty !== undefined
+                ? Number(item.expectedQty)
+                : Number(item?.qtyExpected ?? item?.qtyOrdered ?? 0);
+        return acc + (Number.isFinite(quantity) ? quantity : 0);
+    }, 0);
 
     return {
-        id: raw.ledgerNumber || raw.purchaseRequestId || raw.purchaseOrderId || 'PO-UNKNOWN',
-        purchaseOrderId: raw.purchaseOrderId,
-        supplier: raw.purchaseRequestId || raw.supplierId || 'Supplier ID: ' + raw.supplierId,
+        id:
+            raw.id ||
+            raw.ledgerNumber ||
+            raw.purchaseRequestId ||
+            raw.purchaseOrderId ||
+            'PO-UNKNOWN',
+        supplier:
+            typeof supplierDisplayName === 'string'
+                ? supplierDisplayName
+                : 'Unknown Supplier',
         expectedDate,
         expectedTime,
-        itemsCount: raw.items?.length || 0,
+        itemsCount: rawItems.length,
         status: inferredStatus,
         destinationWarehouse: primaryWarehouse,
-        storageType: 'Ambient',
-        totalPallets: Math.ceil((raw.items?.reduce((acc, i) => acc + (i.qtyOrdered || 0), 0) || 0) / 1000) || 1,
+        storageType: raw.storageType || raw.supplier?.businessType || 'Ambient',
+        totalPallets: raw.totalPallets || Math.max(Math.ceil(totalQty / 1000), 1),
         driverName: raw.driverName || 'Unassigned',
         truckPlate: raw.truckPlate || 'Pending',
         logisticsProvider: raw.logisticsProvider || 'Standard Freight',
+        totalValue:
+            raw.totalValue ?? raw.commercials?.originalTotalAmount ?? 0,
+        currency: raw.currency || raw.commercials?.currency || 'GHS',
+
+        ledgerId: raw.ledgerId,
+        ledgerNumber: raw.ledgerNumber,
+        organizationId: raw.organizationId,
+        purchaseOrderId: raw.purchaseOrderId,
+        purchaseRequestId: raw.purchaseRequestId,
+        supplierId: raw.supplierId,
+        warehouseId: raw.warehouseId,
+        supplierDetails:
+            raw.supplier && typeof raw.supplier === 'object'
+                ? raw.supplier
+                : null,
+        supplierName: supplierDisplayName,
+        allocations,
         commercials: raw.commercials || null,
-        items: (raw.items || []).map((item) => ({
+        schedule: raw.schedule || null,
+        shipmentSummary: raw.shipmentSummary || null,
+        lifecycleStatus: raw.lifecycleStatus || 'EXPECTED',
+
+        items: rawItems.map((item) => ({
+            itemId: item.itemId || item.productId || item.sku,
+            productId: item.productId || item.sku,
+            variantId: item.variantId || null,
+            variantSize: item.variantSize || null,
+            variantColor: item.variantColor || null,
             sku: item.sku || item.productId || 'N/A',
-            name: item.productName || 'Unknown Item',
-            qtyExpected: item.qtyOrdered || 0,
-            unit: item.unitOfMeasure || 'CASE',
-            category: 'Inbound',
-            unitCost: item.unitCost || 0,
-            outstandingValue: item.outstandingLineValue || 0
-        }))
+            barcode: item.barcode || null,
+            name:
+                item.name ||
+                item.productName ||
+                item.itemName ||
+                'Unknown Item',
+            productName:
+                item.productName ||
+                item.name ||
+                item.itemName ||
+                'Unknown Item',
+            qtyExpected:
+                item.expectedQty !== undefined
+                    ? item.expectedQty
+                    : item.qtyExpected ?? item.qtyOrdered ?? 0,
+            qtyOrdered:
+                item.qtyOrdered ?? item.expectedQty ?? 0,
+            qtyPreviouslyReceived: item.qtyPreviouslyReceived ?? 0,
+            expectedQty:
+                item.expectedQty !== undefined
+                    ? item.expectedQty
+                    : item.qtyExpected ?? item.qtyOrdered ?? 0,
+            unit: item.unit || item.unitOfMeasure || 'CASE',
+            unitOfMeasure: item.unitOfMeasure || item.unit || 'CASE',
+            category: item.category || 'Inbound',
+            unitCost: item.unitCost ?? 0,
+            outstandingValue: item.outstandingLineValue ?? 0,
+            outstandingLineValue: item.outstandingLineValue ?? 0,
+        })),
     };
 };
 
 // ==========================================
 // FALLBACK / MOCK DATA
 // ==========================================
+
 const FALLBACK_DELIVERIES = [
     {
-        id: "PO-0001",
-        supplier: "Coca-Cola Ghana",
-        expectedDate: "2026-08-10",
-        expectedTime: "10:30 AM",
-        itemsCount: 4,
-        status: "Expected",
-        destinationWarehouse: "Accra Central Hub (Dock 04)",
-        storageType: "Ambient",
+        organizationId: 'ORG-DEFAULT',
+        ledgerId: 'led_6a7ecd8eb48e282659eb601d_v1',
+        ledgerNumber: 'LED-59EB601D-V1-APP',
+        purchaseOrderId: '6a7ecd8eb48e282659eb601d',
+        purchaseRequestId: 'Thursday 14th August Purchase Order',
+        supplierId: '6a170cfbe70e03ed4cccca7d',
+        warehouseId: '6a70601466288000dadf877e',
+        allocations: [
+            {
+                itemId: '1786694929671',
+                itemName: 'Greek Yogurt',
+                warehouseId: '6a70601466288000dadf877e',
+                warehouseName: 'First Warehouse',
+                quantity: 700,
+            },
+            {
+                itemId: '1786694929671',
+                itemName: 'Greek Yogurt',
+                warehouseId: '6a71de1d5d9f2065b426673f',
+                warehouseName: 'Second Warehouse',
+                quantity: 300,
+            },
+        ],
+        lifecycleStatus: 'EXPECTED',
+        supplierName: 'PrimeLink Wholesale Distribution Ltd',
+        supplier: {
+            supplierId: '6a170cfbe70e03ed4cccca7d',
+            name: 'PrimeLink Wholesale Distribution Ltd',
+            location: 'Spintex Road Industrial Area',
+            businessType: 'Wholesale Distributor',
+            riskLevel: 'unrated',
+        },
+        schedule: {
+            approvedAt: '2026-08-14T08:11:12.370Z',
+            requestedAt: '2026-08-14T08:10:54.927Z',
+            slaUrgency: 'OVERDUE',
+            actionNote: '',
+        },
+        commercials: {
+            currency: 'GHS',
+            originalTotalAmount: 1042000,
+            originalSubtotal: 1042000,
+            tax: 0,
+            discount: 0,
+            outstandingCommercialValue: 1042000,
+        },
+        items: [
+            {
+                itemId: '1786694929671',
+                productId: '1786694929671',
+                productName: 'Greek Yogurt',
+                sku: 'GREEK-YOGURT',
+                unitOfMeasure: 'CASE',
+                unitCost: 34,
+                qtyOrdered: 1000,
+                qtyPreviouslyReceived: 0,
+                expectedQty: 1000,
+                outstandingLineValue: 34000,
+            },
+        ],
+    },
+    {
+        id: 'PO-0001',
+        supplier: 'Coca-Cola Ghana',
+        expectedDate: '2026-08-14',
+        expectedTime: '10:30 AM',
+        itemsCount: 1,
+        status: 'Expected',
+        destinationWarehouse: 'Accra Central Hub (Dock 04)',
+        storageType: 'Ambient',
         totalPallets: 18,
-        driverName: "Kwame Mensah",
-        truckPlate: "GT-4921-25",
-        logisticsProvider: "InterLogistics Ghana",
+        driverName: 'Kwame Mensah',
+        truckPlate: 'GT-4921-25',
+        logisticsProvider: 'InterLogistics Ghana',
+        totalValue: 45500,
+        currency: 'GHS',
         items: [
-            { sku: "CC-500-01", name: "Coke 500ml PET (Case of 24)", qtyExpected: 250, unit: "Cases", category: "Beverages" },
-            { sku: "CC-330-02", name: "Sprite 330ml Can (Case of 24)", qtyExpected: 180, unit: "Cases", category: "Beverages" },
-            { sku: "FNT-500-01", name: "Fanta Orange 500ml (Case of 24)", qtyExpected: 120, unit: "Cases", category: "Beverages" },
-            { sku: "WTR-750-01", name: "Eva Water 750ml (Case of 12)", qtyExpected: 400, unit: "Cases", category: "Water" }
-        ]
+            {
+                sku: 'CC-500-01',
+                name: 'Coke 500ml PET (Case of 24)',
+                qtyExpected: 250,
+                unit: 'Cases',
+                category: 'Beverages',
+            },
+        ],
     },
-    {
-        id: "PO-0002",
-        supplier: "Nestlé Ghana",
-        expectedDate: "2026-08-11",
-        expectedTime: "02:15 PM",
-        itemsCount: 3,
-        status: "In Transit",
-        destinationWarehouse: "Accra Central Hub (Dock 02)",
-        storageType: "Ambient / Dry",
-        totalPallets: 24,
-        driverName: "Emmanuel Osei",
-        truckPlate: "GW-8831-24",
-        logisticsProvider: "SwiftFreight Ltd",
-        items: [
-            { sku: "MILO-400G", name: "Milo Activ-Go 400g Tin", qtyExpected: 1500, unit: "Units", category: "Beverages" },
-            { sku: "NES-200G", name: "Nescafé Classic 200g Jar", qtyExpected: 800, unit: "Units", category: "Beverages" },
-            { sku: "MAG-CR-10", name: "Maggi Crevettes Cubes (Carton)", qtyExpected: 350, unit: "Cartons", category: "Culinary" }
-        ]
-    },
-    {
-        id: "PO-0003",
-        supplier: "FanMilk PLC",
-        expectedDate: "2026-08-10",
-        expectedTime: "08:00 AM",
-        itemsCount: 2,
-        status: "Arrived",
-        destinationWarehouse: "Accra Central Hub (Cold Room B)",
-        storageType: "Chilled (4°C)",
-        totalPallets: 12,
-        driverName: "Kofi Boateng",
-        truckPlate: "GR-1102-26",
-        logisticsProvider: "ColdChain Express",
-        items: [
-            { sku: "FM-YOG-100", name: "FanYogo Strawberry Pouch", qtyExpected: 5000, unit: "Units", category: "Dairy/Frozen" },
-            { sku: "FM-CHO-100", name: "FanChoco Chocolate Pouch", qtyExpected: 4000, unit: "Units", category: "Dairy/Frozen" }
-        ]
-    }
 ];
-
-const STATUS_OPTIONS = ['All', 'Expected', 'In Transit', 'Arrived', 'Receiving'];
 
 // ==========================================
 // MAIN COMPONENT
 // ==========================================
+
 export default function ExpectedDeliveriesPage() {
     const WarehouseAPI = `${API_ENDPOINTS.WAREHOUSES}/ledger/expected-deliveries`;
 
-    // Core States
     const [deliveries, setDeliveries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
-
-    // View & Filter States
-    const [viewMode, setViewMode] = useState('list'); // 'list' | 'analytics'
+    const [viewMode, setViewMode] = useState('list');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [selectedDelivery, setSelectedDelivery] = useState(null);
+    const [gateForm, setGateForm] = useState({
+        driverName: '',
+        truckPlate: '',
+        notes: '',
+    });
 
-    // Check-in form state
-    const [gateForm, setGateForm] = useState({ driverName: '', truckPlate: '', notes: '' });
+    const fetchDeliveries = useCallback(
+        async (signal) => {
+            setLoading(true);
+            setError(null);
 
-    // ==========================================
-    // API FETCH METHOD
-    // ==========================================
-    const fetchDeliveries = useCallback(async (signal) => {
-        setLoading(true);
-        setError(null);
+            try {
+                const params = new URLSearchParams();
 
-        try {
-            const params = new URLSearchParams();
-            if (searchTerm.trim()) params.append('search', searchTerm.trim());
-            if (statusFilter !== 'All') params.append('status', statusFilter);
+                if (searchTerm.trim()) {
+                    params.append('search', searchTerm.trim());
+                }
 
-            const requestUrl = `${WarehouseAPI}${params.toString() ? `?${params.toString()}` : ''}`;
+                if (statusFilter !== 'All') {
+                    const apiStatus =
+                        STATUS_API_MAP[statusFilter] || statusFilter;
+                    params.append('status', apiStatus);
+                }
 
-            const response = await fetch(requestUrl, {
-                method: 'GET',
-                signal,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            });
+                const requestUrl = `${WarehouseAPI}${params.toString() ? `?${params.toString()}` : ''
+                    }`;
 
-            if (response.status === 404) {
-                setDeliveries([]);
-                setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-                return;
-            }
+                const response = await fetch(requestUrl, {
+                    method: 'GET',
+                    signal,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                });
 
-            let data;
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                throw new Error(`Unexpected response format from server (${response.status})`);
-            }
+                if (response.status === 404) {
+                    setDeliveries([]);
+                    setLastUpdated(
+                        new Date().toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        })
+                    );
+                    return;
+                }
 
-            if (!response.ok) {
-                throw new Error(data?.message || `Server error: ${response.status} ${response.statusText}`);
-            }
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(
+                        `Unexpected response format from server (${response.status})`
+                    );
+                }
 
-            const rawPayload = Array.isArray(data) ? data : (data.data || data.deliveries || []);
+                const data = await response.json();
 
-            console.log("Fetched Expected Deliveries:", rawPayload);
+                if (!response.ok) {
+                    throw new Error(
+                        data?.message ||
+                        `Server error: ${response.status} ${response.statusText}`
+                    );
+                }
 
-            // Transform raw backend ledger format to UI model
-            const normalizedData = rawPayload.map(transformLedgerToDelivery);
+                const rawPayload = flattenDeliveryResponse(data);
+                const normalizedData = rawPayload.map(transformLedgerToDelivery);
 
-            setDeliveries(normalizedData);
-            setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        } catch (err) {
-            if (err.name === 'AbortError') return;
-
-            console.warn("API Request failed, loading fallback data for UI presentation:", err.message);
-            setError(err.message || 'Unable to connect to inbound delivery service.');
-
-            let fallbackData = FALLBACK_DELIVERIES.map(transformLedgerToDelivery);
-            if (statusFilter !== 'All') {
-                fallbackData = fallbackData.filter(d => d.status === statusFilter);
-            }
-            if (searchTerm.trim()) {
-                const term = searchTerm.toLowerCase();
-                fallbackData = fallbackData.filter(d =>
-                    (d.id && d.id.toLowerCase().includes(term)) ||
-                    (d.supplier && d.supplier.toLowerCase().includes(term)) ||
-                    (d.driverName && d.driverName.toLowerCase().includes(term))
+                setDeliveries(normalizedData);
+                setLastUpdated(
+                    new Date().toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                    })
                 );
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+
+                console.error('Expected deliveries fetch failed:', err);
+                setError(
+                    err.message ||
+                    'Unable to connect to inbound delivery service.'
+                );
+
+                let fallbackData = FALLBACK_DELIVERIES.map(
+                    transformLedgerToDelivery
+                );
+
+                if (statusFilter !== 'All') {
+                    fallbackData = fallbackData.filter(
+                        (delivery) => delivery.status === statusFilter
+                    );
+                }
+
+                if (searchTerm.trim()) {
+                    const term = searchTerm.toLowerCase().trim();
+                    fallbackData = fallbackData.filter(
+                        (delivery) =>
+                            String(delivery.id || '')
+                                .toLowerCase()
+                                .includes(term) ||
+                            String(delivery.supplier || '')
+                                .toLowerCase()
+                                .includes(term) ||
+                            String(delivery.driverName || '')
+                                .toLowerCase()
+                                .includes(term) ||
+                            String(delivery.truckPlate || '')
+                                .toLowerCase()
+                                .includes(term)
+                    );
+                }
+
+                setDeliveries(fallbackData);
+                setLastUpdated(
+                    new Date().toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                    })
+                );
+            } finally {
+                setLoading(false);
             }
-            setDeliveries(fallbackData);
-            setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        } finally {
-            setLoading(false);
-        }
-    }, [WarehouseAPI, searchTerm, statusFilter]);
+        },
+        [WarehouseAPI, searchTerm, statusFilter]
+    );
 
     useEffect(() => {
         const controller = new AbortController();
@@ -244,50 +555,81 @@ export default function ExpectedDeliveriesPage() {
         };
     }, [fetchDeliveries]);
 
-    const metricsSummary = useMemo(() => {
-        const counts = { total: deliveries.length, expected: 0, inTransit: 0, arrived: 0, receiving: 0 };
-        deliveries.forEach(d => {
-            if (d.status === 'Expected') counts.expected++;
-            else if (d.status === 'In Transit') counts.inTransit++;
-            else if (d.status === 'Arrived') counts.arrived++;
-            else if (d.status === 'Receiving') counts.receiving++;
-        });
-        return counts;
+    // Sorted deliveries memoized based on updated business sorting rules:
+    const sortedDeliveries = useMemo(() => {
+        return sortDeliveries(deliveries);
     }, [deliveries]);
 
-    const handleOpenGateCheckIn = (delivery) => {
+    const metricsSummary = useMemo(() => {
+        const counts = {
+            total: sortedDeliveries.length,
+            expected: 0,
+            inTransit: 0,
+            arrived: 0,
+            receiving: 0,
+            completed: 0,
+            totalValue: 0,
+        };
+
+        sortedDeliveries.forEach((delivery) => {
+            if (delivery.status === 'Expected') counts.expected++;
+            else if (delivery.status === 'In Transit') counts.inTransit++;
+            else if (delivery.status === 'Arrived') counts.arrived++;
+            else if (delivery.status === 'Receiving') counts.receiving++;
+            else if (delivery.status === 'Completed') counts.completed++;
+
+            counts.totalValue += Number(delivery.totalValue) || 0;
+        });
+
+        return counts;
+    }, [sortedDeliveries]);
+
+    // Handler to select an item and display the detail modal
+    const handleSelectDelivery = (delivery) => {
         setSelectedDelivery(delivery);
         setGateForm({
-            driverName: delivery.driverName || '',
-            truckPlate: delivery.truckPlate || '',
-            notes: ''
+            driverName:
+                delivery.driverName === 'Unassigned'
+                    ? ''
+                    : delivery.driverName || '',
+            truckPlate:
+                delivery.truckPlate === 'Pending'
+                    ? ''
+                    : delivery.truckPlate || '',
+            notes: '',
         });
     };
 
     const handleConfirmArrival = async (id) => {
-        try {
-            setDeliveries(prev =>
-                prev.map(d =>
-                    d.id === id
-                        ? { ...d, status: 'Arrived', driverName: gateForm.driverName, truckPlate: gateForm.truckPlate }
-                        : d
-                )
-            );
-            setSelectedDelivery(null);
-        } catch (err) {
-            console.error("Failed to confirm arrival:", err);
-        }
+        setDeliveries((previous) =>
+            previous.map((delivery) =>
+                delivery.id === id
+                    ? {
+                        ...delivery,
+                        status: 'Arrived',
+                        lifecycleStatus: 'ARRIVED',
+                        driverName: gateForm.driverName,
+                        truckPlate: gateForm.truckPlate,
+                    }
+                    : delivery
+            )
+        );
+        setSelectedDelivery(null);
     };
 
     const handleStartReceiving = async (id) => {
-        try {
-            setDeliveries(prev =>
-                prev.map(d => (d.id === id ? { ...d, status: 'Receiving' } : d))
-            );
-            setSelectedDelivery(null);
-        } catch (err) {
-            console.error("Failed to start receiving:", err);
-        }
+        setDeliveries((previous) =>
+            previous.map((delivery) =>
+                delivery.id === id
+                    ? {
+                        ...delivery,
+                        status: 'Receiving',
+                        lifecycleStatus: 'RECEIVING',
+                    }
+                    : delivery
+            )
+        );
+        setSelectedDelivery(null);
     };
 
     const handleResetFilters = () => {
@@ -296,223 +638,208 @@ export default function ExpectedDeliveriesPage() {
     };
 
     const metricCards = [
-        { label: 'Total Inbound', filterKey: 'All', count: metricsSummary.total, activeBorder: 'border-slate-900', style: 'bg-white border-slate-200 text-slate-900', icon: Package },
-        { label: 'Expected', filterKey: 'Expected', count: metricsSummary.expected, activeBorder: 'border-amber-500', style: 'bg-amber-50/50 border-amber-200 text-amber-900', icon: Clock },
-        { label: 'In Transit', filterKey: 'In Transit', count: metricsSummary.inTransit, activeBorder: 'border-blue-500', style: 'bg-blue-50/50 border-blue-200 text-blue-900', icon: Truck },
-        { label: 'Arrived at Gate', filterKey: 'Arrived', count: metricsSummary.arrived, activeBorder: 'border-emerald-500', style: 'bg-emerald-50/50 border-emerald-200 text-emerald-900', icon: CheckCircle2 },
-        { label: 'Receiving Dock', filterKey: 'Receiving', count: metricsSummary.receiving, activeBorder: 'border-indigo-500', style: 'bg-indigo-50/50 border-indigo-200 text-indigo-900', icon: Calendar }
+        {
+            label: 'Total Inbound',
+            filterKey: 'All',
+            count: metricsSummary.total,
+            activeBorder: 'border-slate-900',
+            style: 'bg-white border-slate-200 text-slate-900',
+            icon: Package,
+        },
+        {
+            label: 'Arrived',
+            filterKey: 'Arrived',
+            count: metricsSummary.arrived,
+            activeBorder: 'border-purple-500',
+            style: 'bg-white border-purple-200 text-purple-900',
+            icon: Calendar,
+        },
+        {
+            label: 'In Transit',
+            filterKey: 'In Transit',
+            count: metricsSummary.inTransit,
+            activeBorder: 'border-blue-500',
+            style: 'bg-white border-blue-200 text-blue-900',
+            icon: Truck,
+        },
+        {
+            label: 'Expected',
+            filterKey: 'Expected',
+            count: metricsSummary.expected,
+            activeBorder: 'border-amber-500',
+            style: 'bg-white border-amber-200 text-amber-900',
+            icon: Clock,
+        },
+        {
+            label: 'Receiving',
+            filterKey: 'Receiving',
+            count: metricsSummary.receiving,
+            activeBorder: 'border-emerald-500',
+            style: 'bg-white border-emerald-200 text-emerald-900',
+            icon: CheckCircle2,
+        },
+        {
+            label: 'Completed',
+            filterKey: 'Completed',
+            count: metricsSummary.completed,
+            activeBorder: 'border-green-500',
+            style: 'bg-white border-green-200 text-green-900',
+            icon: CheckCircle2,
+        },
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50/60 text-slate-800 font-sans p-4 sm:p-6 md:p-8 antialiased">
-            {/* Top Header */}
-            <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5 mb-6 gap-4">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                            Warehouse Operations
-                        </span>
-                        {lastUpdated && (
-                            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-                                • Sync time: {lastUpdated}
-                            </span>
-                        )}
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                        Expected Inbound Deliveries
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                        Expected Deliveries & Inbound Operations
                     </h1>
-                    <p className="text-slate-500 text-xs sm:text-sm mt-1">
-                        Real-time inbound cross-docking, gate control, and purchase order tracking.
+                    <p className="text-sm text-slate-500">
+                        Manage purchase orders, gate check-ins, and active warehouse receipts.
                     </p>
                 </div>
-
-                <div className="flex items-center gap-3 self-start lg:self-auto">
+                <div className="flex items-center gap-3">
+                    {lastUpdated && (
+                        <span className="text-xs text-slate-400">
+                            Last synced: {lastUpdated}
+                        </span>
+                    )}
                     <button
                         onClick={() => fetchDeliveries()}
-                        disabled={loading}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl transition-all shadow-xs disabled:opacity-50"
-                        title="Refresh Inbound List"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50"
                     >
-                        <RefreshCw size={14} className={loading ? 'animate-spin text-indigo-600' : 'text-slate-500'} />
-                        <span className="hidden sm:inline">Sync Data</span>
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
                     </button>
-
-                    <nav aria-label="View Switcher" className="inline-flex items-center p-1 bg-slate-200/70 rounded-xl border border-slate-200 shadow-inner">
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${viewMode === 'list'
-                                ? 'bg-white text-slate-900 shadow-sm font-bold'
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'list'
+                                ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
                                 }`}
                         >
-                            <List size={15} />
-                            <span>Schedule Board</span>
+                            <List className="w-4 h-4 inline mr-1.5" />
+                            List
                         </button>
                         <button
                             onClick={() => setViewMode('analytics')}
-                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${viewMode === 'analytics'
-                                ? 'bg-white text-slate-900 shadow-sm font-bold'
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'analytics'
+                                ? 'bg-white text-slate-900 shadow-sm'
                                 : 'text-slate-600 hover:text-slate-900'
                                 }`}
                         >
-                            <BarChart3 size={15} />
-                            <span>Inbound Analytics</span>
+                            <BarChart3 className="w-4 h-4 inline mr-1.5" />
+                            Analytics
                         </button>
-                    </nav>
+                    </div>
                 </div>
-            </header>
+            </div>
 
             {/* Error Banner */}
             {error && (
-                <aside aria-label="System notification" className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200/80 flex items-start gap-3 text-amber-900 text-xs sm:text-sm shadow-xs">
-                    <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p className="font-semibold">Live connection offline or delayed</p>
-                        <p className="text-amber-700 mt-0.5">
-                            Displaying cached local schedule data. Error details: <code className="bg-amber-100/80 px-1 py-0.5 rounded text-[11px] font-mono">{error}</code>
-                        </p>
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3 text-amber-800">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
+                    <div className="text-sm">
+                        <span className="font-semibold">Notice:</span> {error} Showing offline/fallback records.
                     </div>
-                    <button
-                        onClick={() => fetchDeliveries()}
-                        className="text-xs font-bold text-amber-800 hover:underline shrink-0"
-                    >
-                        Retry
-                    </button>
-                </aside>
+                </div>
             )}
 
-            {/* Main Content Area */}
-            {viewMode === 'analytics' ? (
-                <DeliveryAnalyticsView deliveries={deliveries} />
-            ) : (
-                <main>
-                    {/* Metric Cards */}
-                    <section className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 mb-6">
-                        {metricCards.map((card) => {
-                            const isActive = statusFilter === card.filterKey;
-                            const Icon = card.icon;
-                            return (
-                                <button
-                                    key={card.filterKey}
-                                    onClick={() => setStatusFilter(card.filterKey)}
-                                    className={`text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${card.style} ${isActive
-                                        ? `${card.activeBorder} ring-2 ring-indigo-500/10 shadow-xs scale-[1.01]`
-                                        : 'hover:border-slate-300 hover:shadow-xs'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between text-xs font-semibold opacity-80 uppercase tracking-wider mb-1">
-                                        <span>{card.label}</span>
-                                        <Icon size={14} className="opacity-60" />
-                                    </div>
-                                    <div className="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-baseline justify-between mt-1">
-                                        <span>{card.count}</span>
-                                        <span className="text-[11px] font-medium opacity-60">Shipments</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </section>
-
-                    {/* Search Toolbar */}
-                    <section className="flex flex-col lg:flex-row gap-3.5 mb-6">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
-                            <input
-                                type="text"
-                                placeholder="Search PO number, supplier name, driver, or truck plate..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-9 py-2.5 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-xs"
-                            />
-                            {searchTerm && (
-                                <button
-                                    onClick={() => setSearchTerm('')}
-                                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors"
-                                    aria-label="Clear search query"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Filter Pills */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-                            {STATUS_OPTIONS.map((status) => {
-                                const active = statusFilter === status;
-                                let statusCount = metricsSummary.total;
-                                if (status === 'Expected') statusCount = metricsSummary.expected;
-                                else if (status === 'In Transit') statusCount = metricsSummary.inTransit;
-                                else if (status === 'Arrived') statusCount = metricsSummary.arrived;
-                                else if (status === 'Receiving') statusCount = metricsSummary.receiving;
-
-                                return (
-                                    <button
-                                        key={status}
-                                        onClick={() => setStatusFilter(status)}
-                                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold tracking-wide border whitespace-nowrap transition-all duration-150 ${active
-                                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-                                            }`}
-                                    >
-                                        <span>{status}</span>
-                                        <span
-                                            className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${active ? 'bg-slate-700 text-slate-100' : 'bg-slate-100 text-slate-500'
-                                                }`}
-                                        >
-                                            {statusCount}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </section>
-
-                    {/* Delivery List Content */}
-                    {loading ? (
-                        <div className="space-y-3">
-                            {[1, 2, 3].map((n) => (
-                                <div key={n} className="bg-white border border-slate-200/80 rounded-2xl p-5 animate-pulse flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="space-y-2 flex-1">
-                                        <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-                                        <div className="h-3 bg-slate-100 rounded w-1/2"></div>
-                                    </div>
-                                    <div className="h-8 bg-slate-100 rounded w-28"></div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : deliveries.length > 0 ? (
-                        <DeliveryListView
-                            deliveries={deliveries}
-                            onOpenDetails={handleOpenGateCheckIn}
-                        />
-                    ) : (
-                        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center max-w-md mx-auto my-8 shadow-xs">
-                            <div className="w-12 h-12 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Filter size={20} />
+            {/* Metric Cards Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {metricCards.map((card) => {
+                    const Icon = card.icon;
+                    const isActive = statusFilter === card.filterKey;
+                    return (
+                        <div
+                            key={card.label}
+                            onClick={() => setStatusFilter(card.filterKey)}
+                            className={`p-4 rounded-xl border cursor-pointer transition-all ${card.style
+                                } ${isActive
+                                    ? `ring-2 ring-offset-2 ring-slate-900 ${card.activeBorder}`
+                                    : 'hover:border-slate-300'
+                                }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                                    {card.label}
+                                </span>
+                                <Icon className="w-4 h-4 text-slate-400" />
                             </div>
-                            <h3 className="text-base font-bold text-slate-900">No shipments found</h3>
-                            <p className="text-slate-500 text-xs mt-1.5 leading-relaxed">
-                                We couldn't find any inbound deliveries matching your search keywords or applied status filters.
-                            </p>
-                            <button
-                                onClick={handleResetFilters}
-                                className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-4 py-2 rounded-xl transition-colors cursor-pointer"
-                            >
-                                <RefreshCw size={14} />
-                                <span>Reset search & filters</span>
-                            </button>
+                            <div className="mt-2 text-2xl font-semibold">
+                                {card.count}
+                            </div>
                         </div>
+                    );
+                })}
+            </div>
+
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by ID, Supplier, Driver..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                    />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     )}
-                </main>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Filter className="w-4 h-4 text-slate-400" />
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    >
+                        {STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                                Status: {status}
+                            </option>
+                        ))}
+                    </select>
+                    {(searchTerm || statusFilter !== 'All') && (
+                        <button
+                            onClick={handleResetFilters}
+                            className="text-xs text-slate-500 hover:text-slate-900 underline ml-2"
+                        >
+                            Reset filters
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Content Views */}
+            {viewMode === 'list' ? (
+                <DeliveryListView
+                    deliveries={sortedDeliveries}
+                    loading={loading}
+                    onOpenGateCheckIn={handleSelectDelivery}
+                    onSelectDelivery={handleSelectDelivery}
+                />
+            ) : (
+                <DeliveryAnalyticsView deliveries={sortedDeliveries} metrics={metricsSummary} />
             )}
 
-            {/* Check-in Modal */}
+            {/* Delivery Detail / Gate Check-In Modal */}
             {selectedDelivery && (
                 <DeliveryDetailModal
                     delivery={selectedDelivery}
-                    form={gateForm}
-                    setForm={setGateForm}
+                    gateForm={gateForm}
+                    setGateForm={setGateForm}
                     onClose={() => setSelectedDelivery(null)}
                     onConfirmArrival={handleConfirmArrival}
                     onStartReceiving={handleStartReceiving}

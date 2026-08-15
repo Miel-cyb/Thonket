@@ -1,13 +1,13 @@
 import React from 'react';
-import { ShieldCheck, User, Truck, CheckCircle2, Clock, Phone, FileText, Lock, Building } from 'lucide-react';
+import { ShieldCheck, User, Truck, CheckCircle2, Clock, Phone, FileText, Building, Lock } from 'lucide-react';
 
-// This component manages the gate security and operational control for expected deliveries.
+// This component manages gate security and operational control based on the Inbound Delivery logistics schema.
 export default function GateSecurityControl({
     form,
     setForm,
     isArrived,
     isReceiving,
-    ledgerNumber,
+    deliveryId,
     onConfirmArrival,
     onStartReceiving
 }) {
@@ -35,7 +35,7 @@ export default function GateSecurityControl({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                            Carrier Name
+                            Carrier / Logistics Provider
                         </label>
                         <div className="relative">
                             <Building className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -51,14 +51,14 @@ export default function GateSecurityControl({
 
                     <div>
                         <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                            Truck Registration Number
+                            Truck Registration / License Plate
                         </label>
                         <div className="relative">
                             <Truck className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
                             <input
                                 type="text"
-                                value={form?.truckNumber || form?.truckPlate || ''}
-                                onChange={(e) => setForm({ ...form, truckNumber: e.target.value.toUpperCase(), truckPlate: e.target.value.toUpperCase() })}
+                                value={form?.truckNumber || ''}
+                                onChange={(e) => setForm({ ...form, truckNumber: e.target.value.toUpperCase() })}
                                 placeholder="e.g. CA-772-XX"
                                 className="w-full text-xs bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3 py-2.5 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all font-semibold text-slate-800 dark:text-slate-200"
                             />
@@ -72,10 +72,10 @@ export default function GateSecurityControl({
                 <h4 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     Driver Information
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                            Driver Name
+                            Driver Full Name (Verified Operator)
                         </label>
                         <div className="relative">
                             <User className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -91,31 +91,15 @@ export default function GateSecurityControl({
 
                     <div>
                         <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                            Driver Phone
+                            Driver Contact Number
                         </label>
                         <div className="relative">
                             <Phone className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
                             <input
-                                type="text"
+                                type="tel"
                                 value={form?.driverPhone || ''}
                                 onChange={(e) => setForm({ ...form, driverPhone: e.target.value })}
                                 placeholder="e.g. +233 24 000 0000"
-                                className="w-full text-xs bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all font-semibold text-slate-800 dark:text-slate-200"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                            Driver License Number
-                        </label>
-                        <div className="relative">
-                            <FileText className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-                            <input
-                                type="text"
-                                value={form?.driverLicenseNumber || ''}
-                                onChange={(e) => setForm({ ...form, driverLicenseNumber: e.target.value })}
-                                placeholder="e.g. DL-12345678"
                                 className="w-full text-xs bg-slate-50/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all font-semibold text-slate-800 dark:text-slate-200"
                             />
                         </div>
@@ -147,7 +131,7 @@ export default function GateSecurityControl({
 
                     <div>
                         <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                            Seal Number
+                            Container / Cargo Seal Number
                         </label>
                         <div className="relative">
                             <Lock className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -168,8 +152,8 @@ export default function GateSecurityControl({
                 {!isArrived && !isReceiving ? (
                     <button
                         type="button"
-                        onClick={() => onConfirmArrival(ledgerNumber)}
-                        disabled={!form?.driverName?.trim() || !(form?.truckNumber?.trim() || form?.truckPlate?.trim())}
+                        onClick={() => onConfirmArrival(deliveryId)}
+                        disabled={!form?.driverName?.trim() || !form?.truckNumber?.trim()}
                         className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-600 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed active:scale-[0.99]"
                     >
                         Log Gate Entry & Confirm Vehicle Arrival
@@ -182,7 +166,7 @@ export default function GateSecurityControl({
                         </div>
                         <button
                             type="button"
-                            onClick={() => onStartReceiving(ledgerNumber)}
+                            onClick={() => onStartReceiving(deliveryId)}
                             className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer whitespace-nowrap active:scale-[0.98]"
                         >
                             Initiate Offloading

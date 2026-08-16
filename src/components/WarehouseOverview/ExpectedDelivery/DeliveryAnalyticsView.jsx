@@ -35,7 +35,6 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
 
     const baseExpected = hasData ? deliveries.length : 12;
 
-    // Count statuses from actual deliveries prop
     const expectedToday = hasData
       ? deliveries.filter(d => d.status === 'Expected').length
       : 5;
@@ -56,7 +55,6 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
       }).length
       : 3;
 
-    // Calculate total items and pallets from actual deliveries if available
     const totalPallets = hasData
       ? deliveries.reduce((acc, d) => acc + (Number(d.totalPallets) || 1), 0)
       : 120;
@@ -124,7 +122,6 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
       };
     }
 
-    // Map live deliveries into timeline nodes
     const mappedNodes = deliveries.map(d => {
       let type = 'EXPECTED';
       let badgeClass = 'bg-blue-50 text-blue-700 border-blue-200/60 ring-1 ring-blue-500/10';
@@ -169,7 +166,6 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
       ];
     }
 
-    // Group deliveries by supplier name
     const supplierMap = {};
     deliveries.forEach(d => {
       const supName = d.supplier || 'Unknown Supplier';
@@ -204,22 +200,22 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
   }, [supplierPerformanceData, searchQuery]);
 
   return (
-    <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 bg-slate-50/60 text-slate-900 min-h-screen antialiased font-sans flex flex-col gap-6 sm:gap-8">
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 bg-slate-50/70 text-slate-900 min-h-screen antialiased font-sans flex flex-col gap-6 sm:gap-8">
 
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5 gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Fulfillment & Operations Control</h1>
-            <span className="bg-emerald-500/10 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Telemetry
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Fulfillment & Operations Control</h1>
+            <span className="bg-emerald-50 text-emerald-700 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live Telemetry Active
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">Real-time supply chain operations, SLA compliance, and logistics manifest tracking.</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">Real-time supply chain telemetry, SLA compliance monitoring, and yard logistics manifest tracking.</p>
         </div>
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <button className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold rounded-xl text-slate-700 transition-all shadow-xs active:scale-95 cursor-pointer">
-            <RefreshCw size={14} className="text-slate-500" />
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200/80 hover:border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold rounded-xl text-slate-700 transition-all shadow-xs active:scale-95 cursor-pointer">
+            <RefreshCw size={14} className="text-slate-400" />
             <span>Sync Registry</span>
           </button>
         </div>
@@ -232,22 +228,22 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         <button
           onClick={() => setActiveFilter('ALL')}
           className={`text-left bg-white p-5 border rounded-2xl transition-all relative group flex flex-col justify-between h-36 cursor-pointer ${activeFilter === 'ALL'
-            ? 'border-slate-900 ring-2 ring-slate-950/10 bg-slate-900/[0.02] shadow-xs'
-            : 'border-slate-200/80 hover:border-slate-400 hover:shadow-xs'
+            ? 'border-slate-900 ring-2 ring-slate-950/10 bg-slate-900/[0.01] shadow-xs'
+            : 'border-slate-200/80 hover:border-slate-300 hover:shadow-xs'
             }`}
         >
           <div className="flex justify-between items-start w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Pipeline</span>
-            <div className={`p-2 rounded-xl transition-colors ${activeFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Pipeline</span>
+            <div className={`p-2.5 rounded-xl transition-colors ${activeFilter === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600'}`}>
               <Layers size={16} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">{analytics.expectedDeliveries}</span>
-              <span className="text-xs font-bold text-slate-500">POs</span>
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">{analytics.expectedDeliveries}</span>
+              <span className="text-xs font-semibold text-slate-500">POs</span>
             </div>
-            <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between w-full">
+            <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between w-full">
               <span>Aggregated balance</span>
               <ArrowUpRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600" />
             </div>
@@ -258,22 +254,22 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         <button
           onClick={() => setActiveFilter('EXPECTED')}
           className={`text-left bg-white p-5 border rounded-2xl transition-all relative group flex flex-col justify-between h-36 cursor-pointer ${activeFilter === 'EXPECTED'
-            ? 'border-blue-600 ring-2 ring-blue-600/10 bg-blue-50/40 shadow-xs'
+            ? 'border-blue-600 ring-2 ring-blue-600/10 bg-blue-50/30 shadow-xs'
             : 'border-slate-200/80 hover:border-blue-300 hover:shadow-xs'
             }`}
         >
           <div className="flex justify-between items-start w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Expected Today</span>
-            <div className={`p-2 rounded-xl transition-colors ${activeFilter === 'EXPECTED' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}`}>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Expected Today</span>
+            <div className={`p-2.5 rounded-xl transition-colors ${activeFilter === 'EXPECTED' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-600'}`}>
               <Clock size={16} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">{analytics.expectedToday}</span>
-              <span className="text-xs font-bold text-blue-600">Active</span>
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">{analytics.expectedToday}</span>
+              <span className="text-xs font-semibold text-blue-600">Active</span>
             </div>
-            <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between w-full">
+            <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between w-full">
               <span className={`${activeFilter === 'EXPECTED' ? 'text-blue-600 font-medium' : ''}`}>Dock allocation view</span>
               <ArrowUpRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600" />
             </div>
@@ -284,22 +280,22 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         <button
           onClick={() => setActiveFilter('TRANSIT')}
           className={`text-left bg-white p-5 border rounded-2xl transition-all relative group flex flex-col justify-between h-36 cursor-pointer ${activeFilter === 'TRANSIT'
-            ? 'border-amber-500 ring-2 ring-amber-500/10 bg-amber-50/40 shadow-xs'
-            : 'border-slate-200/80 hover:border-amber-400 hover:shadow-xs'
+            ? 'border-amber-500 ring-2 ring-amber-500/10 bg-amber-50/30 shadow-xs'
+            : 'border-slate-200/80 hover:border-amber-300 hover:shadow-xs'
             }`}
         >
           <div className="flex justify-between items-start w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">In Transit</span>
-            <div className={`p-2 rounded-xl transition-colors ${activeFilter === 'TRANSIT' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-600'}`}>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">In Transit</span>
+            <div className={`p-2.5 rounded-xl transition-colors ${activeFilter === 'TRANSIT' ? 'bg-amber-500 text-white shadow-xs' : 'bg-amber-50 text-amber-600'}`}>
               <Truck size={16} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">{analytics.inTransit}</span>
-              <span className="text-xs font-bold text-amber-600">Shipments</span>
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">{analytics.inTransit}</span>
+              <span className="text-xs font-semibold text-amber-600">Shipments</span>
             </div>
-            <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between w-full">
+            <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between w-full">
               <span className={`${activeFilter === 'TRANSIT' ? 'text-amber-700 font-medium' : ''}`}>ASN Network Tracked</span>
               <ArrowUpRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity text-amber-600" />
             </div>
@@ -310,22 +306,22 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         <button
           onClick={() => setActiveFilter('AWAITING')}
           className={`text-left bg-white p-5 border rounded-2xl transition-all relative group flex flex-col justify-between h-36 cursor-pointer ${activeFilter === 'AWAITING'
-            ? 'border-emerald-600 ring-2 ring-emerald-600/10 bg-emerald-50/40 shadow-xs'
-            : 'border-slate-200/80 hover:border-emerald-400 hover:shadow-xs'
+            ? 'border-emerald-600 ring-2 ring-emerald-600/10 bg-emerald-50/30 shadow-xs'
+            : 'border-slate-200/80 hover:border-emerald-300 hover:shadow-xs'
             }`}
         >
           <div className="flex justify-between items-start w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Awaiting Arrival</span>
-            <div className={`p-2 rounded-xl transition-colors ${activeFilter === 'AWAITING' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Awaiting Arrival</span>
+            <div className={`p-2.5 rounded-xl transition-colors ${activeFilter === 'AWAITING' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-600'}`}>
               <CheckCircle2 size={16} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-slate-900 tracking-tight">{analytics.awaitingReceiving}</span>
-              <span className="text-xs font-bold text-emerald-600">In Yard</span>
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">{analytics.awaitingReceiving}</span>
+              <span className="text-xs font-semibold text-emerald-600">In Yard</span>
             </div>
-            <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between w-full">
+            <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between w-full">
               <span className={`${activeFilter === 'AWAITING' ? 'text-emerald-700 font-medium' : ''}`}>Clearance log intact</span>
               <ArrowUpRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600" />
             </div>
@@ -333,19 +329,19 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         </button>
 
         {/* SLA Breach Warning Card */}
-        <div className="bg-gradient-to-b from-red-50/80 to-red-50/30 border border-red-200/80 p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden sm:col-span-2 lg:col-span-1 shadow-xs">
+        <div className="bg-gradient-to-br from-red-50/90 to-red-50/40 border border-red-200/80 p-5 rounded-2xl flex flex-col justify-between h-36 relative overflow-hidden sm:col-span-2 lg:col-span-1 shadow-xs">
           <div className="flex justify-between items-start w-full">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-red-800">SLA Breaches</span>
-            <div className="p-2 bg-red-100 text-red-600 rounded-xl animate-pulse">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-red-700">SLA Breaches</span>
+            <div className="p-2.5 bg-red-100/90 text-red-600 rounded-xl shadow-2xs animate-pulse">
               <AlertTriangle size={16} />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-red-700 tracking-tight">{analytics.overdueDeliveries}</span>
-              <span className="text-[9px] font-extrabold text-red-700 bg-red-100/90 border border-red-200 px-1.5 py-0.5 rounded uppercase tracking-wider">Critical</span>
+              <span className="text-3xl font-bold text-red-700 tracking-tight">{analytics.overdueDeliveries}</span>
+              <span className="text-[10px] font-bold text-red-700 bg-red-100/90 border border-red-200 px-2 py-0.5 rounded-md uppercase tracking-wider">Critical</span>
             </div>
-            <div className="mt-2 text-[11px] text-red-600/90 font-medium flex items-center justify-between">
+            <div className="mt-1.5 text-[11px] text-red-600 font-medium flex items-center justify-between">
               <span>Escalation protocol active</span>
               <AlertCircle size={13} className="text-red-500" />
             </div>
@@ -354,36 +350,36 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
       </div>
 
       {/* CORE SYSTEM TELEMETRY STRIP */}
-      <div className="bg-slate-950 text-white rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6 shadow-md relative overflow-hidden border border-slate-800">
-        <div className="absolute top-[-50%] right-[-10%] w-96 h-96 bg-slate-800/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="bg-slate-950 text-white rounded-2xl p-6 lg:p-7 grid grid-cols-1 md:grid-cols-3 gap-6 shadow-md relative overflow-hidden border border-slate-800">
+        <div className="absolute top-[-50%] right-[-10%] w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex items-center space-x-4 relative z-10">
-          <div className="p-3 bg-slate-900 rounded-xl text-emerald-400 border border-slate-800 shadow-inner">
+          <div className="p-3 bg-slate-900 rounded-xl text-emerald-400 border border-slate-800/80 shadow-inner">
             <ShieldCheck size={24} />
           </div>
           <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">On-Time Delivery Rate</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <h4 className="text-2xl font-black text-white">{analytics.onTimeDeliveryRate}%</h4>
-              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <TrendingUp size={10} /> Optimal
+            <p className="text-[11px] uppercase font-semibold tracking-wider text-slate-400">On-Time Delivery Rate</p>
+            <div className="flex items-center gap-2.5 mt-1">
+              <h4 className="text-2xl font-bold text-white">{analytics.onTimeDeliveryRate}%</h4>
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <TrendingUp size={11} /> Optimal SLA
               </span>
             </div>
           </div>
         </div>
 
         <div className="border-t border-slate-800/80 md:border-t-0 md:border-l md:border-slate-800/80 md:pl-8 flex flex-col justify-center relative z-10 pt-4 md:pt-0">
-          <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Mean Operational Delay</p>
-          <h4 className="text-sm font-semibold text-slate-200 mt-1">
-            <span className="text-white font-black text-xl">{analytics.avgDeliveryDelayHours} Hours</span> <span className="text-slate-400 font-normal text-xs ml-1">(Fulfillment Window)</span>
+          <p className="text-[11px] uppercase font-semibold tracking-wider text-slate-400">Mean Operational Delay</p>
+          <h4 className="text-sm font-medium text-slate-300 mt-1">
+            <span className="text-white font-bold text-xl">{analytics.avgDeliveryDelayHours} Hrs</span> <span className="text-slate-400 font-normal text-xs ml-1">(Fulfillment Window)</span>
           </h4>
         </div>
 
         <div className="border-t border-slate-800/80 md:border-t-0 md:border-l md:border-slate-800/80 md:pl-8 flex flex-col justify-center relative z-10 pt-4 md:pt-0">
-          <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Schedule Variance Anchor</p>
+          <p className="text-[11px] uppercase font-semibold tracking-wider text-slate-400">Schedule Variance Anchor</p>
           <div className="flex items-center gap-2.5 mt-1">
-            <h4 className="text-xl font-black text-amber-400">{analytics.avgArrivalVarianceMinutes}</h4>
-            <span className="text-[9px] font-bold text-slate-300 bg-slate-800/90 border border-slate-700/60 px-2 py-0.5 rounded-full">Skew Positive</span>
+            <h4 className="text-xl font-bold text-amber-400">{analytics.avgArrivalVarianceMinutes}</h4>
+            <span className="text-[10px] font-semibold text-slate-300 bg-slate-900 border border-slate-800 px-2.5 py-0.5 rounded-full">Skew Positive</span>
           </div>
         </div>
       </div>
@@ -394,7 +390,7 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         {/* Pipeline Breakdown Progress bars */}
         <div className="bg-white p-6 border border-slate-200/80 rounded-2xl shadow-xs lg:col-span-4 flex flex-col justify-between">
           <div>
-            <div className="border-b border-slate-100 pb-3 mb-4">
+            <div className="border-b border-slate-100 pb-3 mb-5">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Pipeline Status Allocation</h3>
               <p className="text-xs text-slate-500 mt-0.5">Real-time capacity and logistics breakdown</p>
             </div>
@@ -408,11 +404,11 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
                 { label: 'Escalated / Overdue', count: analytics.overdueDeliveries, width: '12%', color: 'bg-red-500', pct: '5%' },
               ].map((item, idx) => (
                 <div key={idx} className="group">
-                  <div className="flex justify-between text-xs font-medium mb-1.5 text-slate-700">
+                  <div className="flex justify-between text-xs mb-1.5">
                     <span className="text-slate-600 group-hover:text-slate-900 transition-colors font-medium">{item.label}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400">{item.pct}</span>
-                      <span className="bg-slate-100 border border-slate-200/60 px-1.5 py-0.5 rounded font-bold text-slate-900 text-[10px]">{item.count}</span>
+                      <span className="text-[11px] text-slate-400">{item.pct}</span>
+                      <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-semibold text-slate-900 text-[11px]">{item.count}</span>
                     </div>
                   </div>
                   <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden p-0.5">
@@ -423,20 +419,20 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Aggregated Registry Size</span>
-            <span className="font-bold text-slate-900 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200/80 text-[11px]">{analytics.expectedDeliveries} Active Manifests</span>
+            <span className="font-semibold text-slate-900 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">{analytics.expectedDeliveries} Active Manifests</span>
           </div>
         </div>
 
         {/* Registry timeline execution registry */}
         <div className="bg-white p-6 border border-slate-200/80 rounded-2xl shadow-xs lg:col-span-8 flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-100 mb-5 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 mb-5 gap-4">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Fulfillment Manifest Registry</h3>
                 {activeFilter !== 'ALL' && (
-                  <span className="text-[9px] bg-slate-900 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                  <span className="text-[10px] bg-slate-900 text-white px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wide">
                     {activeFilter}
                   </span>
                 )}
@@ -445,13 +441,13 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
             </div>
 
             {/* Micro-pill timeline selectors */}
-            <div className="flex flex-wrap gap-1 bg-slate-100/80 p-1 rounded-xl self-start sm:self-auto border border-slate-200/50">
+            <div className="flex flex-wrap gap-1 bg-slate-100/80 p-1.5 rounded-xl self-start sm:self-auto border border-slate-200/60">
               {['Today', 'Tomorrow', 'This Week', 'Next 7 Days', 'This Month'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setTimelinePeriod(tab)}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${timelinePeriod === tab
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
                     : 'text-slate-500 hover:text-slate-900'
                     }`}
                 >
@@ -462,40 +458,40 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
           </div>
 
           {/* Timeline Nodes */}
-          <div className="relative pl-6 border-l border-slate-200 space-y-3.5 max-h-[300px] overflow-y-auto pr-2 flex-grow scrollbar-thin">
+          <div className="relative pl-6 border-l border-slate-200 space-y-3.5 max-h-[300px] overflow-y-auto pr-2 flex-grow">
             {filteredTimeline.map((node, idx) => (
               <div key={idx} className="relative group">
                 <div className="absolute -left-[31px] top-4 w-2.5 h-2.5 rounded-full bg-slate-300 border-2 border-white group-hover:border-slate-900 group-hover:bg-slate-900 transition-all shadow-xs" />
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 hover:bg-slate-50 border border-slate-200/60 p-3.5 rounded-xl transition-all gap-3 hover:border-slate-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50/50 hover:bg-slate-50/90 border border-slate-200/80 p-4 rounded-xl transition-all gap-3 hover:border-slate-300 shadow-2xs">
                   <div className="flex items-center space-x-3.5">
-                    <div className="bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-700 shadow-2xs">
+                    <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
                       {node.id}
                     </div>
                     <div>
                       <h5 className="text-sm font-semibold text-slate-900 tracking-tight">{node.supplier}</h5>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-0.5">
-                        <span className="flex items-center gap-1"><Clock size={12} className="text-slate-400" /> {node.time}</span>
+                        <span className="flex items-center gap-1"><Clock size={13} className="text-slate-400" /> {node.time}</span>
                         <span className="text-slate-300">•</span>
-                        <span className="flex items-center gap-1"><Package size={12} className="text-slate-400" /> {node.volume}</span>
+                        <span className="flex items-center gap-1"><Package size={13} className="text-slate-400" /> {node.volume}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border tracking-wide uppercase ${node.badgeClass}`}>
+                    <span className={`text-[11px] font-semibold px-3 py-1 rounded-full border tracking-wide uppercase ${node.badgeClass}`}>
                       {node.status}
                     </span>
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 transition-colors hidden sm:block" />
+                    <ChevronRight size={15} className="text-slate-300 group-hover:text-slate-600 transition-colors hidden sm:block" />
                   </div>
                 </div>
               </div>
             ))}
 
             {filteredTimeline.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-400 bg-slate-50/30 rounded-2xl border border-dashed border-slate-200">
-                <Info size={20} className="text-slate-300 mb-1.5" />
-                <p className="text-xs font-semibold text-slate-500">No matching operations tracked inside this view</p>
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
+                <Info size={22} className="text-slate-300 mb-1.5" />
+                <p className="text-xs font-semibold text-slate-600">No matching operations tracked inside this view</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">Try altering the filter context matrices</p>
               </div>
             )}
@@ -503,7 +499,7 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
         </div>
       </div>
 
-      {/* METRIC AGING & INBOUND EXCEPTION TIERS */}
+      {/* METRIC AGING & SUPPLIER PERFORMANCE TABLES */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Capacity Loading Breakdown */}
@@ -515,31 +511,31 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-5">
-              <div className="p-3.5 bg-slate-50/80 border border-slate-200/60 rounded-xl">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Target Shipments</p>
-                <p className="text-xl font-black text-slate-900 mt-0.5">{analytics.workloadBreakdown.expectedDeliveriesCount}</p>
+              <div className="p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Target Shipments</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{analytics.workloadBreakdown.expectedDeliveriesCount}</p>
               </div>
-              <div className="p-3.5 bg-slate-50/80 border border-slate-200/60 rounded-xl">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Active Lines</p>
-                <p className="text-xl font-black text-slate-900 mt-0.5">{analytics.workloadBreakdown.expectedProductLines}</p>
+              <div className="p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Active Lines</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{analytics.workloadBreakdown.expectedProductLines}</p>
               </div>
-              <div className="p-3.5 bg-slate-50/80 border border-slate-200/60 rounded-xl">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">SKU Profiles</p>
-                <p className="text-xl font-black text-slate-900 mt-0.5">{analytics.workloadBreakdown.expectedVariants}</p>
+              <div className="p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">SKU Profiles</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{analytics.workloadBreakdown.expectedVariants}</p>
               </div>
               <div className="p-3.5 bg-blue-50/40 border border-blue-100 rounded-xl">
-                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Floor Pallet Units</p>
-                <p className="text-xl font-black text-blue-700 mt-0.5">{analytics.workloadBreakdown.expectedPallets}</p>
+                <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">Floor Pallet Units</p>
+                <p className="text-xl font-bold text-blue-700 mt-0.5">{analytics.workloadBreakdown.expectedPallets}</p>
               </div>
             </div>
 
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Load Volume Metrics Mix</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">Load Volume Metrics Mix</p>
             <div className="space-y-3">
               {analytics.workloadBreakdown.uomQuantities.map((item, idx) => (
                 <div key={idx} className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-medium text-slate-600">{item.uom}</span>
-                    <span className="font-bold text-slate-900">{item.amount.toLocaleString()} Units</span>
+                    <span className="font-semibold text-slate-900">{item.amount.toLocaleString()} Units</span>
                   </div>
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-slate-800 h-full rounded-full" style={{ width: `${item.percent}%` }} />
@@ -549,136 +545,82 @@ export default function DeliveryAnalyticsView({ deliveries = [] }) {
             </div>
           </div>
 
-          <div className="mt-5 p-3 bg-slate-50/80 border border-slate-200/60 rounded-xl text-[11px] text-slate-500 flex items-start gap-2">
-            <Info size={14} className="text-slate-400 flex-shrink-0 mt-0.5" />
+          <div className="mt-6 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-500 flex items-start gap-2.5">
+            <Info size={15} className="text-slate-400 flex-shrink-0 mt-0.5" />
             <span>Unit profiles are validated independently across supplier records to prevent telemetry pollution.</span>
           </div>
         </div>
 
-        {/* Real-time Exception Terminal */}
+        {/* Real-time Supplier Performance & Exception Terminal */}
         <div className="bg-white p-6 border border-slate-200/80 rounded-2xl shadow-xs lg:col-span-7 flex flex-col justify-between">
           <div>
-            <div className="border-b border-slate-100 pb-3 mb-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Exception Override Terminal</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Critical anomalies requiring immediate operator remediation</p>
-            </div>
-
-            <div className="space-y-3">
-              {/* Alert 1 */}
-              <div className="flex items-start space-x-3.5 p-3.5 bg-red-50/40 border border-red-100 rounded-xl">
-                <div className="p-2 bg-red-100/80 text-red-600 rounded-lg flex-shrink-0 mt-0.5">
-                  <AlertTriangle size={15} />
-                </div>
-                <div className="text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-900">{analytics.overdueDeliveries} Overdue Shipments Flagged</span>
-                    <span className="text-[9px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase tracking-wide">Breach Risk</span>
-                  </div>
-                  <p className="text-slate-600 mt-1 leading-relaxed">Scheduled arrival parameters exceeded with zero yard telemetry updates. Manual check protocols requested.</p>
-                </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 mb-4 gap-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Supplier Compliance & Directory</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Real-time fulfillment SLA and deviations audit log</p>
               </div>
-
-              {/* Alert 2 */}
-              <div className="flex items-start space-x-3.5 p-3.5 bg-amber-50/40 border border-amber-100 rounded-xl">
-                <div className="p-2 bg-amber-100/80 text-amber-700 rounded-lg flex-shrink-0 mt-0.5">
-                  <Timer size={15} />
-                </div>
-                <div className="text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-900">Cross-Docking Bottleneck Alert</span>
-                    <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full uppercase tracking-wide">Stalled 2h</span>
-                  </div>
-                  <p className="text-slate-600 mt-1 leading-relaxed">Gate entry recorded for inbound fleet but material handoff has stalled. Direct marshalling supervisor routing needed.</p>
-                </div>
-              </div>
-
-              {/* Alert 3 */}
-              <div className="flex items-start space-x-3.5 p-3.5 bg-slate-50 border border-slate-200/60 rounded-xl">
-                <div className="p-2 bg-white border border-slate-200 text-slate-500 rounded-lg flex-shrink-0 mt-0.5">
-                  <Building2 size={15} />
-                </div>
-                <div className="text-xs">
-                  <span className="font-bold text-slate-900">Missing Origin Advanced Shipping Notices</span>
-                  <p className="text-slate-500 mt-1 leading-relaxed">Active pipeline items currently missing authenticated data packet headers from vendor logistics origins.</p>
-                </div>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search suppliers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-950/10 focus:border-slate-400 w-full sm:w-48 transition-all"
+                />
               </div>
             </div>
+
+            {/* Supplier Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                    <th className="pb-3 pl-1">Supplier</th>
+                    <th className="pb-3">Fulfilled / Expected</th>
+                    <th className="pb-3">Deviations</th>
+                    <th className="pb-3">Mean Delay</th>
+                    <th className="pb-3 pr-1 text-right">SLA Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSuppliers.map((sup, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 pl-1 font-semibold text-slate-900 flex items-center gap-2">
+                        <Building2 size={13} className="text-slate-400" /> {sup.name}
+                      </td>
+                      <td className="py-3 text-slate-600 font-medium">{sup.fulfilled} / {sup.expected}</td>
+                      <td className="py-3">
+                        <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${sup.deviations > 0 ? 'bg-red-50 text-red-600 border border-red-200/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'}`}>
+                          {sup.deviations} alerts
+                        </span>
+                      </td>
+                      <td className="py-3 text-slate-600">{sup.delay}</td>
+                      <td className="py-3 pr-1 text-right font-bold text-slate-900">
+                        <span className={`px-2.5 py-1 rounded-lg ${sup.rate >= 90 ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50'}`}>
+                          {sup.rate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredSuppliers.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="py-8 text-center text-slate-400">
+                        No supplier records found matching "{searchQuery}"
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Continuous Telemetry Core Active
-            </span>
-            <span>Real-time Sync Enabled</span>
+          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Audit cycle synchronized</span>
+            <span className="font-medium text-slate-700">Real-time webhooks active</span>
           </div>
         </div>
-      </div>
 
-      {/* VENDOR AUDIT LOGS TABLE */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Supplier Performance Audit Registry</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Audited historical profiles for vendor continuous service level agreements</p>
-          </div>
-
-          <div className="relative max-w-xs w-full self-start sm:self-auto">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Filter registry by vendor..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs pl-9 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-400 uppercase font-bold tracking-wider border-b border-slate-100">
-                <th className="p-4">Vendor Partner</th>
-                <th className="p-4">Expected POs</th>
-                <th className="p-4">Fulfilled</th>
-                <th className="p-4">Deviations</th>
-                <th className="p-4">Mean Delay</th>
-                <th className="p-4 text-right">SLA Compliance Rate</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredSuppliers.map((sup, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="p-4 font-semibold text-slate-900">{sup.name}</td>
-                  <td className="p-4 text-slate-600">{sup.expected}</td>
-                  <td className="p-4 text-emerald-600 font-semibold">{sup.fulfilled}</td>
-                  <td className="p-4 text-slate-600">{sup.deviations}</td>
-                  <td className="p-4 text-slate-600">{sup.delay}</td>
-                  <td className="p-4 text-right">
-                    <div className="inline-flex items-center gap-2">
-                      <div className="w-24 bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${sup.rate >= 90 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                          style={{ width: `${sup.rate}%` }}
-                        />
-                      </div>
-                      <span className="font-bold text-slate-900 w-9 text-right">{sup.rate}%</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filteredSuppliers.length === 0 && (
-                <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-400">
-                    No supplier audit logs found matching "{searchQuery}"
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
 
     </div>

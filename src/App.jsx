@@ -24,7 +24,7 @@ import SupplierList from './pages/SuppliersPage'
 import SupplierDetailPage from './pages/SupplierDetailPage';
 import PurchaseCreatePage from './pages/PurchaseCreatePage';
 import PriceDetailPage from './pages/PriceDetailPage'
-import ReceivingDeliveriesPage from './pages/InboundDeliveryPage'
+import ReceivingDeliveriesPage from './pages/ReceivingDeliveryPage'
 import WarehouseManagement from './pages/WarehouseManagement';
 
 

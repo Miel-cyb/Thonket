@@ -12,6 +12,7 @@ import {
     CheckCircle2,
     Package,
     Calendar,
+    Inbox,
 } from 'lucide-react';
 
 // Import local modularized presentational views
@@ -81,7 +82,6 @@ const sortDeliveries = (items) => {
             return priorityA - priorityB;
         }
 
-        // Within the same status, rank by date and timestamp (ascending: earliest first)
         const timeA = getDeliveryTimestamp(a);
         const timeB = getDeliveryTimestamp(b);
         return timeA - timeB;
@@ -95,7 +95,6 @@ const sortDeliveries = (items) => {
 const flattenDeliveryResponse = (response) => {
     if (!response) return [];
 
-    // If the server response is wrapped in an envelope, extract the inner data property
     const data = response.data !== undefined ? response.data : response;
 
     if (Array.isArray(data)) return data;
@@ -308,100 +307,6 @@ const transformLedgerToDelivery = (raw) => {
 };
 
 // ==========================================
-// FALLBACK / MOCK DATA
-// ==========================================
-
-const FALLBACK_DELIVERIES = [
-    {
-        organizationId: 'ORG-DEFAULT',
-        ledgerId: 'led_6a7ecd8eb48e282659eb601d_v1',
-        ledgerNumber: 'LED-59EB601D-V1-APP',
-        purchaseOrderId: '6a7ecd8eb48e282659eb601d',
-        purchaseRequestId: 'Thursday 14th August Purchase Order',
-        supplierId: '6a170cfbe70e03ed4cccca7d',
-        warehouseId: '6a70601466288000dadf877e',
-        allocations: [
-            {
-                itemId: '1786694929671',
-                itemName: 'Greek Yogurt',
-                warehouseId: '6a70601466288000dadf877e',
-                warehouseName: 'First Warehouse',
-                quantity: 700,
-            },
-            {
-                itemId: '1786694929671',
-                itemName: 'Greek Yogurt',
-                warehouseId: '6a71de1d5d9f2065b426673f',
-                warehouseName: 'Second Warehouse',
-                quantity: 300,
-            },
-        ],
-        lifecycleStatus: 'EXPECTED',
-        supplierName: 'PrimeLink Wholesale Distribution Ltd',
-        supplier: {
-            supplierId: '6a170cfbe70e03ed4cccca7d',
-            name: 'PrimeLink Wholesale Distribution Ltd',
-            location: 'Spintex Road Industrial Area',
-            businessType: 'Wholesale Distributor',
-            riskLevel: 'unrated',
-        },
-        schedule: {
-            approvedAt: '2026-08-14T08:11:12.370Z',
-            requestedAt: '2026-08-14T08:10:54.927Z',
-            slaUrgency: 'OVERDUE',
-            actionNote: '',
-        },
-        commercials: {
-            currency: 'GHS',
-            originalTotalAmount: 1042000,
-            originalSubtotal: 1042000,
-            tax: 0,
-            discount: 0,
-            outstandingCommercialValue: 1042000,
-        },
-        items: [
-            {
-                itemId: '1786694929671',
-                productId: '1786694929671',
-                productName: 'Greek Yogurt',
-                sku: 'GREEK-YOGURT',
-                unitOfMeasure: 'CASE',
-                unitCost: 34,
-                qtyOrdered: 1000,
-                qtyPreviouslyReceived: 0,
-                expectedQty: 1000,
-                outstandingLineValue: 34000,
-            },
-        ],
-    },
-    {
-        id: 'PO-0001',
-        supplier: 'Coca-Cola Ghana',
-        expectedDate: '2026-08-14',
-        expectedTime: '10:30 AM',
-        itemsCount: 1,
-        status: 'Expected',
-        destinationWarehouse: 'Accra Central Hub (Dock 04)',
-        storageType: 'Ambient',
-        totalPallets: 18,
-        driverName: 'Kwame Mensah',
-        truckPlate: 'GT-4921-25',
-        logisticsProvider: 'InterLogistics Ghana',
-        totalValue: 45500,
-        currency: 'GHS',
-        items: [
-            {
-                sku: 'CC-500-01',
-                name: 'Coke 500ml PET (Case of 24)',
-                qtyExpected: 250,
-                unit: 'Cases',
-                category: 'Beverages',
-            },
-        ],
-    },
-];
-
-// ==========================================
 // MAIN COMPONENT
 // ==========================================
 
@@ -498,44 +403,7 @@ export default function ExpectedDeliveriesPage() {
                     err.message ||
                     'Unable to connect to inbound delivery service.'
                 );
-
-                let fallbackData = FALLBACK_DELIVERIES.map(
-                    transformLedgerToDelivery
-                );
-
-                if (statusFilter !== 'All') {
-                    fallbackData = fallbackData.filter(
-                        (delivery) => delivery.status === statusFilter
-                    );
-                }
-
-                if (searchTerm.trim()) {
-                    const term = searchTerm.toLowerCase().trim();
-                    fallbackData = fallbackData.filter(
-                        (delivery) =>
-                            String(delivery.id || '')
-                                .toLowerCase()
-                                .includes(term) ||
-                            String(delivery.supplier || '')
-                                .toLowerCase()
-                                .includes(term) ||
-                            String(delivery.driverName || '')
-                                .toLowerCase()
-                                .includes(term) ||
-                            String(delivery.truckPlate || '')
-                                .toLowerCase()
-                                .includes(term)
-                    );
-                }
-
-                setDeliveries(fallbackData);
-                setLastUpdated(
-                    new Date().toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                    })
-                );
+                setDeliveries([]);
             } finally {
                 setLoading(false);
             }
@@ -555,7 +423,6 @@ export default function ExpectedDeliveriesPage() {
         };
     }, [fetchDeliveries]);
 
-    // Sorted deliveries memoized based on updated business sorting rules:
     const sortedDeliveries = useMemo(() => {
         return sortDeliveries(deliveries);
     }, [deliveries]);
@@ -584,7 +451,6 @@ export default function ExpectedDeliveriesPage() {
         return counts;
     }, [sortedDeliveries]);
 
-    // Handler to select an item and display the detail modal
     const handleSelectDelivery = (delivery) => {
         setSelectedDelivery(delivery);
         setGateForm({
@@ -708,7 +574,7 @@ export default function ExpectedDeliveriesPage() {
                     )}
                     <button
                         onClick={() => fetchDeliveries()}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-900"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
@@ -738,13 +604,21 @@ export default function ExpectedDeliveriesPage() {
                 </div>
             </div>
 
-            {/* Error Banner */}
+            {/* Error Banner with Retry Action */}
             {error && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3 text-amber-800">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
-                    <div className="text-sm">
-                        <span className="font-semibold">Notice:</span> {error} Showing offline/fallback records.
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between gap-3 text-rose-900">
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600" />
+                        <div className="text-sm">
+                            <span className="font-semibold">Connection Error:</span> {error}
+                        </div>
                     </div>
+                    <button
+                        onClick={() => fetchDeliveries()}
+                        className="px-3 py-1.5 text-xs font-semibold bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-md transition-colors whitespace-nowrap"
+                    >
+                        Retry Connection
+                    </button>
                 </div>
             )}
 
@@ -822,19 +696,43 @@ export default function ExpectedDeliveriesPage() {
                 </div>
             </div>
 
-            {/* Content Views */}
-            {viewMode === 'list' ? (
+            {/* Content Views with Built-in Empty/Loading States */}
+            {loading && sortedDeliveries.length === 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-16 text-center space-y-4 shadow-sm">
+                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-slate-400" />
+                    <div className="space-y-1">
+                        <h3 className="text-lg font-semibold text-slate-900">Loading deliveries...</h3>
+                        <p className="text-sm text-slate-500">Fetching live inbound operation records.</p>
+                    </div>
+                </div>
+            ) : sortedDeliveries.length === 0 ? (
+                <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-4 shadow-sm">
+                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                        <Inbox className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                        <h3 className="text-lg font-semibold text-slate-900">No deliveries found</h3>
+                        <p className="text-sm text-slate-500 max-w-md mx-auto">
+                            No inbound operations match your current filters or search query. Try clearing your search parameters or selecting a different status view.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleResetFilters}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
+                    >
+                        Clear Filters
+                    </button>
+                </div>
+            ) : viewMode === 'list' ? (
                 <DeliveryListView
                     deliveries={sortedDeliveries}
-                    loading={loading}
-                    onOpenGateCheckIn={handleSelectDelivery}
                     onSelectDelivery={handleSelectDelivery}
                 />
             ) : (
-                <DeliveryAnalyticsView deliveries={sortedDeliveries} metrics={metricsSummary} />
+                <DeliveryAnalyticsView deliveries={sortedDeliveries} />
             )}
 
-            {/* Delivery Detail / Gate Check-In Modal */}
+            {/* Delivery Detail Modal */}
             {selectedDelivery && (
                 <DeliveryDetailModal
                     delivery={selectedDelivery}

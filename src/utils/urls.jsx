@@ -4,17 +4,17 @@
 //10.10.61.80
 //http://localhost:5004
 //http://192.168.193.143
-const CATEGORY_BASE_URL = 'http://192.168.84.144:5002/api/categories'; // Change this to your backend URL
+const CATEGORY_BASE_URL = 'http://192.168.171.144:5002/api/categories'; // Change this to your backend URL
 
-const PRODUCT_BASE_URL = 'http://192.168.84.144:5002/api/products'; // Change this to your backend URL
+const PRODUCT_BASE_URL = 'http://192.168.171.144:5002/api/products'; // Change this to your backend URL
 
-const PRICE_BASE_URL = 'http://192.168.84.144:5002/api/prices';
+const PRICE_BASE_URL = 'http://192.168.171.144:5002/api/prices';
 
-const SUPPLIER_BASE_URL = 'http://192.168.84.144:5004/api/supplier';
+const SUPPLIER_BASE_URL = 'http://192.168.171.144:5004/api/supplier';
 
-const PURCHASE_ORDER_BASE_URL = 'http://192.168.84.144:5004/api/purchase-order';
+const PURCHASE_ORDER_BASE_URL = 'http://192.168.171.144:5004/api/purchase-order';
 
-const WAREHOUSE_BASE_URL = 'http://192.168.84.144:5003/api/warehouse';
+const WAREHOUSE_BASE_URL = 'http://192.168.171.144:5003/api/warehouse';
 
 export const API_ENDPOINTS = {
     CATEGORIES: CATEGORY_BASE_URL,

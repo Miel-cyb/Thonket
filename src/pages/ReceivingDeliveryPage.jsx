@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     Building2,
     Download,
@@ -7,7 +7,9 @@ import {
     PackageCheck,
     Sparkles,
     CheckCircle2,
-    FileText
+    AlertCircle,
+    RefreshCw,
+    Inbox
 } from 'lucide-react';
 
 // Import Modularized Components
@@ -18,14 +20,70 @@ import InventoryTable from '../components/Inbound-Delivery/InventoryTable';
 import OrderNotesFooter from '../components/Inbound-Delivery/OrderNotesFooter';
 import NewIntakeModal from '../components/Inbound-Delivery/modals/NewIntakeModal';
 import FinalizeModal from '../components/Inbound-Delivery/modals/FinalizeModal';
+import { API_ENDPOINTS } from '../utils/urls';
+
+// ==========================================
+// DATA TRANSFORMERS & FLATTENERS
+// ==========================================
+
+const transformLedgerToPO = (raw) => {
+    if (!raw || typeof raw !== 'object') return null;
+
+    const rawItems = Array.isArray(raw.items) ? raw.items : [];
+    
+    const items = rawItems.map((item, index) => {
+        const ordered = Number(item.qtyOrdered ?? item.expectedQty ?? 0);
+        const received = Number(item.receivedQty ?? item.qtyReceived ?? ordered);
+        const damaged = Number(item.damagedQty ?? 0);
+        const accepted = Math.max(0, received - damaged);
+
+        return {
+            id: item.itemId || item.productId || item.sku || `SKU-${index + 1}`,
+            name: item.name || item.productName || item.itemName || 'Unknown Item',
+            orderedQty: ordered,
+            receivedQty: received,
+            damagedQty: damaged,
+            lotNumber: item.lotNumber || 'LOT-PENDING',
+            location: item.location || 'Unassigned',
+            expiryDate: item.expiryDate || new Date().toISOString().split('T')[0],
+            unitCost: Number(item.unitCost ?? 0),
+            acceptedQty: accepted
+        };
+    });
+
+    const totalOrdered = items.reduce((acc, i) => acc + i.orderedQty, 0);
+    const totalReceived = items.reduce((acc, i) => acc + i.receivedQty, 0);
+
+    let inferredStatus = raw.status || 'Receiving';
+    if (totalReceived === 0) inferredStatus = 'Inspection';
+    else if (totalReceived >= totalOrdered && totalOrdered > 0) inferredStatus = 'Completed';
+
+    return {
+        id: raw.id || raw.ledgerNumber || raw.purchaseOrderId || `PO-${Math.floor(1000 + Math.random() * 9000)}`,
+        supplier: raw.supplier?.name || raw.supplierName || 'Unknown Supplier',
+        expectedDate: raw.expectedDate || new Date().toISOString().split('T')[0],
+        status: inferredStatus,
+        carrier: raw.carrier || raw.logisticsProvider || 'Standard Freight',
+        trackingNo: raw.trackingNo || raw.shipmentSummary?.shipments?.[0]?.trackingNumber || 'TRK-PENDING',
+        dockNumber: raw.dockNumber || 'Bay 01',
+        notes: raw.notes || '',
+        items
+    };
+};
 
 export default function ReceivingDeliveriesPage() {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('ALL');
-    const [selectedPOId, setSelectedPOId] = useState(null); // null = Overview/List View, string ID = Detail View
+    const [selectedPOId, setSelectedPOId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showNewIntakeModal, setShowNewIntakeModal] = useState(false);
+    
+    // API & Async states
+    const [purchaseOrders, setPurchaseOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [lastUpdated, setLastUpdated] = useState(null);
 
     const [newPOForm, setNewPOForm] = useState({
         id: '',
@@ -36,84 +94,50 @@ export default function ReceivingDeliveriesPage() {
         dockNumber: 'Bay 01'
     });
 
-    const [purchaseOrders, setPurchaseOrders] = useState([
-        {
-            id: 'PO-2026-8801',
-            supplier: 'Apex Wholesalers & Logistics',
-            expectedDate: '2026-07-25',
-            status: 'Receiving',
-            carrier: 'Freight Express Line',
-            trackingNo: 'TRK-9902341',
-            dockNumber: 'Bay 03',
-            items: [
-                {
-                    id: 'SKU-001',
-                    name: 'Organic Almond Milk 1L (12-pack)',
-                    orderedQty: 100,
-                    receivedQty: 100,
-                    damagedQty: 0,
-                    lotNumber: 'LOT-2026-09A',
-                    location: 'Aisle 02-B1',
-                    expiryDate: '2027-03-15',
-                    unitCost: 24.5,
-                    acceptedQty: 100
+    // --- API FETCHING ---
+    const fetchReceivingDeliveries = useCallback(async (signal) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`${API_ENDPOINTS.WAREHOUSES}/inbound/delivery/receiving`, {
+                method: 'GET',
+                signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
                 },
-                {
-                    id: 'SKU-002',
-                    name: 'Extra Virgin Olive Oil 500ml',
-                    orderedQty: 250,
-                    receivedQty: 240,
-                    damagedQty: 5,
-                    lotNumber: 'LOT-2026-14C',
-                    location: 'Aisle 04-A3',
-                    expiryDate: '2028-01-20',
-                    unitCost: 12.0,
-                    acceptedQty: 235
-                },
-                {
-                    id: 'SKU-003',
-                    name: 'Dark Chocolate Bars 85% (Case)',
-                    orderedQty: 50,
-                    receivedQty: 50,
-                    damagedQty: 2,
-                    lotNumber: 'LOT-2026-88F',
-                    location: 'Aisle 01-C2',
-                    expiryDate: '2026-12-10',
-                    unitCost: 45.0,
-                    acceptedQty: 48
-                }
-            ],
-            notes: 'Pallet 2 had slight outer carton crushing.'
-        },
-        {
-            id: 'PO-2026-8802',
-            supplier: 'Global Beverage Distributors',
-            expectedDate: '2026-07-25',
-            status: 'Inspection',
-            carrier: 'Swift Transport',
-            trackingNo: 'TRK-8812039',
-            dockNumber: 'Bay 01',
-            items: [
-                {
-                    id: 'SKU-004',
-                    name: 'Sparkling Mineral Water 330ml (24-pack)',
-                    orderedQty: 300,
-                    receivedQty: 300,
-                    damagedQty: 12,
-                    lotNumber: 'LOT-2026-40D',
-                    location: 'Aisle 03-A1',
-                    expiryDate: '2027-08-01',
-                    unitCost: 18.2,
-                    acceptedQty: 288
-                }
-            ],
-            notes: 'Temperature logged at 4°C upon arrival.'
-        }
-    ]);
+            });
 
-    const activePO = useMemo(() => {
-        return purchaseOrders.find((po) => po.id === selectedPOId) || null;
-    }, [purchaseOrders, selectedPOId]);
+            if (response.status === 404) {
+                setPurchaseOrders([]);
+                setLoading(false);
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`Server returned error status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const rawList = Array.isArray(data) ? data : (data.data || data.deliveries || []);
+            const normalized = rawList.map(transformLedgerToPO).filter(Boolean);
+
+            setPurchaseOrders(normalized);
+            setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        } catch (err) {
+            if (err.name === 'AbortError') return;
+            console.error('Failed to load receiving deliveries:', err);
+            setError(err.message || 'Unable to connect to the receiving delivery gateway.');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchReceivingDeliveries(controller.signal);
+        return () => controller.abort();
+    }, [fetchReceivingDeliveries]);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -125,6 +149,10 @@ export default function ReceivingDeliveriesPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    const activePO = useMemo(() => {
+        return purchaseOrders.find((po) => po.id === selectedPOId) || null;
+    }, [purchaseOrders, selectedPOId]);
 
     const handleItemChange = (itemId, field, value) => {
         if (!activePO) return;
@@ -215,7 +243,7 @@ export default function ReceivingDeliveriesPage() {
         setNewPOForm({ id: '', supplier: '', expectedDate: '', carrier: '', trackingNo: '', dockNumber: 'Bay 01' });
     };
 
-    // Calculate aggregated metrics for ALL purchase orders (shown on the list overview page)
+    // Calculate aggregated metrics for ALL purchase orders
     const overallMetrics = useMemo(() => {
         let totalOrdered = 0, totalReceived = 0, totalDamaged = 0, totalAccepted = 0, valueEnteringInventory = 0;
 
@@ -230,7 +258,6 @@ export default function ReceivingDeliveriesPage() {
         });
 
         const variance = totalReceived - totalOrdered;
-
         return { totalOrdered, totalReceived, totalDamaged, totalAccepted, variance, valueEnteringInventory };
     }, [purchaseOrders]);
 
@@ -269,6 +296,18 @@ export default function ReceivingDeliveriesPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {lastUpdated && (
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                            Synced: {lastUpdated}
+                        </span>
+                    )}
+                    <button
+                        onClick={() => fetchReceivingDeliveries()}
+                        className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-3 py-2 rounded-xl text-sm transition shadow-sm"
+                        title="Refresh Data"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
                     <button
                         onClick={() => window.print()}
                         className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm transition shadow-sm hover:border-slate-400"
@@ -284,10 +323,25 @@ export default function ReceivingDeliveriesPage() {
                 </div>
             </header>
 
-            {/* --- VIEW 1: OVERVIEW PAGE (Metrics Summary + Centered Delivery Cards) --- */}
+            {/* Error Banner */}
+            {error && (
+                <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between gap-3 text-rose-900">
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                        <span className="text-sm font-medium">{error}</span>
+                    </div>
+                    <button
+                        onClick={() => fetchReceivingDeliveries()}
+                        className="px-3 py-1.5 text-xs font-semibold bg-rose-100 hover:bg-rose-200 rounded-lg transition"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            {/* --- VIEW 1: OVERVIEW PAGE --- */}
             {!selectedPOId && (
                 <div className="max-w-6xl mx-auto space-y-6">
-                    {/* Overall Metrics Summary across all inbound deliveries */}
                     <MetricsSummary metrics={overallMetrics} />
 
                     <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between shadow-xs">
@@ -300,22 +354,34 @@ export default function ReceivingDeliveriesPage() {
                         </div>
                     </div>
 
-                    <DeliveryList
-                        purchaseOrders={purchaseOrders}
-                        selectedPOId={selectedPOId}
-                        onSelectPO={setSelectedPOId}
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        activeTab={activeTab}
-                        onTabChange={setActiveTab}
-                    />
+                    {loading && purchaseOrders.length === 0 ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center space-y-3">
+                            <RefreshCw className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
+                            <p className="text-sm text-slate-500 font-medium">Loading inbound delivery records...</p>
+                        </div>
+                    ) : purchaseOrders.length === 0 ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center space-y-3">
+                            <Inbox className="w-8 h-8 mx-auto text-slate-400" />
+                            <h3 className="text-base font-semibold text-slate-900">No active receiving deliveries</h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto">There are currently no shipments pending intake audit. Create a new intake or refresh data.</p>
+                        </div>
+                    ) : (
+                        <DeliveryList
+                            purchaseOrders={purchaseOrders}
+                            selectedPOId={selectedPOId}
+                            onSelectPO={setSelectedPOId}
+                            searchQuery={searchQuery}
+                            onSearchChange={setSearchQuery}
+                            activeTab={activeTab}
+                            onTabChange={setActiveTab}
+                        />
+                    )}
                 </div>
             )}
 
             {/* --- VIEW 2: ISOLATED SINGLE ORDER DETAIL VIEW --- */}
             {selectedPOId && activePO && (
                 <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
-                    {/* Navigation & Context Bar */}
                     <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <button
@@ -340,12 +406,9 @@ export default function ReceivingDeliveriesPage() {
                         </div>
                     </div>
 
-                    {/* Order Details Structured Layout */}
                     <div className="space-y-6">
-                        {/* 1. Header Information & Actions */}
                         <OrderHeader activePO={activePO} onStatusChange={handleStatusChange} />
 
-                        {/* 2. PO Specific Live Metrics Summary */}
                         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
                             <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                                 <Sparkles className="w-3.5 h-3.5 text-indigo-500" /> Live Audit Summary for {activePO.id}
@@ -353,7 +416,6 @@ export default function ReceivingDeliveriesPage() {
                             <MetricsSummary metrics={activePOMetrics} />
                         </div>
 
-                        {/* 3. Main Itemized Verification & Inventory Table */}
                         <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
                             <InventoryTable
                                 items={activePO.items}
@@ -363,7 +425,6 @@ export default function ReceivingDeliveriesPage() {
                             />
                         </div>
 
-                        {/* 4. Dock Notes & Final Confirmation Section */}
                         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
                             <OrderNotesFooter
                                 notes={activePO.notes}

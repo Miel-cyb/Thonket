@@ -29,7 +29,7 @@ import Dashboard from "@/components/WarehouseOverview/WarehouseDashboard/Dashboa
 import StockControl from "@/components/WarehouseOverview/StockControl";
 import OrderManagement from "@/components/WarehouseOverview/OrderManagement/OrderManagement";
 import ExpectedDeliveriesPage from "@/pages/ExpectedDelivery";
-import ReceivingDeliveriesPage from "@/pages/InboundDeliveryPage";
+import ReceivingDeliveriesPage from "@/pages/ReceivingDeliveryPage";
 import UserMenu from "@/components/UserMenu";
 
 // Styles & Data

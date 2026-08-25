@@ -2,6 +2,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
+
+//  Modal for logging a new delivery intake
 export default function NewIntakeModal({ form, onChange, onSubmit, onClose }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">

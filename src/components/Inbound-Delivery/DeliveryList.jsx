@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Search,
     Package,
@@ -6,27 +6,78 @@ import {
     AlertTriangle,
     Clock,
     CheckCircle2,
-    Warehouse,
     Truck,
     X,
-    Calendar
+    Play,
+    FileCheck,
+    XCircle,
+    ArrowRightCircle,
+    FileText
 } from 'lucide-react';
+import StartReceivingModal from './modals/StartReceivingModal'; // Import the confirmation modal
 
+// ==========================================
+// STATUS CONFIGURATION & MAPPING
+// ==========================================
 const STATUS_CONFIG = {
-    Receiving: { label: 'Receiving', color: 'bg-blue-50 text-blue-700 border-blue-200/80', icon: Package },
-    Inspection: { label: 'Inspection', color: 'bg-amber-50 text-amber-700 border-amber-200/80', icon: ShieldCheck },
-    Discrepancy: { label: 'Discrepancy', color: 'bg-rose-50 text-rose-700 border-rose-200/80', icon: AlertTriangle },
-    Reconciliation: { label: 'Reconciliation', color: 'bg-purple-50 text-purple-700 border-purple-200/80', icon: Clock },
-    Completed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', icon: CheckCircle2 }
+    GATE_CHECKED_IN: {
+        label: 'Gate Checked In',
+        color: 'bg-blue-50 text-blue-700 border-blue-200/80',
+        icon: Truck,
+        actionLabel: 'Start Receiving',
+        actionIcon: Play,
+        actionClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+    },
+    RECEIVING_IN_PROGRESS: {
+        label: 'Receiving In Progress',
+        color: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+        icon: Package,
+        actionLabel: 'Resume Offloading',
+        actionIcon: ArrowRightCircle,
+        actionClass: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+    },
+    RECEIVED_PENDING_RECONCILIATION: {
+        label: 'Pending Reconciliation',
+        color: 'bg-amber-50 text-amber-700 border-amber-200/80',
+        icon: Clock,
+        actionLabel: 'Verify Tallies',
+        actionIcon: FileCheck,
+        actionClass: 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+    },
+    RECONCILED: {
+        label: 'Reconciled',
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+        icon: CheckCircle2,
+        actionLabel: 'Release to Inventory',
+        actionIcon: CheckCircle2,
+        actionClass: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+    },
+    REJECTED: {
+        label: 'Rejected',
+        color: 'bg-rose-50 text-rose-700 border-rose-200/80',
+        icon: XCircle,
+        actionLabel: 'View Rejection Notice',
+        actionIcon: FileText,
+        actionClass: 'bg-white border border-rose-300 text-rose-700 hover:bg-rose-50'
+    },
+    DISCREPANCY_FLAGGED: {
+        label: 'Discrepancy Flagged',
+        color: 'bg-purple-50 text-purple-700 border-purple-200/80',
+        icon: AlertTriangle,
+        actionLabel: 'Resolve Claim',
+        actionIcon: AlertTriangle,
+        actionClass: 'bg-purple-600 hover:bg-purple-700 text-white shadow-xs'
+    }
 };
 
-const getStatusBadge = (status) => {
-    // Normalizing status lookup key (e.g. capitalized)
-    const formattedKey = status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : '';
-    return STATUS_CONFIG[formattedKey] || STATUS_CONFIG[status] || {
-        label: status || 'Pending',
+const getStatusBadge = (statusKey) => {
+    return STATUS_CONFIG[statusKey] || {
+        label: statusKey || 'Pending',
         color: 'bg-slate-50 text-slate-700 border-slate-200',
-        icon: Package
+        icon: Package,
+        actionLabel: 'Review Details',
+        actionIcon: FileText,
+        actionClass: 'bg-slate-800 hover:bg-slate-900 text-white shadow-xs'
     };
 };
 
@@ -37,13 +88,17 @@ export default function DeliveryList({
     searchQuery = '',
     onSearchChange,
     activeTab = 'ALL',
-    onTabChange
+    onTabChange,
+    onActionClick,
+    onReceiveStarted // Callback passed down to notify parent when receiving starts successfully
 }) {
-    // Calculate counts for tab badges case-insensitively
+    // Modal State Management
+    const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+    const [activePOForReceiving, setActivePOForReceiving] = useState(null);
+
+    // Calculate accurate counts for individual tab filters
     const statusCounts = purchaseOrders.reduce((acc, po) => {
-        const rawStatus = po.status ? po.status.trim() : 'Unassigned';
-        // Match key case format (capitalize first letter)
-        const key = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+        const key = po.rawStatus || po.status || 'GATE_CHECKED_IN';
         acc[key] = (acc[key] || 0) + 1;
         return acc;
     }, {});
@@ -54,166 +109,194 @@ export default function DeliveryList({
             !query ||
             po.id?.toLowerCase().includes(query) ||
             po.supplier?.toLowerCase().includes(query) ||
-            po.carrier?.toLowerCase().includes(query);
+            po.carrier?.toLowerCase().includes(query) ||
+            po.truckNumber?.toLowerCase().includes(query);
 
         const matchesStatus =
-            activeTab === 'ALL' || po.status?.toUpperCase() === activeTab.toUpperCase();
+            activeTab === 'ALL' || po.rawStatus === activeTab || po.status === activeTab;
 
         return matchesSearch && matchesStatus;
     });
 
-    const TABS = ['ALL', 'Receiving', 'Inspection', 'Discrepancy', 'Reconciliation', 'Completed'];
+    // Mapping tab keys to schema-supported filters
+    const TABS = [
+        { key: 'ALL', label: 'All Shipments' },
+        { key: 'GATE_CHECKED_IN', label: 'At Gate' },
+        { key: 'RECEIVING_IN_PROGRESS', label: 'Receiving' },
+        { key: 'RECEIVED_PENDING_RECONCILIATION', label: 'Pending Rec.' },
+        { key: 'RECONCILED', label: 'Reconciled' },
+        { key: 'DISCREPANCY_FLAGGED', label: 'Discrepancies' },
+        { key: 'REJECTED', label: 'Rejected' }
+    ];
+
+    const handleActionTrigger = (po, statusKey) => {
+        if (statusKey === 'GATE_CHECKED_IN') {
+            // Open modal to confirm and trigger API call
+            setActivePOForReceiving(po);
+            setIsReceiveModalOpen(true);
+        } else {
+            // Fallback to parent action handler for other statuses
+            onActionClick?.(po, statusKey);
+        }
+    };
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col h-full">
-            {/* --- HEADER & SEARCH --- */}
-            <div className="space-y-3 mb-3">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                        Deliveries Queue
-                        <span className="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full border border-slate-200/80">
-                            {filteredPOs.length}
-                        </span>
-                    </h3>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 lg:p-5 flex flex-col h-full w-full">
+            {/* Header & Search Controls */}
+            <div className="space-y-3.5 mb-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                            Active Deliveries Queue
+                            <span className="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                                {filteredPOs.length} Shipments
+                            </span>
+                        </h3>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                            Manage dock door allocations, physical tallies, and inventory intake approvals.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="relative flex items-center">
                     <Search className="w-4 h-4 absolute left-3 text-slate-400 pointer-events-none" />
                     <input
                         type="text"
-                        placeholder="Search PO #, supplier, or carrier..."
+                        placeholder="Search by PO #, supplier name, transport carrier, or truck license..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange?.(e.target.value)}
-                        className="w-full pl-9 pr-8 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition"
+                        className="w-full pl-9 pr-8 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition"
                     />
                     {searchQuery && (
                         <button
                             type="button"
                             onClick={() => onSearchChange?.('')}
-                            className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50 transition"
+                            className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50 transition cursor-pointer"
                             aria-label="Clear search"
                         >
                             <X className="w-3.5 h-3.5" />
                         </button>
                     )}
                 </div>
-            </div>
 
-            {/* --- FILTER TABS BAR --- */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 border-b border-slate-100 scrollbar-thin scrollbar-thumb-slate-200">
-                {TABS.map((tab) => {
-                    const isActive = activeTab.toUpperCase() === tab.toUpperCase();
-                    const count = tab === 'ALL' ? purchaseOrders.length : (statusCounts[tab] || 0);
-
-                    return (
-                        <button
-                            key={tab}
-                            type="button"
-                            onClick={() => onTabChange?.(tab)}
-                            className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${isActive
-                                ? 'bg-indigo-600 text-white shadow-xs'
-                                : 'bg-slate-100/70 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                                }`}
-                        >
-                            <span>{tab}</span>
-                            <span
-                                className={`text-[10px] px-1.5 py-0.2 rounded-md font-bold transition-colors ${isActive
-                                    ? 'bg-indigo-700/60 text-white'
-                                    : 'bg-slate-200/80 text-slate-600'
+                {/* Filter Navigation Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 border-b border-slate-100 scrollbar-none">
+                    {TABS.map((tab) => {
+                        const count = tab.key === 'ALL' ? purchaseOrders.length : (statusCounts[tab.key] || 0);
+                        const isActive = activeTab === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                onClick={() => onTabChange?.(tab.key)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${isActive
+                                    ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-100'
+                                    : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/70'
                                     }`}
                             >
-                                {count}
-                            </span>
-                        </button>
-                    );
-                })}
+                                {tab.label}
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${isActive ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-700'
+                                    }`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {/* --- SHIPMENTS CARDS LIST --- */}
-            <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[580px] scrollbar-thin scrollbar-thumb-slate-200">
+            {/* List Body Container */}
+            <div className="flex flex-col gap-3">
                 {filteredPOs.length === 0 ? (
-                    <div className="text-center py-12 px-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200/80 my-auto">
+                    <div className="py-12 px-4 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/40">
                         <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-xs font-semibold text-slate-700">No shipments found</p>
-                        <p className="text-[11px] text-slate-400 mt-1 max-w-[200px] mx-auto">
-                            Try adjusting your search terms or clearing status filters.
+                        <h4 className="text-xs font-bold text-slate-700">No shipments found</h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                            Try adjusting your search query or switching category tabs.
                         </p>
-                        {(searchQuery || activeTab !== 'ALL') && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    onSearchChange?.('');
-                                    onTabChange?.('ALL');
-                                }}
-                                className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
-                            >
-                                Reset Filters
-                            </button>
-                        )}
                     </div>
                 ) : (
                     filteredPOs.map((po) => {
-                        const badge = getStatusBadge(po.status);
-                        const BadgeIcon = badge.icon;
-                        const isSelected = po.id === selectedPOId;
+                        const statusKey = po.rawStatus || po.status || 'GATE_CHECKED_IN';
+                        const badge = getStatusBadge(statusKey);
+                        const StatusIcon = badge.icon;
+                        const ActionIcon = badge.actionIcon;
+                        const isSelected = selectedPOId === po.id;
 
                         return (
                             <div
                                 key={po.id}
                                 onClick={() => onSelectPO?.(po.id)}
-                                className={`group p-3.5 rounded-xl cursor-pointer border transition-all duration-200 relative ${isSelected
-                                    ? 'border-indigo-600/80 bg-indigo-50/40 shadow-xs ring-1 ring-indigo-500/20 border-l-4 border-l-indigo-600'
-                                    : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 ${isSelected
+                                    ? 'border-indigo-500 bg-indigo-50/20 ring-2 ring-indigo-500/10 shadow-sm'
+                                    : 'border-slate-200/90 hover:border-indigo-300 hover:shadow-xs bg-white'
                                     }`}
                             >
-                                {/* Row 1: PO ID & Status Badge */}
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
-                                    <span
-                                        className={`font-bold text-xs tracking-tight font-mono transition-colors ${isSelected
-                                            ? 'text-indigo-950'
-                                            : 'text-slate-900 group-hover:text-indigo-600'
-                                            }`}
-                                    >
-                                        {po.id || 'PO-UNKNOWN'}
-                                    </span>
-                                    <span
-                                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badge.color}`}
-                                    >
-                                        <BadgeIcon className="w-3 h-3 shrink-0" />
-                                        {badge.label}
-                                    </span>
-                                </div>
-
-                                {/* Row 2: Supplier Name */}
-                                <div className="text-xs text-slate-700 font-semibold mb-2.5 truncate">
-                                    {po.supplier || 'Unassigned Supplier'}
-                                </div>
-
-                                {/* Row 3: Logistics Details Footer */}
-                                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-                                    <span className="flex items-center gap-1.5 text-slate-500 truncate max-w-[130px]">
-                                        <Truck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                        {po.carrier || 'Standard Carrier'}
-                                    </span>
-
-                                    <div className="flex items-center gap-2">
-                                        {po.expectedDate && (
-                                            <span className="flex items-center gap-1 text-slate-500 text-[10px]">
-                                                <Calendar className="w-3 h-3 text-slate-400" />
-                                                {po.expectedDate}
-                                            </span>
-                                        )}
-                                        <span className="inline-flex items-center gap-1 font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 text-[10px]">
-                                            <Warehouse className="w-3 h-3 text-slate-400" />
-                                            {po.dockNumber || 'Bay 0'}
-                                        </span>
+                                {/* Left Section: Metadata & Identifiers */}
+                                <div className="flex items-start gap-3.5 w-full xl:w-auto">
+                                    <div className="p-3 rounded-xl shrink-0 bg-slate-50 text-indigo-600 border border-slate-100 shadow-2xs mt-0.5 xl:mt-0">
+                                        <Truck className="w-5 h-5" />
                                     </div>
+                                    <div className="space-y-1 w-full">
+                                        <div className="flex items-center gap-2.5 flex-wrap">
+                                            <span className="text-xs font-extrabold text-slate-900 tracking-tight">{po.id}</span>
+                                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border flex items-center gap-1 ${badge.color}`}>
+                                                <StatusIcon className="w-3 h-3" />
+                                                {badge.label}
+                                            </span>
+                                            <span className="text-[11px] font-semibold text-slate-400">
+                                                Dock: <span className="text-slate-700 font-bold">{po.dockNumber || 'Bay 01'}</span>
+                                            </span>
+                                        </div>
+
+                                        <div className="text-xs font-semibold text-slate-800">
+                                            {po.supplier}
+                                        </div>
+
+                                        <div className="flex items-center gap-4 text-[11px] text-slate-500 font-medium flex-wrap pt-0.5">
+                                            <span>Carrier: <strong className="text-slate-700">{po.carrier}</strong></span>
+                                            <span>Truck Plate: <strong className="text-slate-700">{po.truckNumber}</strong></span>
+                                            <span>Seal #: <strong className="text-slate-700">{po.sealNumber}</strong></span>
+                                            <span>Manifest: <strong className="text-slate-700">{po.items?.length || 0} SKUs</strong></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Section: Contextual Action Trigger */}
+                                <div className="flex items-center justify-end w-full xl:w-auto pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleActionTrigger(po, statusKey);
+                                        }}
+                                        className={`w-full xl:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${badge.actionClass}`}
+                                    >
+                                        <ActionIcon className="w-3.5 h-3.5" />
+                                        {badge.actionLabel}
+                                    </button>
                                 </div>
                             </div>
                         );
                     })
                 )}
             </div>
+
+            {/* Start Receiving Modal Component Integration */}
+            <StartReceivingModal
+                isOpen={isReceiveModalOpen}
+                onClose={() => {
+                    setIsReceiveModalOpen(false);
+                    setActivePOForReceiving(null);
+                }}
+                purchaseOrder={activePOForReceiving}
+                onSuccess={(updatedPO) => {
+                    if (onReceiveStarted) {
+                        onReceiveStarted(updatedPO);
+                    }
+                    setIsReceiveModalOpen(false);
+                    setActivePOForReceiving(null);
+                }}
+            />
         </div>
     );
 }

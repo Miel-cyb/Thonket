@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
+//  Modal for finalizing a delivery and committing stock to inventory
 export default function FinalizeModal({ metrics, onConfirm, onClose }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">

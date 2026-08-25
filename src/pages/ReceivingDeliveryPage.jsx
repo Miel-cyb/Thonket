@@ -4,18 +4,7 @@ import {
     Download,
     Plus,
     RefreshCw,
-    Inbox,
-    Truck,
-    ShieldCheck,
-    Play,
-    ClipboardCheck,
-    CheckCircle2,
-    AlertTriangle,
-    AlertCircle,
-    Search,
-    Package,
-    Clock,
-    X
+    AlertCircle
 } from 'lucide-react';
 
 // Import Modularized Components
@@ -92,6 +81,10 @@ const transformLedgerToPO = (raw) => {
     };
 };
 
+
+//==========================================
+//Component: ReceivingDeliveriesPage
+//==========================================
 export default function ReceivingDeliveriesPage() {
     // --- STATE MANAGEMENT ---
     const [activeTab, setActiveTab] = useState('ALL');
@@ -131,6 +124,8 @@ export default function ReceivingDeliveriesPage() {
 
             const data = await response.json();
             const rawList = Array.isArray(data) ? data : (data.data || data.deliveries || []);
+
+            /// console.log('Fetched Receiving Deliveries:', rawList);
 
             const normalized = rawList
                 .map(transformLedgerToPO)

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Search,
     Package,
@@ -14,7 +15,7 @@ import {
     ArrowRightCircle,
     FileText
 } from 'lucide-react';
-import StartReceivingModal from './modals/StartReceivingModal'; // Import the confirmation modal
+import StartReceivingModal from './modals/StartReceivingModal';
 
 // ==========================================
 // STATUS CONFIGURATION & MAPPING
@@ -81,6 +82,10 @@ const getStatusBadge = (statusKey) => {
     };
 };
 
+// ==========================================
+// Component: DeliveryList
+// ==========================================
+
 export default function DeliveryList({
     purchaseOrders = [],
     selectedPOId,
@@ -90,8 +95,10 @@ export default function DeliveryList({
     activeTab = 'ALL',
     onTabChange,
     onActionClick,
-    onReceiveStarted // Callback passed down to notify parent when receiving starts successfully
+    onReceiveStarted
 }) {
+    const navigate = useNavigate();
+
     // Modal State Management
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
     const [activePOForReceiving, setActivePOForReceiving] = useState(null);
@@ -118,7 +125,6 @@ export default function DeliveryList({
         return matchesSearch && matchesStatus;
     });
 
-    // Mapping tab keys to schema-supported filters
     const TABS = [
         { key: 'ALL', label: 'All Shipments' },
         { key: 'GATE_CHECKED_IN', label: 'At Gate' },
@@ -130,12 +136,15 @@ export default function DeliveryList({
     ];
 
     const handleActionTrigger = (po, statusKey) => {
+        const detailId = po.id; // Mapping detailId to purchase order / shipment ID
+
         if (statusKey === 'GATE_CHECKED_IN') {
-            // Open modal to confirm and trigger API call
+            // Option A: Open modal confirmation, then route upon confirmation
             setActivePOForReceiving(po);
             setIsReceiveModalOpen(true);
         } else {
-            // Fallback to parent action handler for other statuses
+            // Direct commercial routing pattern as requested
+            navigate(`/receiving-audit/${detailId}`);
             onActionClick?.(po, statusKey);
         }
     };
@@ -225,7 +234,10 @@ export default function DeliveryList({
                         return (
                             <div
                                 key={po.id}
-                                onClick={() => onSelectPO?.(po.id)}
+                                onClick={() => {
+                                    onSelectPO?.(po.id);
+                                    navigate(`/receiving-audit/${po.id}`);
+                                }}
                                 className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 ${isSelected
                                     ? 'border-indigo-500 bg-indigo-50/20 ring-2 ring-indigo-500/10 shadow-sm'
                                     : 'border-slate-200/90 hover:border-indigo-300 hover:shadow-xs bg-white'
@@ -294,6 +306,9 @@ export default function DeliveryList({
                         onReceiveStarted(updatedPO);
                     }
                     setIsReceiveModalOpen(false);
+                    if (activePOForReceiving?.id) {
+                        navigate(`/receiving-audit/${activePOForReceiving.id}`);
+                    }
                     setActivePOForReceiving(null);
                 }}
             />

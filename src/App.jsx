@@ -25,6 +25,7 @@ import SupplierDetailPage from './pages/SupplierDetailPage';
 import PurchaseCreatePage from './pages/PurchaseCreatePage';
 import PriceDetailPage from './pages/PriceDetailPage'
 import ReceivingDeliveriesPage from './pages/ReceivingDeliveryPage'
+import ReceivingAuditPage from './pages/ReceivingAuditPage';
 import WarehouseManagement from './pages/WarehouseManagement';
 
 
@@ -165,6 +166,11 @@ function App() {
         <Route
           path="/inbound-deliveries"
           element={<ReceivingDeliveriesPage />}
+        />
+
+        <Route
+          path="/receiving-audit/:ledgerId"
+          element={<ReceivingAuditPage />}
         />
 
 

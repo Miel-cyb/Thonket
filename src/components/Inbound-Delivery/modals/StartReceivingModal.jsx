@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Truck,
     Play,
@@ -10,37 +11,53 @@ import {
     FileText,
     ChevronDown,
     ChevronUp,
-    Box
+    Box,
+    CheckCircle2
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../../../utils/urls';
 
+
+//==========================================
+//Component: StartReceivingModal Modal to 
+// initiate the receiving process for a specific purchase order
+//==========================================
 export default function StartReceivingModal({
     isOpen,
     onClose,
     purchaseOrder: rawPurchaseOrder,
     onSuccess
 }) {
+    const navigate = useNavigate();
+
     // Normalize purchaseOrder based on wrapper structure
     const purchaseOrder = rawPurchaseOrder?.purchaseOrder || rawPurchaseOrder;
 
-    console.log('StartReceivingModal - purchaseOrder:', purchaseOrder);
-
-    // Debugging log
-
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [successMessage, setSuccessMessage] = useState(null);
     const [inspectorNotes, setInspectorNotes] = useState('');
-    const [showItems, setShowItems] = useState(true); // Default expanded so operators see items immediately
+    const [showItems, setShowItems] = useState(true);
 
     if (!isOpen || !purchaseOrder) return null;
+
+    // Dummy actor context (In production, pull this from your Auth/User Context)
+    const currentActor = {
+        userId: 'usr_doc_99218',
+        username: 'Marcus Vance',
+        role: 'RECEIVING_INSPECTOR'
+    };
 
     const handleConfirmReceiving = async () => {
         setLoading(true);
         setError(null);
+        setSuccessMessage(null);
+
+        // Extract identifier safely (support rawId, id, or ledgerId)
+        const targetId = purchaseOrder.rawId || purchaseOrder.id;
 
         try {
             const response = await fetch(
-                `${API_ENDPOINTS.WAREHOUSES}/inbound/delivery/${purchaseOrder.rawId || purchaseOrder.id}/start-receiving`,
+                `${API_ENDPOINTS.WAREHOUSES}/inbound/delivery/${targetId}/start-receiving`,
                 {
                     method: 'PATCH',
                     headers: {
@@ -48,9 +65,9 @@ export default function StartReceivingModal({
                         Accept: 'application/json',
                     },
                     body: JSON.stringify({
-                        dockNumber: purchaseOrder.dockNumber || 'Bay 01',
+                        ledgerId: purchaseOrder.ledgerId,
                         notes: inspectorNotes,
-                        status: 'RECEIVING_IN_PROGRESS'
+                        actor: currentActor,
                     }),
                 }
             );
@@ -61,21 +78,31 @@ export default function StartReceivingModal({
             }
 
             const updatedData = await response.json();
+            const resultPayload = updatedData.data || updatedData;
 
-            if (onSuccess) {
-                onSuccess(updatedData.data || updatedData);
-            }
-            onClose();
+            // Resolve the newly created or updated entity detail ID
+            const detailId = resultPayload.id || targetId;
+
+            // Show explicit success feedback before navigating and closing modal
+            setSuccessMessage('Receiving sequence initiated successfully! Redirecting to detail view...');
+
+            setTimeout(() => {
+                if (onSuccess) {
+                    onSuccess(resultPayload);
+                }
+                onClose();
+
+                // Navigate to the detail part using the resolved ID
+                navigate(`/receiving-audit/${detailId}`);
+            }, 1200);
+
         } catch (err) {
             setError(err.message || 'An unexpected error occurred while communicating with the server.');
-        } finally {
             setLoading(false);
         }
     };
 
     const reconciliation = purchaseOrder.reconciliation || {};
-
-    // Evaluate true discrepancy status: True ONLY if flagged by backend logic, not simply because received quantities are 0 prior to starting intake.
     const hasDiscrepancy = Boolean(reconciliation.hasDiscrepancy);
 
     return (
@@ -109,9 +136,18 @@ export default function StartReceivingModal({
                 <div className="p-6 space-y-5 overflow-y-auto">
                     {/* Error Notice */}
                     {error && (
-                        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-900 text-xs">
+                        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-900 text-xs animate-in shake">
                             <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                             <div className="flex-1 font-medium">{error}</div>
+                            <button onClick={() => setError(null)} className="text-rose-400 hover:text-rose-700 font-bold">×</button>
+                        </div>
+                    )}
+
+                    {/* Success Notice */}
+                    {successMessage && (
+                        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-900 text-xs animate-in fade-in">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div className="flex-1 font-semibold">{successMessage}</div>
                         </div>
                     )}
 
@@ -229,7 +265,7 @@ export default function StartReceivingModal({
                     <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-center gap-2.5 text-amber-900 text-xs">
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                         <span className="font-medium">
-                            Starting receipt will change shipment status to <strong className="font-bold">Receiving In Progress</strong> and activate inventory logging.
+                            Starting receipt will change shipment status to <strong className="font-bold">Receiving In Progress</strong> and activate inventory logging under actor <span className="font-mono underline">{currentActor.username}</span>.
                         </span>
                     </div>
                 </div>

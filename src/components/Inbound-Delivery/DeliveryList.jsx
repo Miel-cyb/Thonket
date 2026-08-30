@@ -3,15 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
     Search,
     Package,
-    ShieldCheck,
-    AlertTriangle,
     Clock,
-    CheckCircle2,
     Truck,
     X,
     Play,
-    FileCheck,
-    XCircle,
     ArrowRightCircle,
     FileText
 } from 'lucide-react';
@@ -19,6 +14,7 @@ import StartReceivingModal from './modals/StartReceivingModal';
 
 // ==========================================
 // STATUS CONFIGURATION & MAPPING
+// (Focused strictly on Gate and Receiving states)
 // ==========================================
 const STATUS_CONFIG = {
     GATE_CHECKED_IN: {
@@ -36,48 +32,16 @@ const STATUS_CONFIG = {
         actionLabel: 'Resume Offloading',
         actionIcon: ArrowRightCircle,
         actionClass: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-    },
-    RECEIVED_PENDING_RECONCILIATION: {
-        label: 'Pending Reconciliation',
-        color: 'bg-amber-50 text-amber-700 border-amber-200/80',
-        icon: Clock,
-        actionLabel: 'Verify Tallies',
-        actionIcon: FileCheck,
-        actionClass: 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
-    },
-    RECONCILED: {
-        label: 'Reconciled',
-        color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        icon: CheckCircle2,
-        actionLabel: 'Release to Inventory',
-        actionIcon: CheckCircle2,
-        actionClass: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-    },
-    REJECTED: {
-        label: 'Rejected',
-        color: 'bg-rose-50 text-rose-700 border-rose-200/80',
-        icon: XCircle,
-        actionLabel: 'View Rejection Notice',
-        actionIcon: FileText,
-        actionClass: 'bg-white border border-rose-300 text-rose-700 hover:bg-rose-50'
-    },
-    DISCREPANCY_FLAGGED: {
-        label: 'Discrepancy Flagged',
-        color: 'bg-purple-50 text-purple-700 border-purple-200/80',
-        icon: AlertTriangle,
-        actionLabel: 'Resolve Claim',
-        actionIcon: AlertTriangle,
-        actionClass: 'bg-purple-600 hover:bg-purple-700 text-white shadow-xs'
     }
 };
 
 const getStatusBadge = (statusKey) => {
     return STATUS_CONFIG[statusKey] || {
-        label: statusKey || 'Pending',
+        label: statusKey || 'At Gate',
         color: 'bg-slate-50 text-slate-700 border-slate-200',
-        icon: Package,
-        actionLabel: 'Review Details',
-        actionIcon: FileText,
+        icon: Truck,
+        actionLabel: 'Start Receiving',
+        actionIcon: Play,
         actionClass: 'bg-slate-800 hover:bg-slate-900 text-white shadow-xs'
     };
 };
@@ -103,10 +67,12 @@ export default function DeliveryList({
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
     const [activePOForReceiving, setActivePOForReceiving] = useState(null);
 
-    // Calculate accurate counts for individual tab filters
+    // Calculate accurate counts for individual tab filters (Gate & Receiving only)
     const statusCounts = purchaseOrders.reduce((acc, po) => {
         const key = po.rawStatus || po.status || 'GATE_CHECKED_IN';
-        acc[key] = (acc[key] || 0) + 1;
+        if (key === 'GATE_CHECKED_IN' || key === 'RECEIVING_IN_PROGRESS') {
+            acc[key] = (acc[key] || 0) + 1;
+        }
         return acc;
     }, {});
 
@@ -119,31 +85,27 @@ export default function DeliveryList({
             po.carrier?.toLowerCase().includes(query) ||
             po.truckNumber?.toLowerCase().includes(query);
 
+        const rawStat = po.rawStatus || po.status || 'GATE_CHECKED_IN';
         const matchesStatus =
-            activeTab === 'ALL' || po.rawStatus === activeTab || po.status === activeTab;
+            activeTab === 'ALL' || rawStat === activeTab;
 
         return matchesSearch && matchesStatus;
     });
 
+    // Streamlined tabs restricted to ALL, GATE, and RECEIVING states
     const TABS = [
-        { key: 'ALL', label: 'All Shipments' },
+        { key: 'ALL', label: 'All Active' },
         { key: 'GATE_CHECKED_IN', label: 'At Gate' },
-        { key: 'RECEIVING_IN_PROGRESS', label: 'Receiving' },
-        { key: 'RECEIVED_PENDING_RECONCILIATION', label: 'Pending Rec.' },
-        { key: 'RECONCILED', label: 'Reconciled' },
-        { key: 'DISCREPANCY_FLAGGED', label: 'Discrepancies' },
-        { key: 'REJECTED', label: 'Rejected' }
+        { key: 'RECEIVING_IN_PROGRESS', label: 'Receiving' }
     ];
 
     const handleActionTrigger = (po, statusKey) => {
-        const detailId = po.id; // Mapping detailId to purchase order / shipment ID
+        const detailId = po.id;
 
         if (statusKey === 'GATE_CHECKED_IN') {
-            // Option A: Open modal confirmation, then route upon confirmation
             setActivePOForReceiving(po);
             setIsReceiveModalOpen(true);
         } else {
-            // Direct commercial routing pattern as requested
             navigate(`/receiving-audit/${detailId}`);
             onActionClick?.(po, statusKey);
         }
@@ -156,13 +118,13 @@ export default function DeliveryList({
                 <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                         <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                            Active Deliveries Queue
+                            Gate & Receiving Queue
                             <span className="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100">
                                 {filteredPOs.length} Shipments
                             </span>
                         </h3>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                            Manage dock door allocations, physical tallies, and inventory intake approvals.
+                            Track gate arrivals, dock door allocations, and active offloading processes.
                         </p>
                     </div>
                 </div>
@@ -191,7 +153,9 @@ export default function DeliveryList({
                 {/* Filter Navigation Tabs */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 border-b border-slate-100 scrollbar-none">
                     {TABS.map((tab) => {
-                        const count = tab.key === 'ALL' ? purchaseOrders.length : (statusCounts[tab.key] || 0);
+                        const count = tab.key === 'ALL'
+                            ? Object.values(statusCounts).reduce((a, b) => a + b, 0)
+                            : (statusCounts[tab.key] || 0);
                         const isActive = activeTab === tab.key;
                         return (
                             <button
@@ -218,9 +182,9 @@ export default function DeliveryList({
                 {filteredPOs.length === 0 ? (
                     <div className="py-12 px-4 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/40">
                         <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <h4 className="text-xs font-bold text-slate-700">No shipments found</h4>
+                        <h4 className="text-xs font-bold text-slate-700">No active shipments found</h4>
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                            Try adjusting your search query or switching category tabs.
+                            There are no shipments currently matching this filter state at the gate or receiving dock.
                         </p>
                     </div>
                 ) : (

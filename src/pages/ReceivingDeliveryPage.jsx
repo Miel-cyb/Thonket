@@ -102,10 +102,12 @@ export default function ReceivingDeliveriesPage() {
     // Master Workspace Tab state: 'activeReceiving' | 'reconciliation' | 'inventorySync'
     const [viewMode, setViewMode] = useState('activeReceiving');
 
-    // API & Async states (handling all 3 root top-level arrays from response payload)
+    // API & Async states (handling lists and backend-calculated metrics/statistics)
     const [activeReceiving, setActiveReceiving] = useState([]);
     const [issues, setIssues] = useState([]);
     const [inventorySync, setInventorySync] = useState([]);
+    const [backendMetrics, setBackendMetrics] = useState(null);
+    const [backendStatistics, setBackendStatistics] = useState(null);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -129,6 +131,8 @@ export default function ReceivingDeliveriesPage() {
                 setActiveReceiving([]);
                 setIssues([]);
                 setInventorySync([]);
+                setBackendMetrics(null);
+                setBackendStatistics(null);
                 setLoading(false);
                 return;
             }
@@ -138,10 +142,17 @@ export default function ReceivingDeliveriesPage() {
             }
             const data = await response.json();
 
-            console.log('Fetched Receiving Deliveries Data:', data);
+            //console.log('Raw API response for receiving deliveries:', data);
 
             // Safely target the inner payload wrapper if present
             const payload = data && data.data && typeof data.data === 'object' ? data.data : data;
+
+            // Capture metrics and statistics cleanly from payload or nested structure
+            const metricsSource = payload?.metrics || payload;
+            if (metricsSource && typeof metricsSource === 'object') {
+                setBackendMetrics(metricsSource);
+                setBackendStatistics(payload?.statistics || metricsSource);
+            }
 
             // Extract Top-Level Array 1: activeReceiving
             let rawActiveList = [];
@@ -222,48 +233,73 @@ export default function ReceivingDeliveriesPage() {
         );
     };
 
-    // Combined pool for metrics summary computation
+    // Combined pool for metrics summary computation fallback
     const allCombinedOrders = useMemo(() => {
         const map = new Map();
         [...activeReceiving, ...issues, ...inventorySync].forEach(po => {
-            if (po && po.id) map.set(po.id, po);
+            if (po && (po.id || po.rawId)) {
+                map.set(po.rawId || po.id, po);
+            }
         });
         return Array.from(map.values());
     }, [activeReceiving, issues, inventorySync]);
 
+    // Computed Metrics fully mapped to the exact server keys provided, ensuring list arrays are excluded from counts
     const overallMetrics = useMemo(() => {
-        let totalOrdered = 0, totalReceived = 0, totalDamaged = 0, totalAccepted = 0, valueEnteringInventory = 0;
+        let totalShipments = backendMetrics?.totalShipments ?? allCombinedOrders.length;
+        let activeCount = backendMetrics?.phase1ArrivalCount ?? activeReceiving.length;
+        let issueCount = backendMetrics?.phase2ReconciliationCount ?? issues.length;
+        let pendingSyncCount = backendMetrics?.inventorySyncPendingCount ?? inventorySync.length;
+
+        let totalOrdered = backendMetrics?.totalExpectedUnits ?? 0;
+        let totalReceived = backendMetrics?.totalReceivedUnits ?? 0;
+        let totalDamaged = backendMetrics?.totalDamagedUnits ?? 0;
+        let totalRejected = backendMetrics?.totalRejectedUnits ?? 0;
+        let totalShortage = backendMetrics?.totalShortageUnits ?? 0;
+        let totalOverage = backendMetrics?.totalOverageUnits ?? 0;
+        let variance = backendMetrics?.totalFinancialVarianceCost ?? 0;
+
+        let totalAccepted = 0;
+        let valueEnteringInventory = 0;
 
         allCombinedOrders.forEach((po) => {
             po.items?.forEach((item) => {
-                totalOrdered += item.orderedQty || 0;
-                totalReceived += item.receivedQty || 0;
-                totalDamaged += item.damagedQty || 0;
                 totalAccepted += item.acceptedQty || 0;
                 valueEnteringInventory += (item.acceptedQty || 0) * (item.unitCost || 0);
             });
         });
 
-        const variance = totalReceived - totalOrdered;
-        return { totalOrdered, totalReceived, totalDamaged, totalAccepted, variance, valueEnteringInventory };
-    }, [allCombinedOrders]);
+        // Filter out array types from backendStatistics / backendMetrics to prevent structural leaks in the metrics summary props
+        const sanitizedStatistics = backendStatistics && typeof backendStatistics === 'object'
+            ? Object.fromEntries(Object.entries(backendStatistics).filter(([_, val]) => !Array.isArray(val)))
+            : {};
 
-    // Badge counters derived from separate top-level arrays
+        return {
+            totalShipments,
+            activeCount,
+            issueCount,
+            pendingSyncCount,
+            totalOrdered,
+            totalReceived,
+            totalDamaged,
+            totalRejected,
+            totalShortage,
+            totalOverage,
+            totalAccepted,
+            variance,
+            valueEnteringInventory,
+            ...sanitizedStatistics
+        };
+    }, [allCombinedOrders, activeReceiving, issues, inventorySync, backendMetrics, backendStatistics]);
+
+    // Badge counters derived from separate top-level arrays or backend metrics
     const readyToPushCount = useMemo(() => {
-        return inventorySync.length || allCombinedOrders.filter((po) =>
-            po.status === 'Reconciled' ||
-            po.rawStatus === 'RECONCILED' ||
-            po.readyToPush === true
-        ).length;
-    }, [inventorySync, allCombinedOrders]);
+        return backendMetrics?.phase3SyncReadyCount ?? inventorySync.length;
+    }, [backendMetrics, inventorySync]);
 
     const issuesCount = useMemo(() => {
-        return issues.length || allCombinedOrders.filter((po) =>
-            po.status === 'Discrepancy' ||
-            po.rawStatus === 'REJECTED' ||
-            po.rawStatus === 'DISCREPANCY_FLAGGED'
-        ).length;
-    }, [issues, allCombinedOrders]);
+        return backendMetrics?.phase2ReconciliationCount ?? issues.length;
+    }, [backendMetrics, issues]);
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 lg:p-8 antialiased flex flex-col items-center">

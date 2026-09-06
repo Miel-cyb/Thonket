@@ -27,6 +27,8 @@ import PriceDetailPage from './pages/PriceDetailPage'
 import ReceivingDeliveriesPage from './pages/ReceivingDeliveryPage'
 import ReceivingAuditPage from './pages/ReceivingAuditPage';
 import WarehouseManagement from './pages/WarehouseManagement';
+import ReconciliationDetailView from './pages/ReconciliationViewDetailPage';
+import InventoryPushDetailPage from './pages/InventoryPushDetailPage';
 
 
 
@@ -171,6 +173,18 @@ function App() {
         <Route
           path="/receiving-audit/:ledgerId"
           element={<ReceivingAuditPage />}
+        />
+
+        {/* Detail view nested under the ledger or as a separate sub-route */}
+        <Route
+          path="/receiving-reconciliation/detail/:detailId"
+          element={<ReconciliationDetailView />}
+        />
+
+        //push to inventory
+        <Route
+          path="/inventory/push/:pushId"
+          element={<InventoryPushDetailPage />}
         />
 
 

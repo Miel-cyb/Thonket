@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Added React Router Navigation Hook
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
     ArrowLeftCircle, Search, Package, ChevronDown,
@@ -12,7 +12,7 @@ import { ProductPriceCard } from '../components/OperationsDashboard/setup/catalo
 import { API_ENDPOINTS } from '../utils/urls';
 
 const PriceManagementPage = () => {
-    const navigate = useNavigate(); // 2. Initialized Router Context
+    const navigate = useNavigate();
     const [categories, setCategories] = useState([]);
     const [selectedCategoryObj, setSelectedCategoryObj] = useState(null);
     const [allProducts, setAllProducts] = useState([]);
@@ -21,27 +21,108 @@ const PriceManagementPage = () => {
 
     const ITEMS_PER_PAGE = 12;
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+    const organizationId = "ORG-DEFAULT";
 
     const fetchCategories = useCallback(async () => {
         try {
-            const { data } = await axios.get(`${API_ENDPOINTS.CATEGORIES}/hierarchy/all`);
-            setCategories(Array.isArray(data) ? data : (data?.data || []));
+            const response = await axios.get(`${API_ENDPOINTS.CATEGORIES}/${organizationId}/hierarchy/all`);
+            const resData = response.data;
+            console.log(resData)
+            setCategories(Array.isArray(resData) ? resData : (resData?.data || []));
         } catch (err) {
             console.error("Category Fetch Error", err);
         }
-    }, []);
+    }, [organizationId]);
 
     const fetchPriceCatalog = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`${API_ENDPOINTS.PRICES}/catalog`);
-            setAllProducts(data?.products || []);
+            const response = await axios.get(`${API_ENDPOINTS.PRICES}/organization/${organizationId}/catalog`);
+            const resData = response.data;
+
+            let rawItems = [];
+            const payload = resData?.data || resData;
+            console.log(payload);
+
+            if (Array.isArray(payload)) {
+                const isVariantStructure = payload.some(item => item.productId && typeof item.productId === 'object');
+
+                if (isVariantStructure) {
+                    const productMap = {};
+                    payload.forEach(variant => {
+                        const prodInfo = variant.productId;
+                        const prodId = prodInfo?._id || 'unknown';
+
+                        if (!productMap[prodId]) {
+                            const rawCat = prodInfo?.categoryId;
+                            const catId = typeof rawCat === 'object' ? rawCat?._id : (rawCat || '');
+                            const catName = typeof rawCat === 'object' ? rawCat?.name : '';
+
+                            productMap[prodId] = {
+                                _id: prodId,
+                                name: prodInfo?.name || 'Unnamed Product',
+                                slug: prodInfo?.slug || '',
+                                description: prodInfo?.description || '',
+                                categoryId: catId,
+                                categoryName: catName,
+                                category: rawCat || null,
+                                brand: prodInfo?.brand || '',
+                                isActive: prodInfo?.isActive ?? true,
+                                organizationId: prodInfo?.organizationId || organizationId,
+                                createdAt: prodInfo?.createdAt || '',
+                                updatedAt: prodInfo?.updatedAt || '',
+                                __v: prodInfo?.__v ?? 0,
+                                variants: []
+                            };
+                        }
+                        productMap[prodId].variants.push(variant);
+                    });
+                    rawItems = Object.values(productMap);
+                } else {
+                    rawItems = payload;
+                }
+            } else if (Array.isArray(payload?.products)) {
+                rawItems = payload.products;
+            } else if (Array.isArray(payload?.variants)) {
+                const productMap = {};
+                payload.variants.forEach(variant => {
+                    const prodInfo = variant.productId;
+                    const prodId = prodInfo?._id || 'unknown';
+
+                    if (!productMap[prodId]) {
+                        const rawCat = prodInfo?.categoryId;
+                        const catId = typeof rawCat === 'object' ? rawCat?._id : (rawCat || '');
+                        const catName = typeof rawCat === 'object' ? rawCat?.name : '';
+
+                        productMap[prodId] = {
+                            _id: prodId,
+                            name: prodInfo?.name || 'Unnamed Product',
+                            slug: prodInfo?.slug || '',
+                            description: prodInfo?.description || '',
+                            categoryId: catId,
+                            categoryName: catName,
+                            category: rawCat || null,
+                            brand: prodInfo?.brand || '',
+                            isActive: prodInfo?.isActive ?? true,
+                            organizationId: prodInfo?.organizationId || organizationId,
+                            createdAt: prodInfo?.createdAt || '',
+                            updatedAt: prodInfo?.updatedAt || '',
+                            __v: prodInfo?.__v ?? 0,
+                            variants: []
+                        };
+                    }
+                    productMap[prodId].variants.push(variant);
+                });
+                rawItems = Object.values(productMap);
+            }
+
+            setAllProducts(rawItems);
         } catch (err) {
             console.error("Catalog Sync Error", err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [organizationId]);
 
     useEffect(() => {
         fetchCategories();
@@ -54,14 +135,19 @@ const PriceManagementPage = () => {
 
     const filteredProducts = useMemo(() => {
         return allProducts.filter(product => {
-            const matchesCategory = selectedCategoryObj
-                ? product.categoryId === selectedCategoryObj._id || product.category?._id === selectedCategoryObj._id
+            const productCatId = typeof product.categoryId === 'object' ? product.categoryId?._id : product.categoryId;
+            const productCategoryObjId = typeof product.category === 'object' ? product.category?._id : product.category;
+            const selectedCatId = selectedCategoryObj?._id;
+
+            const matchesCategory = selectedCatId
+                ? productCatId === selectedCatId || productCategoryObjId === selectedCatId
                 : true;
 
             const cleanQuery = searchQuery.trim().toLowerCase();
             const matchesSearch = cleanQuery
                 ? product.name?.toLowerCase().includes(cleanQuery) ||
                 product.brand?.toLowerCase().includes(cleanQuery) ||
+                product.categoryName?.toLowerCase().includes(cleanQuery) ||
                 product.variants?.some(v => v.sku?.toLowerCase().includes(cleanQuery) || v.name?.toLowerCase().includes(cleanQuery))
                 : true;
 
@@ -89,7 +175,6 @@ const PriceManagementPage = () => {
 
         filteredProducts.forEach(p => {
             const variants = p.variants || [];
-            const topLevelPrices = p.productPrices || [];
             let productHasAllPricesConfigured = p.isActive;
 
             if (variants.length > 0) {
@@ -97,9 +182,8 @@ const PriceManagementPage = () => {
                     totalSKUs++;
                     const variantPrices = variant.prices || [];
                     const hasVariantPrice = variantPrices.some(vp => Number(vp.basePrice) > 0);
-                    const hasFallbackPrice = topLevelPrices.some(tp => tp.scope === 'PRODUCT' && Number(tp.basePrice) > 0);
 
-                    if (hasVariantPrice || hasFallbackPrice) {
+                    if (hasVariantPrice) {
                         pricedSKUs++;
                     } else {
                         missingPricesCount++;
@@ -111,19 +195,9 @@ const PriceManagementPage = () => {
                 });
             } else {
                 totalSKUs++;
-                const hasProductPrice = topLevelPrices.some(tp => Number(tp.basePrice) > 0);
-                if (hasProductPrice) {
-                    pricedSKUs++;
-                } else {
-                    missingPricesCount++;
-                    productHasAllPricesConfigured = false;
-                }
+                missingPricesCount++;
+                productHasAllPricesConfigured = false;
             }
-
-            const topLevelTiers = topLevelPrices.filter(pr => pr.scope === 'TIER' || pr.tiers)?.length || 0;
-            const topLevelDiscounts = topLevelPrices.filter(pr => pr.scope === 'DISCOUNT' || pr.discount)?.length || 0;
-            totalActiveTiers += topLevelTiers;
-            totalActiveDiscounts += topLevelDiscounts;
 
             if (productHasAllPricesConfigured && totalSKUs > 0) {
                 saleReadyProductsCount++;
@@ -166,7 +240,7 @@ const PriceManagementPage = () => {
                     <input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search SKU, name or brand..."
+                        placeholder="Search SKU, name, category or brand..."
                         className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl w-80 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all"
                     />
                 </div>
@@ -201,7 +275,6 @@ const PriceManagementPage = () => {
 
                 <main className="flex-1 overflow-y-auto p-8 bg-[#F8FAFC]">
                     <div className="max-w-[1600px] mx-auto space-y-8">
-                        {/* Statistical Overview Layer */}
                         <div className="flex flex-wrap gap-4 items-stretch w-full">
                             <StatCard icon={Package} label="Priced SKUs" value={priceStats.pricedSKUs} color="bg-indigo-600 text-white shadow-indigo-100" />
                             <StatCard icon={AlertTriangle} label="Missing Prices" value={priceStats.missingPrices} color="bg-amber-500 text-white shadow-amber-100" detail={priceStats.missingPrices > 0 ? "Action Req" : null} />
@@ -225,13 +298,10 @@ const PriceManagementPage = () => {
                                 <>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                                         {paginatedProducts.map(p => (
-                                             
                                             <ProductPriceCard
                                                 key={p._id}
                                                 product={p}
-                                               
-                                                // 3. Changed from state selection to real route transitions
-                                                onSelect={(prod) => navigate(`/price/${prod._id}`)}
+                                                onSelect={(prod) => navigate(`/price/${prod._id}`, { state: { product: prod } })}
                                             />
                                         ))}
                                     </div>

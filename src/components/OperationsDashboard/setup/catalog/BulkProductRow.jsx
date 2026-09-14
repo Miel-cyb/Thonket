@@ -35,28 +35,32 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
     };
 
     const addVariant = () => {
-        // Variant generation properties stripped down to match schema attributes map
         const newVariant = {
-            id: crypto.randomUUID(),
+            id: crypto.randomUUID ? crypto.randomUUID() : `var_${Date.now()}_${Math.random()}`,
+            name: '',
             sku: '',
-            attribute: 'size',
-            value: '',
-            uom: 'pcs',       // Aligned strictly to model enums ["pcs", "kg", "l", "box"]
+            barcode: '',
+            unitOfMeasure: 'CASE',
+            packagingFactor: 1,
             weightKg: 0,
             volumeM3: 0,
-            isActive: 'true'
+            attributes: [],
+            isActive: true,
+            image: ''
         };
         const currentVariants = product.variants || [];
         onUpdate({ ...product, variants: [...currentVariants, newVariant] });
     };
 
     const updateVariant = (vId, updatedData) => {
-        const newVariants = product.variants.map(v => v.id === vId ? { ...v, ...updatedData } : v);
+        const newVariants = (product.variants || []).map(v =>
+            (v.id === vId || (!v.id && vId === 'default')) ? { ...v, ...updatedData } : v
+        );
         onUpdate({ ...product, variants: newVariants });
     };
 
     const removeVariant = (vId) => {
-        const newVariants = product.variants.filter(v => v.id !== vId);
+        const newVariants = (product.variants || []).filter(v => v.id !== vId && v.id);
         onUpdate({ ...product, variants: newVariants });
     };
 
@@ -150,15 +154,18 @@ export const BulkProductRow = ({ product, rawCategories = [], onUpdate, onRemove
             {/* Variant List Rendering */}
             {product.variants && product.variants.length > 0 ? (
                 <div className="bg-slate-50/60 p-4 border-t border-slate-100 space-y-3">
-                    {product.variants.map((v) => (
-                        <div key={v.id} className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
-                            <ProductVariantElement
-                                variant={v}
-                                onUpdate={(data) => updateVariant(v.id, data)}
-                                onRemove={() => removeVariant(v.id)}
-                            />
-                        </div>
-                    ))}
+                    {product.variants.map((v, index) => {
+                        const variantKey = v.id || `variant_fallback_${index}`;
+                        return (
+                            <div key={variantKey} className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+                                <ProductVariantElement
+                                    variant={v}
+                                    onUpdate={(data) => updateVariant(v.id || 'default', data)}
+                                    onRemove={() => removeVariant(v.id || 'default')}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="p-5 text-center bg-slate-50/30 text-xs font-medium text-slate-400 italic">

@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { ArrowRight, X, Trash2, Loader2, ChevronRight, Layers } from "lucide-react";
+import { ArrowRight, X, Loader2, Layers, ShoppingCart } from "lucide-react";
 import CustomerSelector from "./CustomerSelector";
 import ProductCatalog from "./ProductCatalog";
 import CartSummary from "./CartSummary";
@@ -70,15 +70,21 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
     }, [searchQuery, activeParent, activeSub, products, categories]);
 
     const addToCart = (product, variant, initialQty = 1) => {
-        const cartId = `${product._id}-${variant.id}`;
-        const currency = product.pricing?.base?.[0]?.currency || "GHS";
+        const cartId = `${product._id}-${variant._id || variant.id}`;
+
+        // Safely extract price and currency handling your productPrices / variant structures
+        const productPriceObj = product.productPrices?.[0] || product.prices?.[0];
+        const variantPriceObj = variant.prices?.[0];
+
+        const price = variantPriceObj?.basePrice ?? variantPriceObj?.price ?? productPriceObj?.basePrice ?? variant.price ?? 0;
+        const currency = variantPriceObj?.currency ?? productPriceObj?.currency ?? "GHS";
 
         setCart(prev => {
             const exists = prev.find(i => i.cartId === cartId);
             if (exists) {
                 return prev.map(i =>
                     i.cartId === cartId
-                        ? { ...i, qty: i.qty + initialQty, price: variant.price }
+                        ? { ...i, qty: i.qty + initialQty, price }
                         : i
                 );
             }
@@ -86,11 +92,11 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
                 cartId,
                 productId: product._id,
                 name: product.name,
-                variantName: variant.uom,
-                variantId: variant.id,
-                price: variant.price,
+                variantName: variant.name || variant.uom,
+                variantId: variant._id || variant.id,
+                price,
                 qty: initialQty,
-                sku: product.slug,
+                sku: variant.sku || product.slug,
                 currency
             }];
         });
@@ -100,21 +106,23 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
     const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
 
     return (
-        <div className="h-full flex flex-col bg-[#F1F5F9] overflow-hidden">
+        <div className="h-full flex flex-col bg-slate-100/80 font-sans text-slate-900 overflow-hidden relative">
             {step === 1 && (
-                <header className="px-8 py-4 bg-white border-b border-slate-200 shrink-0 z-10">
-                    <div className="max-w-[1800px] mx-auto flex items-center gap-6">
-                        <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
-                            <X size={20} />
-                        </button>
-                        <div className="flex-1">
-                            <CustomerSelector
-                                customers={customers}
-                                agent={agent}
-                                selectedCustomer={selectedCustomer}
-                                setSelectedCustomer={setSelectedCustomer}
-                            />
-                        </div>
+                <header className="px-6 lg:px-10 py-4 bg-white/90 backdrop-blur-xl border-b border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.04)] shrink-0 z-20 flex items-center gap-4">
+                    <button
+                        onClick={onCancel}
+                        className="group p-2.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 rounded-2xl transition-all border border-slate-200/80 text-slate-400 shadow-2xs flex items-center justify-center shrink-0"
+                        title="Exit Order Entry"
+                    >
+                        <X size={20} className="group-hover:scale-110 transition-transform" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                        <CustomerSelector
+                            customers={customers}
+                            agent={agent}
+                            selectedCustomer={selectedCustomer}
+                            setSelectedCustomer={setSelectedCustomer}
+                        />
                     </div>
                 </header>
             )}
@@ -122,12 +130,17 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
             <main className="flex-1 flex flex-col overflow-hidden relative">
                 {step === 1 ? (
                     <>
-                        <div className="bg-white border-b border-slate-200 shadow-sm shrink-0 z-10">
-                            <div className="px-8 pt-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-50 pb-3">
+                        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 shadow-2xs shrink-0 z-10 transition-all">
+                            <div className="px-6 lg:px-10 pt-4 pb-3 flex gap-2.5 overflow-x-auto no-scrollbar border-b border-slate-100 items-center">
+                                <div className="flex items-center gap-1.5 mr-2 text-slate-400 font-bold text-xs uppercase tracking-wider shrink-0">
+                                    <Layers size={15} className="text-indigo-600" />
+                                    <span>Categories</span>
+                                </div>
                                 <MainCatBtn
                                     label="All Catalog"
                                     active={activeParent === "All"}
                                     onClick={() => { setActiveParent("All"); setActiveSub(null); }}
+                                    count={products.length}
                                 />
                                 {categories.map((cat) => (
                                     <MainCatBtn
@@ -140,9 +153,12 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
                             </div>
 
                             {subCategories.length > 0 && (
-                                <div className="px-8 py-3 bg-slate-50/50 flex gap-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-200">
+                                <div className="px-6 lg:px-10 py-3 bg-slate-50/70 flex gap-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-300 items-center">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2 shrink-0">
+                                        Subcategories:
+                                    </div>
                                     <SubCatBtn
-                                        label={`All ${categories.find(c => c._id === activeParent)?.name}`}
+                                        label={`All ${categories.find(c => c._id === activeParent)?.name || ''}`}
                                         active={activeSub === null}
                                         onClick={() => setActiveSub(null)}
                                     />
@@ -158,15 +174,17 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
                             )}
                         </div>
 
-                        {/* Note the pb-48 below: this ensures the catalog doesn't get hidden behind the floating button */}
-                        <div className="flex-1 overflow-y-auto p-8 pb-48">
+                        <div className="flex-1 overflow-y-auto p-6 lg:p-10 pb-48 scroll-smooth">
                             {loading ? (
-                                <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                                    <Loader2 className="animate-spin mb-4 text-indigo-500" size={40} />
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Syncing Price Book...</p>
+                                <div className="flex flex-col items-center justify-center py-32 text-slate-400">
+                                    <div className="relative p-6 bg-white rounded-3xl shadow-xl border border-slate-200/80 flex flex-col items-center">
+                                        <Loader2 className="animate-spin mb-3 text-indigo-600" size={42} />
+                                        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-700">Syncing Price Book</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">Retrieving latest inventory matrices...</p>
+                                    </div>
                                 </div>
                             ) : (
-                                <div className="max-w-[1600px] mx-auto">
+                                <div className="max-w-[1700px] mx-auto">
                                     <ProductCatalog
                                         products={filteredProducts}
                                         searchQuery={searchQuery}
@@ -181,7 +199,7 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
                         </div>
                     </>
                 ) : (
-                    <div className="h-full p-8 overflow-y-auto">
+                    <div className="h-full p-6 lg:p-10 overflow-y-auto bg-slate-50/50">
                         <CartSummary
                             cart={cart}
                             total={total}
@@ -197,37 +215,44 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
                     </div>
                 )}
 
-                {/* --- CORRECTED FLOATING BUTTON SECTION --- */}
                 {step === 1 && cart.length > 0 && (
-                    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] w-full max-w-fit px-6 pointer-events-none">
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-fit px-6 pointer-events-none animate-in fade-in slide-in-from-bottom-8 duration-500">
                         <button
                             onClick={() => setStep(2)}
-                            className="pointer-events-auto flex items-center gap-4 md:gap-8 bg-slate-900 text-white p-2 pl-8 pr-2 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.4)] hover:bg-indigo-600 transition-all hover:-translate-y-2 active:scale-95 group border border-white/10"
+                            className="pointer-events-auto flex items-center gap-5 md:gap-8 bg-slate-900 text-white p-2.5 pl-8 pr-2.5 rounded-full shadow-[0_20px_50px_rgba(15,23,42,0.35)] hover:bg-indigo-600 transition-all hover:-translate-y-1.5 active:scale-95 group border border-white/15 backdrop-blur-md"
                         >
-                            <div className="text-left py-1 shrink-0">
-                                <p className="text-[9px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-0.5">Manifest Total</p>
-                                <p className="text-xl md:text-2xl font-black whitespace-nowrap">
-                                    <span className="text-xs mr-1.5 opacity-50">GHS</span>
-                                    {total.toLocaleString()}
-                                </p>
+                            <div className="flex items-center gap-3 pr-2 border-r border-white/15">
+                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 group-hover:bg-white group-hover:text-indigo-600 transition-colors shadow-inner">
+                                    <ShoppingCart size={18} />
+                                </div>
+                                <div className="text-left py-0.5 shrink-0">
+                                    <div className="flex items-center gap-1.5">
+                                        <p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em] group-hover:text-white transition-colors">Manifest Total</p>
+                                        <span className="px-1.5 py-0.2 bg-indigo-500 text-white text-[9px] font-black rounded-full">
+                                            {cart.reduce((acc, item) => acc + item.qty, 0)} items
+                                        </span>
+                                    </div>
+                                    <p className="text-xl md:text-2xl font-black whitespace-nowrap tracking-tight">
+                                        <span className="text-xs mr-1.5 opacity-60 font-semibold">GHS</span>
+                                        {total.toLocaleString()}
+                                    </p>
+                                </div>
                             </div>
 
-                            <div className="bg-white/10 group-hover:bg-white/20 h-14 px-6 md:px-8 rounded-full flex items-center gap-4 transition-colors">
+                            <div className="bg-white/10 group-hover:bg-white/20 h-12 px-6 md:px-7 rounded-full flex items-center gap-4 transition-all">
                                 <div className="flex flex-col items-end shrink-0">
-                                    <span className="text-xs font-black uppercase tracking-widest">Review ({cart.length})</span>
-                                    <span className="text-[9px] font-bold text-white/40 uppercase">Checkout</span>
+                                    <span className="text-xs font-black uppercase tracking-wider">Review Order</span>
+                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Proceed to Checkout</span>
                                 </div>
-                                <div className="bg-white text-slate-900 rounded-full p-2 group-hover:translate-x-1 transition-transform">
-                                    <ArrowRight size={20} strokeWidth={3} />
+                                <div className="bg-white text-slate-900 rounded-full p-2.5 group-hover:translate-x-1 transition-transform shadow-md">
+                                    <ArrowRight size={16} strokeWidth={3} />
                                 </div>
                             </div>
                         </button>
                     </div>
                 )}
-                {/* --- END CORRECTED SECTION --- */}
             </main>
 
-            {/* VARIANT CONFIGURATION MODAL */}
             {configuringProduct && (
                 <VariantModal
                     product={configuringProduct}
@@ -239,18 +264,35 @@ export default function OrderEntryForm({ onCancel, onCreateOrder, customers, age
     );
 }
 
-function MainCatBtn({ label, active, onClick }) {
+function MainCatBtn({ label, active, onClick, count }) {
     return (
-        <button onClick={onClick} className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${active ? "bg-slate-900 text-white shadow-md scale-105" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
-            {label}
+        <button
+            onClick={onClick}
+            className={`px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 shadow-2xs ${active
+                ? "bg-slate-900 text-white shadow-lg scale-[1.03] ring-2 ring-slate-900/20"
+                : "bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
+                }`}
+        >
+            <span>{label}</span>
+            {count !== undefined && (
+                <span className={`px-2 py-0.5 rounded-full text-[9px] ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    {count}
+                </span>
+            )}
         </button>
     );
 }
 
 function SubCatBtn({ label, active, onClick }) {
     return (
-        <button onClick={onClick} className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap flex items-center gap-2 ${active ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200" : "bg-white border border-slate-200 text-slate-400 hover:text-slate-600"}`}>
-            {active && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />}
+        <button
+            onClick={onClick}
+            className={`px-4 py-2 rounded-xl text-[10px] font-bold transition-all whitespace-nowrap flex items-center gap-2 shadow-2xs ${active
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-500"
+                : "bg-white border border-slate-200/80 text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                }`}
+        >
+            {active && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
             {label}
         </button>
     );

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // 1. Import the React Router hook
+import { useNavigate, useParams } from 'react-router-dom';
 import {
     Plus, Save, Trash2, Globe, Layers,
     ShieldCheck, Search, Network,
     ArrowLeft, GitBranch, Settings2, ChevronRight, Menu,
+    AlertTriangle, X
 } from 'lucide-react';
 import { CategoryItem } from '../components/OperationsDashboard/setup/catalog/CategoryItem';
 import { CreateCategoryModal } from '../components/OperationsDashboard/setup/catalog/CreateCategoryForm';
@@ -13,8 +14,47 @@ import { toast } from 'react-hot-toast';
 
 const API_BASE = API_ENDPOINTS.CATEGORIES;
 
+/**
+ * Commercial-grade Confirmation Modal Component
+ */
+const ConfirmDialog = ({ isOpen, title, message, confirmText = 'Confirm', isDanger = false, onConfirm, onClose }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isDanger ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}`}>
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">{message}</p>
+                    </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm transition-all ${isDanger ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/10' : 'bg-slate-900 hover:bg-slate-800'}`}
+                    >
+                        {confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const CategoriesPage = () => {
-    const navigate = useNavigate(); // 2. Initialize the navigate function
+    const navigate = useNavigate();
+    const { orgId } = useParams();
+    const activeOrgId = orgId || 'ORG-DEFAULT';
+
     const [categories, setCategories] = useState([]);
     const [selected, setSelected] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -22,13 +62,27 @@ const CategoriesPage = () => {
     const [loading, setLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Fetch hierarchical categories
-    const fetchCategories = async () => {
+    // Confirmation Modal States for Enterprise UX
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [unsavedModalOpen, setUnsavedModalOpen] = useState(false);
+    const [pendingNodeSelection, setPendingNodeSelection] = useState(null);
+    const [initialFormState, setInitialFormState] = useState(null);
+
+    // Track dirty form state accurately
+    const isDirty = selected && initialFormState && (
+        selected.name !== initialFormState.name ||
+        selected.description !== initialFormState.description ||
+        selected.isActive !== initialFormState.isActive
+    );
+
+    const fetchCategories = async (preserveSelectionId = null) => {
         try {
-            const { data } = await axios.get(`${API_BASE}/hierarchy/all`);
+            setLoading(true);
+            const { data } = await axios.get(`${API_BASE}/${activeOrgId}/hierarchy/all`);
             setCategories(data);
 
-            if (selected) {
+            const targetId = preserveSelectionId || selected?._id;
+            if (targetId) {
                 const findNode = (list, id) => {
                     for (const node of list) {
                         if (node._id === id) return node;
@@ -39,22 +93,42 @@ const CategoriesPage = () => {
                     }
                     return null;
                 };
-                const updatedSelected = findNode(data, selected._id);
-                if (updatedSelected) setSelected(updatedSelected);
+                const updatedSelected = findNode(data, targetId);
+                if (updatedSelected) {
+                    setSelected(updatedSelected);
+                    setInitialFormState({
+                        name: updatedSelected.name,
+                        description: updatedSelected.description,
+                        isActive: updatedSelected.isActive ?? true
+                    });
+                } else if (data.length > 0) {
+                    setSelected(data[0]);
+                    setInitialFormState({
+                        name: data[0].name,
+                        description: data[0].description,
+                        isActive: data[0].isActive ?? true
+                    });
+                }
             } else if (data.length > 0) {
                 setSelected(data[0]);
+                setInitialFormState({
+                    name: data[0].name,
+                    description: data[0].description,
+                    isActive: data[0].isActive ?? true
+                });
             }
         } catch (error) {
             console.error('Failed to fetch categories:', error);
-            toast.error('Failed to fetch categories.');
+            toast.error(error.response?.data?.message || 'Failed to fetch catalog taxonomy.');
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchCategories();
-    }, []);
+    }, [activeOrgId]);
 
-    // Local recursive mutation helpers
     const updateTreeLocal = (list, id, fields) => {
         return list.map((node) => {
             if (node._id === id) return { ...node, ...fields };
@@ -74,48 +148,83 @@ const CategoriesPage = () => {
             });
     };
 
-    // Form Update Handler
+    // Node selection guard protecting unsaved data loss
+    const handleSelectNodeAttempt = (node) => {
+        if (selected && selected._id === node._id) return;
+        if (isDirty) {
+            setPendingNodeSelection(node);
+            setUnsavedModalOpen(true);
+        } else {
+            setSelected(node);
+            setInitialFormState({
+                name: node.name,
+                description: node.description,
+                isActive: node.isActive ?? true
+            });
+            setSidebarOpen(false);
+        }
+    };
+
     const handleUpdate = async () => {
         if (!selected) return;
+
+        // Comprehensive frontend input validation
+        if (!selected.name || !selected.name.trim()) {
+            toast.error('Category name cannot be empty.');
+            return;
+        }
+
         setLoading(true);
+        const toastId = toast.loading('Updating category...');
         try {
             const generatedSlug = selected.name
-                ? selected.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
+                ? selected.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
                 : selected.slug;
 
             const payload = {
-                name: selected.name,
-                description: selected.description,
+                name: selected.name.trim(),
+                description: selected.description ? selected.description.trim() : '',
                 slug: generatedSlug,
                 isActive: selected.isActive !== undefined ? selected.isActive : true
             };
 
-            const { data } = await axios.patch(`${API_BASE}/${selected._id}`, payload);
-            setCategories(updateTreeLocal(categories, selected._id, data));
-            setSelected(data);
-            toast.success('Category updated successfully!');
+            const response = await axios.patch(`${API_BASE}/${activeOrgId}/${selected._id}`, payload);
+            // Handle different possible API response wrappers (e.g., response.data.data vs response.data)
+            const updatedData = response.data?.data || response.data;
+
+            setCategories(updateTreeLocal(categories, selected._id, updatedData));
+            setSelected(updatedData);
+            setInitialFormState({
+                name: updatedData.name,
+                description: updatedData.description,
+                isActive: updatedData.isActive ?? true
+            });
+
+            toast.success('Category updated successfully!', { id: toastId });
         } catch (error) {
             console.error('Failed to update category:', error.response?.data || error.message);
-            toast.error('Update failed. Check console.');
+            const errorMessage = error.response?.data?.message || error.message || 'Server error occurred.';
+            toast.error(`Update failed: ${errorMessage}`, { id: toastId });
         } finally {
             setLoading(false);
         }
     };
 
-    // Category Deletion Handler
     const handleDeleteCategory = async () => {
         if (!selected) return;
-        if (!window.confirm(`Are you sure you want to delete "${selected.name}"? This action cannot be undone.`)) return;
-
+        setDeleteModalOpen(false);
         setLoading(true);
         try {
-            await axios.delete(`${API_BASE}/${selected._id}`);
+            await axios.delete(`${API_BASE}/${activeOrgId}/${selected._id}`);
             toast.success('Category successfully deleted.');
-            setCategories(removeNodeFromTreeLocal(categories, selected._id));
+            const newCategories = removeNodeFromTreeLocal(categories, selected._id);
+            setCategories(newCategories);
             setSelected(null);
+            setInitialFormState(null);
         } catch (error) {
             console.error('Failed to delete category:', error.response?.data || error.message);
-            toast.error('Delete failed.');
+            const errorMessage = error.response?.data?.message || 'Deletion failed. Ensure child nodes or associated products are removed first.';
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -123,21 +232,58 @@ const CategoriesPage = () => {
 
     const handleCreateCategory = async (newCategory, parentId) => {
         setIsModalOpen(false);
-        toast.success(`Category "${newCategory.name}" created!`);
-        await fetchCategories();
+        toast.success(`Category "${newCategory.name}" created successfully.`);
+        await fetchCategories(newCategory._id);
     };
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col antialiased">
+            {/* Enterprise Confirm Dialogs */}
+            <ConfirmDialog
+                isOpen={deleteModalOpen}
+                title="Delete Category Node"
+                message={`Are you sure you want to delete "${selected?.name}"? This action is permanent and affects downstream inventory assignments.`}
+                confirmText="Delete Category"
+                isDanger={true}
+                onConfirm={handleDeleteCategory}
+                onClose={() => setDeleteModalOpen(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={unsavedModalOpen}
+                title="Unsaved Changes"
+                message="You have unsaved changes on the current category configuration. Do you want to discard changes and switch nodes?"
+                confirmText="Discard & Switch"
+                isDanger={true}
+                onConfirm={() => {
+                    setUnsavedModalOpen(false);
+                    if (pendingNodeSelection) {
+                        setSelected(pendingNodeSelection);
+                        setInitialFormState({
+                            name: pendingNodeSelection.name,
+                            description: pendingNodeSelection.description,
+                            isActive: pendingNodeSelection.isActive ?? true
+                        });
+                        setPendingNodeSelection(null);
+                    }
+                    setSidebarOpen(false);
+                }}
+                onClose={() => {
+                    setUnsavedModalOpen(false);
+                    setPendingNodeSelection(null);
+                }}
+            />
+
             <CreateCategoryModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onCreated={handleCreateCategory}
                 categories={categories}
+                organizationId={activeOrgId}
             />
 
             {/* Header */}
-            <header className="h-20 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+            <header className="h-20 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
                 <div className="flex items-center gap-4">
                     <button
                         className="md:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
@@ -150,15 +296,14 @@ const CategoriesPage = () => {
                     </div>
                     <div>
                         <h1 className="text-base font-bold text-slate-900 tracking-tight">Product Category Manager</h1>
-                        <p className="text-xs font-semibold text-slate-400">v2.4 Production</p>
+                        <p className="text-xs font-semibold text-slate-400">Enterprise Edition • Org: {activeOrgId}</p>
                     </div>
                 </div>
 
-                {/* Right Header Actions */}
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate('/products/list')} // 3. Updated navigation trigger
-                        className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] transition-all shadow-sm"
+                        onClick={() => navigate(`/products/list`)}
+                        className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] transition-all shadow-xs"
                     >
                         <Plus size={18} className="text-slate-500" /> Product Lists
                     </button>
@@ -200,10 +345,7 @@ const CategoriesPage = () => {
                                 <CategoryItem
                                     key={cat._id}
                                     item={cat}
-                                    onSelect={(node) => {
-                                        setSelected(node);
-                                        setSidebarOpen(false);
-                                    }}
+                                    onSelect={handleSelectNodeAttempt}
                                     selectedId={selected?._id}
                                 />
                             ))}
@@ -214,17 +356,15 @@ const CategoriesPage = () => {
                 <main className="flex-1 overflow-y-auto p-4 sm:p-8">
                     {selected ? (
                         <div className="max-w-4xl mx-auto space-y-6">
-                            {/* Actions / Navigation Bar */}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div className="space-y-1">
                                     <button
-                                        onClick={() => console.log('Go back to dashboard navigation')}
+                                        onClick={() => navigate('/dashboard')}
                                         className="flex items-center gap-2 text-slate-500 hover:text-slate-900 text-sm font-semibold transition-colors"
                                     >
                                         <ArrowLeft size={16} /> Back to Dashboard
                                     </button>
 
-                                    {/* Breadcrumb */}
                                     <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider pt-1">
                                         <span>Catalog</span>
                                         <ChevronRight size={14} className="text-slate-300" />
@@ -235,7 +375,7 @@ const CategoriesPage = () => {
 
                             {/* Info Widgets Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+                                <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
                                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
                                         <Layers size={20} />
                                     </div>
@@ -244,7 +384,7 @@ const CategoriesPage = () => {
                                         <p className="text-2xl font-bold text-slate-900 mt-0.5">{selected.children?.length || 0}</p>
                                     </div>
                                 </div>
-                                <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+                                <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
                                     <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
                                         <GitBranch size={20} />
                                     </div>
@@ -253,7 +393,7 @@ const CategoriesPage = () => {
                                         <p className="text-2xl font-bold text-slate-900 mt-0.5">#{selected._id?.toString().slice(-4)}</p>
                                     </div>
                                 </div>
-                                <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+                                <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
                                     <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center">
                                         <Settings2 size={20} />
                                     </div>
@@ -265,16 +405,23 @@ const CategoriesPage = () => {
                             </div>
 
                             {/* Configuration Panel Form */}
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div>
-                                        <h2 className="font-bold text-slate-900 text-base">General Configuration</h2>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="font-bold text-slate-900 text-base">General Configuration</h2>
+                                            {isDirty && (
+                                                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-md border border-amber-200">
+                                                    Unsaved Changes
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-sm text-slate-500">Manage category metadata and taxonomy placement.</p>
                                     </div>
                                     <div className="flex items-center gap-2.5 self-end sm:self-center">
                                         <button
                                             type="button"
-                                            onClick={handleDeleteCategory}
+                                            onClick={() => setDeleteModalOpen(true)}
                                             className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                             title="Delete Category"
                                             disabled={loading}
@@ -283,8 +430,8 @@ const CategoriesPage = () => {
                                         </button>
                                         <button
                                             onClick={handleUpdate}
-                                            className={`flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-all shadow-sm ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                            disabled={loading}
+                                            className={`flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800 transition-all shadow-xs ${loading || !isDirty ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                            disabled={loading || !isDirty}
                                         >
                                             <Save size={18} /> Save Changes
                                         </button>
@@ -306,7 +453,7 @@ const CategoriesPage = () => {
                                             <div className="relative">
                                                 <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                                 <input
-                                                    value={selected.name ? selected.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : selected.slug || ''}
+                                                    value={selected.name ? selected.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : selected.slug || ''}
                                                     readOnly
                                                     className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-11 pr-4 py-3 text-sm font-medium text-slate-500 cursor-not-allowed outline-none"
                                                 />
@@ -328,7 +475,7 @@ const CategoriesPage = () => {
                                     {/* Visibility Segment */}
                                     <div className="p-5 bg-slate-50 border border-slate-200/60 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="flex items-start gap-3.5">
-                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm border border-slate-100 flex-shrink-0">
+                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-xs border border-slate-100 shrink-0">
                                                 <ShieldCheck size={22} />
                                             </div>
                                             <div>
@@ -336,7 +483,7 @@ const CategoriesPage = () => {
                                                 <p className="text-sm text-slate-500 mt-0.5">Determine if this category is visible in your client storefront menu configurations.</p>
                                             </div>
                                         </div>
-                                        <label className="relative inline-flex items-center cursor-pointer select-none flex-shrink-0">
+                                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"

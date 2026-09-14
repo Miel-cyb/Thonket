@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
     X,
     GripVertical,
@@ -26,6 +26,17 @@ const AVAILABLE_ATTRIBUTES = {
     'Flavor': ['Vanilla', 'Chocolate', 'Strawberry', 'Original'],
 };
 
+const DISTRIBUTION_UNITS = ['PCS', 'TIN', 'KG', 'L', 'BOX', 'CASE', 'PALLET'];
+
+const TOAST_STYLE = {
+    borderRadius: '12px',
+    background: '#0f172a',
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: '600',
+    zIndex: 9999
+};
+
 export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
     const fileInputRef = useRef(null);
     const containerRef = useRef(null);
@@ -36,44 +47,26 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
     // Dedicated state for custom text value inputs inside the dropdown options block
     const [customAttrValue, setCustomAttrValue] = useState('');
 
-    // Local string buffer states to completely separate raw typing inputs from parent re-renders
-    const [localPackFactor, setLocalPackFactor] = useState(variant.packagingFactor ?? '');
-    const [localWeight, setLocalWeight] = useState(variant.weightKg ?? '');
-    const [localVolume, setLocalVolume] = useState(variant.volumeM3 ?? '');
-
-    // Synchronize local buffers only when the parent properties swap records explicitly
-    useEffect(() => {
-        setLocalPackFactor(variant.packagingFactor ?? '');
-    }, [variant.packagingFactor]);
-
-    useEffect(() => {
-        setLocalWeight(variant.weightKg ?? '');
-    }, [variant.weightKg]);
-
-    useEffect(() => {
-        setLocalVolume(variant.volumeM3 ?? '');
-    }, [variant.volumeM3]);
-
-    // Distribution packaging tiers
-    const units = ['PCS', 'TIN', 'KG', 'L', 'BOX', 'CASE', 'PALLET'];
-
-    // Pure Logistics & Multi-Attribute Structural State Matrix
+    // Safely normalize variant record state with secure persistent ID fallbacks
     const v = {
+        id: variant.id || variant._id || `var_${Math.random().toString(36).substring(2, 9)}`,
         name: variant.name ?? '',
         sku: variant.sku ?? '',
         barcode: variant.barcode ?? '',
         unitOfMeasure: variant.unitOfMeasure ?? 'CASE',
-        packagingFactor: variant.packagingFactor ?? '',
-        weightKg: variant.weightKg ?? '',
-        volumeM3: variant.volumeM3 ?? '',
+        packagingFactor: variant.packagingFactor ?? 1,
+        weightKg: variant.weightKg ?? 0,
+        volumeM3: variant.volumeM3 ?? 0,
         attributes: Array.isArray(variant.attributes) ? variant.attributes : [],
         isActive: variant.isActive ?? true,
         image: variant.image ?? ''
     };
 
-    const update = (patch) => onUpdate({ ...v, ...patch });
+    const update = useCallback((patch) => {
+        onUpdate({ ...v, ...patch });
+    }, [v.id, v.name, v.sku, v.barcode, v.unitOfMeasure, v.packagingFactor, v.weightKg, v.volumeM3, v.attributes, v.isActive, v.image, onUpdate]);
 
-    // Close panel cleanly on background layer interactions safely
+    // Close panel cleanly on background layer interactions
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -93,23 +86,15 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
         };
     }, [variant.image]);
 
-    const toastStyle = {
-        borderRadius: '12px',
-        background: '#0f172a',
-        color: '#fff',
-        fontSize: '13px',
-        fontWeight: '600',
-        zIndex: 9999
-    };
-
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (file) {
             if (v.image && v.image.startsWith('blob:')) {
                 URL.revokeObjectURL(v.image);
             }
-            update({ image: URL.createObjectURL(file) });
-            toast.success(`Image linked to SKU: ${v.sku || 'Variant'}`, { style: toastStyle });
+            const newObjectUrl = URL.createObjectURL(file);
+            update({ image: newObjectUrl });
+            toast.success(`Image linked to SKU: ${v.sku || 'Variant'}`, { style: TOAST_STYLE });
         }
     };
 
@@ -121,9 +106,8 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
             update({ attributes: updatedAttributes });
         } else {
             const formalType = Object.keys(AVAILABLE_ATTRIBUTES).find(k => k.toLowerCase() === type.toLowerCase()) || type;
-            const formalValue = (AVAILABLE_ATTRIBUTES[formalType] || []).find(v => v.toLowerCase() === value.toLowerCase()) || value;
+            const formalValue = (AVAILABLE_ATTRIBUTES[formalType] || []).find(item => item.toLowerCase() === value.toLowerCase()) || value;
 
-            // Check duplicate selections
             const exists = v.attributes.some(
                 attr => attr.type.toLowerCase() === formalType.toLowerCase() && attr.value.toLowerCase() === formalValue.toLowerCase()
             );
@@ -136,8 +120,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
     };
 
     const handleAddCustomAttribute = () => {
-        if (!customAttrValue.trim()) return;
-
+        if (!customAttrValue.trim() || !activeType) return;
         handleToggleAttribute(activeType, customAttrValue.trim(), false);
         setCustomAttrValue('');
     };
@@ -149,38 +132,46 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
         }
     };
 
-    const inputBaseStyle = "w-full h-10 bg-white border border-slate-200 rounded-xl pl-9 pr-3 text-sm font-medium text-slate-800 shadow-sm outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400";
+    const inputBaseStyle = "w-full h-10 bg-white border border-slate-200 rounded-xl pl-9 pr-3 text-sm font-medium text-slate-800 shadow-xs outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 placeholder:text-slate-400";
     const labelStyle = "text-xs font-semibold text-slate-600 uppercase tracking-wider ml-0.5";
 
     return (
         <div
             ref={containerRef}
-            className={`flex flex-col lg:flex-row lg:items-center gap-5 p-5 border transition-all relative rounded-xl
-            ${v.isActive ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-50/70 border-slate-200/60 opacity-65 shadow-none'}
-            ${activeType ? 'z-50' : 'z-10'}`}
-            style={{ zIndex: activeType ? 50 : 10 }}
+            className={`flex flex-col lg:flex-row lg:items-center gap-5 p-5 border transition-all relative rounded-2xl bg-white
+            ${v.isActive ? 'border-slate-200 shadow-xs' : 'bg-slate-50/70 border-slate-200/60 opacity-75 shadow-none'}
+            ${activeType ? 'z-40 ring-2 ring-indigo-500/20' : 'z-10'}`}
         >
             {/* Left Control Column: Drag & Media Handling */}
             <div className="flex items-center gap-3 shrink-0">
-                {/* Drag Anchor */}
-                <div className="flex items-center justify-center cursor-grab active:cursor-grabbing h-14 w-6 text-slate-400 hover:text-slate-600 transition-colors">
+                <div
+                    aria-label="Reorder variant"
+                    className="flex items-center justify-center cursor-grab active:cursor-grabbing h-14 w-6 text-slate-400 hover:text-slate-600 transition-colors"
+                >
                     <GripVertical size={20} />
                 </div>
 
-                {/* Media Box */}
                 <div className="relative flex items-center justify-center shrink-0">
                     <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-14 h-14 border border-slate-200 bg-slate-50/80 rounded-xl flex items-center justify-center overflow-hidden hover:border-indigo-500 hover:bg-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="w-14 h-14 border border-slate-200 bg-slate-50/80 rounded-xl flex items-center justify-center overflow-hidden hover:border-indigo-500 hover:bg-white shadow-xs transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        aria-label="Upload variant thumbnail"
                     >
                         {v.image ? (
-                            <img src={v.image} alt="Variant" className="w-full h-full object-cover" />
+                            <img src={v.image} alt={v.name || 'Variant thumbnail'} className="w-full h-full object-cover" />
                         ) : (
                             <ImageIcon size={20} className="text-slate-400" />
                         )}
                     </button>
-                    <input type="file" accept="image/*" hidden ref={fileInputRef} onChange={handleImageChange} />
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleImageChange}
+                        aria-hidden="true"
+                    />
                 </div>
             </div>
 
@@ -191,12 +182,12 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <div className="col-span-12 md:col-span-4 flex flex-col gap-1.5">
                     <label className={labelStyle}>Variant Name</label>
                     <div className="relative">
-                        <Type size={15} className="absolute left-3 top-3 text-slate-400" />
+                        <Type size={15} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
                             value={v.name}
                             onChange={(e) => update({ name: e.target.value })}
-                            placeholder="Milk 160g x 48"
+                            placeholder="e.g. Premium Milk 1L"
                             className={inputBaseStyle}
                         />
                     </div>
@@ -206,7 +197,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <div className="col-span-12 md:col-span-4 flex flex-col gap-1.5">
                     <label className={labelStyle}>Internal SKU</label>
                     <div className="relative">
-                        <Hash size={15} className="absolute left-3 top-3 text-slate-400" />
+                        <Hash size={15} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
                             value={v.sku}
@@ -219,27 +210,24 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
 
                 {/* Global Barcode Field */}
                 <div className="col-span-12 md:col-span-4 flex flex-col gap-1.5">
-                    <label className={labelStyle}>Global Barcode</label>
+                    <label className={labelStyle}>Global Barcode (GTIN/UPC)</label>
                     <div className="relative">
-                        <QrCode size={15} className="absolute left-3 top-3 text-slate-400" />
+                        <QrCode size={15} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
                             value={v.barcode}
                             onChange={(e) => update({ barcode: e.target.value })}
-                            placeholder="6131234567..."
+                            placeholder="613123456789"
                             className={`${inputBaseStyle} font-mono`}
                         />
                     </div>
                 </div>
 
                 {/* Inline Attribute Workspace Tray */}
-                <div className={`col-span-12 flex flex-col gap-1.5 ${activeType ? 'relative z-50' : 'relative z-10'}`}>
+                <div className="col-span-12 flex flex-col gap-1.5 relative">
                     <label className={labelStyle}>Variant Specifications</label>
 
-                    {/* Selector Hub Field */}
                     <div className="h-10 flex items-center bg-slate-50/80 border border-slate-200 rounded-xl px-3 gap-2 justify-between min-w-0 w-full">
-
-                        {/* Interactive Dropdown Button Toggles */}
                         <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5">
                             {Object.keys(AVAILABLE_ATTRIBUTES).map((type) => {
                                 const selectedValues = v.attributes
@@ -253,6 +241,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                     <button
                                         key={type}
                                         type="button"
+                                        aria-expanded={isCurrent}
                                         onClick={() => {
                                             setActiveType(isCurrent ? '' : type);
                                             setCustomAttrValue('');
@@ -261,12 +250,12 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                             ? 'bg-indigo-600 text-white shadow-xs'
                                             : hasActiveSelections
                                                 ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                                                : 'text-slate-600 bg-white border border-slate-200 hover:bg-slate-100'
+                                                : 'text-slate-600 bg-white border border-slate-200 hover:bg-slate-150'
                                             }`}
                                     >
                                         <span>{type}</span>
                                         {hasActiveSelections && (
-                                            <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-bold ${isCurrent ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-100/80 text-indigo-800'}`}>
+                                            <span className={`text-[11px] px-1.5 py-0.2 rounded-md font-bold ${isCurrent ? 'bg-indigo-700 text-indigo-100' : 'bg-indigo-100/80 text-indigo-800'}`}>
                                                 {selectedValues.length}
                                             </span>
                                         )}
@@ -276,7 +265,6 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                             })}
                         </div>
 
-                        {/* Attribute Status Tag */}
                         <div className="text-xs font-bold text-indigo-600 bg-indigo-50/50 border border-indigo-100/60 rounded-lg px-2.5 py-1 uppercase tracking-wider shrink-0 whitespace-nowrap ml-auto">
                             {v.attributes.length > 0 ? `${v.attributes.length} Selected` : 'Unlinked'}
                         </div>
@@ -296,6 +284,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                         type="button"
                                         onClick={() => handleToggleAttribute(attr.type, attr.value, true)}
                                         className="text-slate-400 hover:text-rose-600 ml-0.5 p-0.5 rounded-md hover:bg-rose-50 transition-colors focus:outline-none"
+                                        aria-label={`Remove attribute ${attr.type}: ${attr.value}`}
                                     >
                                         <X size={13} strokeWidth={2.5} />
                                     </button>
@@ -306,7 +295,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
 
                     {/* Dropdown Options Absolute Drawer Overlay */}
                     {activeType && AVAILABLE_ATTRIBUTES[activeType] && (
-                        <div className="absolute top-[44px] left-0 right-0 bg-white border border-slate-200 shadow-xl rounded-xl p-4 z-[100] animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-slate-200 shadow-xl rounded-2xl p-4 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                             <div className="flex items-center justify-between mb-3.5 pb-2 border-b border-slate-100">
                                 <div className="flex items-center gap-2">
                                     <Tag size={14} className="text-indigo-500" />
@@ -316,13 +305,13 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                     type="button"
                                     onClick={() => setActiveType('')}
                                     className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-lg transition-colors"
+                                    aria-label="Close attribute drawer"
                                 >
                                     <X size={15} />
                                 </button>
                             </div>
 
-                            {/* Options Mapping Options Row + Integrated Custom Typing Form */}
-                            <div className="flex flex-wrap items-center gap-2 p-0.5">
+                            <div className="flex flex-wrap items-center gap-2">
                                 {AVAILABLE_ATTRIBUTES[activeType].map((option) => {
                                     const isSelected = v.attributes.some(
                                         attr => attr.type.toLowerCase() === activeType.toLowerCase() && attr.value.toLowerCase() === option.toLowerCase()
@@ -333,10 +322,9 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                             type="button"
                                             key={option}
                                             onClick={() => handleToggleAttribute(activeType, option, isSelected)}
-                                            className={`inline-flex items-center h-8 px-3.5 rounded-lg text-xs font-semibold transition-all gap-2 border cursor-pointer select-none
-                                                ${isSelected
-                                                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs hover:bg-indigo-100'
-                                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900'
+                                            className={`inline-flex items-center h-8 px-3.5 rounded-lg text-xs font-semibold transition-all gap-2 border cursor-pointer select-none ${isSelected
+                                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-xs hover:bg-indigo-100'
+                                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900'
                                                 }`}
                                         >
                                             {isSelected && (
@@ -347,7 +335,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                     );
                                 })}
 
-                                {/* Enhanced Custom Typing Input Div to avoid layout bubbling refreshes */}
+                                {/* Custom Option Input Group */}
                                 <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5 h-8 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all">
                                     <input
                                         type="text"
@@ -355,13 +343,14 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                                         onChange={(e) => setCustomAttrValue(e.target.value)}
                                         onKeyDown={handleKeyDownCustomInput}
                                         placeholder={`Custom ${activeType}...`}
+                                        aria-label={`Custom ${activeType} value`}
                                         className="bg-transparent h-full px-2 text-xs font-medium text-slate-800 outline-none placeholder:text-slate-400 w-36"
                                     />
                                     <button
                                         type="button"
                                         onClick={handleAddCustomAttribute}
                                         disabled={!customAttrValue.trim()}
-                                        className="h-full px-2 bg-indigo-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md flex items-center justify-center transition-all"
+                                        className="h-full px-2 bg-indigo-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-md flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
                                         title="Add Custom Option"
                                     >
                                         <Plus size={14} strokeWidth={2.5} />
@@ -382,7 +371,7 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                             onChange={(e) => update({ unitOfMeasure: e.target.value })}
                             className={`${inputBaseStyle} appearance-none cursor-pointer pr-9 font-semibold uppercase tracking-wide`}
                         >
-                            {units.map(u => (
+                            {DISTRIBUTION_UNITS.map(u => (
                                 <option key={u} value={u} className="bg-white text-slate-800">{u}</option>
                             ))}
                         </select>
@@ -394,20 +383,20 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <div className="col-span-6 sm:col-span-3 flex flex-col gap-1.5">
                     <label className={labelStyle}>Pack Factor</label>
                     <div className="relative">
-                        <Layers size={15} className="absolute left-3 top-3 text-slate-400" />
+                        <Layers size={15} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
-                            value={localPackFactor}
+                            inputMode="numeric"
+                            value={v.packagingFactor}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (val === '' || /^\d*$/.test(val)) {
-                                    setLocalPackFactor(val);
+                                    update({ packagingFactor: val === '' ? '' : parseInt(val, 10) });
                                 }
                             }}
                             onBlur={() => {
-                                const parsed = parseInt(localPackFactor, 10);
-                                const fallback = isNaN(parsed) ? 1 : parsed;
-                                setLocalPackFactor(String(fallback));
+                                const parsed = parseInt(v.packagingFactor, 10);
+                                const fallback = isNaN(parsed) || parsed < 1 ? 1 : parsed;
                                 update({ packagingFactor: fallback });
                             }}
                             placeholder="1"
@@ -420,19 +409,19 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <div className="col-span-6 sm:col-span-3 flex flex-col gap-1.5">
                     <label className={labelStyle}>Weight (KG)</label>
                     <div className="relative">
-                        <Weight size={15} className="absolute left-3 top-3 text-slate-400" />
+                        <Weight size={15} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
-                            value={localWeight}
+                            inputMode="decimal"
+                            value={v.weightKg}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                    setLocalWeight(val);
+                                    update({ weightKg: val === '' ? '' : val });
                                 }
                             }}
                             onBlur={() => {
-                                const sanitized = localWeight !== '' ? parseFloat(localWeight) || 0 : '';
-                                setLocalWeight(String(sanitized));
+                                const sanitized = v.weightKg !== '' && v.weightKg !== '.' ? parseFloat(v.weightKg) || 0 : 0;
                                 update({ weightKg: sanitized });
                             }}
                             placeholder="0.00"
@@ -445,19 +434,19 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <div className="col-span-6 sm:col-span-3 flex flex-col gap-1.5">
                     <label className={labelStyle}>Volume (m³)</label>
                     <div className="relative">
-                        <Box size={15} className="absolute left-3 top-3 text-slate-400" />
+                        <Box size={15} className="absolute left-3 top-3 text-slate-400 pointer-events-none" />
                         <input
                             type="text"
-                            value={localVolume}
+                            inputMode="decimal"
+                            value={v.volumeM3}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                    setLocalVolume(val);
+                                    update({ volumeM3: val === '' ? '' : val });
                                 }
                             }}
                             onBlur={() => {
-                                const sanitized = localVolume !== '' ? parseFloat(localVolume) || 0 : '';
-                                setLocalVolume(String(sanitized));
+                                const sanitized = v.volumeM3 !== '' && v.volumeM3 !== '.' ? parseFloat(v.volumeM3) || 0 : 0;
                                 update({ volumeM3: sanitized });
                             }}
                             placeholder="0.0000"
@@ -472,11 +461,13 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <button
                     type="button"
                     onClick={() => {
-                        update({ isActive: !v.isActive });
-                        toast(v.isActive ? "Variant set to inactive" : "Variant set to active", { style: toastStyle });
+                        const newActiveState = !v.isActive;
+                        update({ isActive: newActiveState });
+                        toast(newActiveState ? "Variant set to active" : "Variant set to inactive", { style: TOAST_STYLE });
                     }}
-                    className={`p-2.5 rounded-xl transition-all ${v.isActive ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:bg-slate-100'}`}
+                    className={`p-2.5 rounded-xl transition-all cursor-pointer ${v.isActive ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-300 hover:bg-slate-100'}`}
                     title={v.isActive ? "Deactivate Variant" : "Activate Variant"}
+                    aria-label={v.isActive ? "Deactivate Variant" : "Activate Variant"}
                 >
                     {v.isActive ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                 </button>
@@ -484,8 +475,9 @@ export const ProductVariantElement = ({ variant = {}, onUpdate, onRemove }) => {
                 <button
                     type="button"
                     onClick={onRemove}
-                    className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                    className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                     title="Delete Record"
+                    aria-label="Delete Record"
                 >
                     <X size={18} />
                 </button>

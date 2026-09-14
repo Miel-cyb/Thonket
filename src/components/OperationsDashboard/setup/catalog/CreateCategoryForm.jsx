@@ -1,26 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, Plus, ChevronDown, PackagePlus, Info } from 'lucide-react';
+import { X, Plus, ChevronDown, PackagePlus, Info, AlertCircle } from 'lucide-react';
 import { API_ENDPOINTS } from '../../../../utils/urls';
-import { toast } from 'react-hot-toast'; // ✅ notifications
+import { toast } from 'react-hot-toast';
 
-const API_BASE = API_ENDPOINTS.CATEGORIES;
-
-export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [] }) => {
+export const CreateCategoryModal = ({
+    isOpen,
+    onClose,
+    onCreated,
+    categories = [],
+    organizationId = 'ORG-DEFAULT', // Valid dummy MongoDB ObjectId format
+    currentUser = {
+        userId: "650c1f8e1234567890abcdef",
+        userName: "System Admin",
+        role: "Admin"
+    }
+}) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [parentId, setParentId] = useState('root');
     const [loading, setLoading] = useState(false);
+    const [validationError, setValidationError] = useState('');
 
     useEffect(() => {
         if (!isOpen) {
             setName('');
             setDescription('');
             setParentId('root');
+            setValidationError('');
         }
     }, [isOpen]);
 
-    // Flatten hierarchy recursively for dropdown
+    // Flatten hierarchy recursively for dropdown options
     const renderOptions = (items, depth = 0) => {
         return items.flatMap(cat => [
             <option key={cat._id} value={cat._id}>
@@ -34,34 +45,70 @@ export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setValidationError('');
+
+        // Client-side guard validation
         if (!name.trim()) {
+            setValidationError('Category label is required.');
             toast.error('Category name is required!');
             return;
         }
 
+        // Fallback to dummy org ID if empty or undefined
+        const activeOrgId = organizationId || 'ORG-DEFAULT';
+
         setLoading(true);
+        const toastId = toast.loading('Registering category classification...');
+
         try {
             const payload = {
-                name,
-                description,
-                parentCategoryId: parentId === 'root' ? null : parentId
+                name: name.trim(),
+                description: description.trim(),
+                parentCategoryId: parentId === 'root' ? null : parentId,
+                organizationId: activeOrgId,
+                createdBy: {
+                    userId: currentUser.userId,
+                    userName: currentUser.userName,
+                    role: currentUser.role
+                }
             };
 
-            const { data } = await axios.post(API_BASE, payload);
+            // URL parameter route architecture
+            const endpoint = `${API_ENDPOINTS.CATEGORIES}/${activeOrgId}`;
+            const { data } = await axios.post(endpoint, payload);
 
-            toast.success(`Category "${data.name}" created successfully!`);
+            toast.success(`Category "${data.name || name}" registered successfully!`, {
+                id: toastId,
+            });
 
-            // Trigger parent to reload categories
             if (onCreated) onCreated(data);
 
-            // Reset form & close
+            // Clean state & close modal
             setName('');
             setDescription('');
             setParentId('root');
             onClose();
+
         } catch (error) {
             console.error('Category creation failed:', error.response?.data || error.message);
-            toast.error(`Failed to create category. ${error.response?.data?.message || ''}`);
+
+            // Commercial-grade error parsing (handles mongoose validation maps, strings, or custom error messages)
+            const errorData = error.response?.data;
+            let errorMessage = 'Failed to communicate with the server. Please check your connection.';
+
+            if (errorData) {
+                if (typeof errorData.message === 'string') {
+                    errorMessage = errorData.message;
+                } else if (errorData.errors) {
+                    const firstKey = Object.keys(errorData.errors)[0];
+                    errorMessage = errorData.errors[firstKey]?.message || 'Validation failed.';
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            setValidationError(errorMessage);
+            toast.error(errorMessage, { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -82,12 +129,26 @@ export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [
                             <p className="text-sm text-slate-500 font-medium">Define new inventory classifications and hierarchy.</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-200/50 rounded-full transition-colors text-slate-400">
+                    <button
+                        onClick={onClose}
+                        disabled={loading}
+                        className="p-2 hover:bg-slate-200/50 rounded-full transition-colors text-slate-400 disabled:opacity-50"
+                    >
                         <X size={20} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                    {/* Error Banner if validation fails */}
+                    {validationError && (
+                        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3 items-start animate-shake">
+                            <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+                            <p className="text-[13px] text-rose-700 leading-relaxed font-semibold">
+                                {validationError}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Hierarchy Dropdown */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center px-1">
@@ -98,7 +159,8 @@ export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [
                             <select
                                 value={parentId}
                                 onChange={(e) => setParentId(e.target.value)}
-                                className="w-full bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-indigo-500 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-900 transition-all outline-none appearance-none cursor-pointer group-hover:border-slate-200"
+                                disabled={loading}
+                                className="w-full bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-indigo-500 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-900 transition-all outline-none appearance-none cursor-pointer group-hover:border-slate-200 disabled:opacity-60"
                             >
                                 <option value="root">📁 Root Product Category (Top Level)</option>
                                 {renderOptions(categories)}
@@ -113,9 +175,13 @@ export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [
                         <input
                             autoFocus
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => {
+                                setName(e.target.value);
+                                if (validationError) setValidationError('');
+                            }}
+                            disabled={loading}
                             placeholder="e.g., Cold Storage Poultry"
-                            className="w-full bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-indigo-500 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-900 transition-all outline-none placeholder:text-slate-300 shadow-sm"
+                            className="w-full bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-indigo-500 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-900 transition-all outline-none placeholder:text-slate-300 shadow-sm disabled:opacity-60"
                         />
                     </div>
 
@@ -126,8 +192,9 @@ export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [
                             rows={3}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            disabled={loading}
                             placeholder="Specify handling requirements or SKU groupings..."
-                            className="w-full bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-indigo-500 rounded-xl px-5 py-3.5 text-sm font-medium text-slate-600 transition-all outline-none resize-none shadow-sm"
+                            className="w-full bg-slate-50 border-2 border-slate-100 focus:bg-white focus:border-indigo-500 rounded-xl px-5 py-3.5 text-sm font-medium text-slate-600 transition-all outline-none resize-none shadow-sm disabled:opacity-60"
                         />
                     </div>
 
@@ -145,7 +212,7 @@ export const CreateCategoryModal = ({ isOpen, onClose, onCreated, categories = [
                             type="button"
                             onClick={onClose}
                             disabled={loading}
-                            className="flex-1 px-6 py-4 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all border border-transparent hover:border-slate-200"
+                            className="flex-1 px-6 py-4 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all border border-transparent hover:border-slate-200 disabled:opacity-50"
                         >
                             Cancel
                         </button>

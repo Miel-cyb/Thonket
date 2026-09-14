@@ -44,12 +44,13 @@ const ProductsPage = () => {
 
     const API_BASE = API_ENDPOINTS.CATEGORIES;
     const PRODUCT_BASE = API_ENDPOINTS.PRODUCTS;
+    const organizationId = "ORG-DEFAULT";
     const loadingTimer = useRef(null);
 
     // 1. Fetch Categories
     const fetchCategories = useCallback(async () => {
         try {
-            const { data } = await axios.get(`${API_BASE}/hierarchy/all`);
+            const { data } = await axios.get(`${API_BASE}/${organizationId}/hierarchy/all`);
             const raw = Array.isArray(data) ? data : (data?.data || []);
             setCategories(raw);
             setCategoryTree(buildCategoryTree(raw));
@@ -65,7 +66,7 @@ const ProductsPage = () => {
             setLoading(true);
             const start = Date.now();
 
-            const { data } = await axios.get(`${PRODUCT_BASE}/catalog`, { params });
+            const { data } = await axios.get(`${PRODUCT_BASE}/${organizationId}/catalog`, { params });
             const raw = Array.isArray(data) ? data : (data?.data || []);
 
             console.log(`this is the product list `, data);
@@ -121,9 +122,9 @@ const ProductsPage = () => {
             };
 
             if (isNew) {
-                await axios.post(`${PRODUCT_BASE}/product-variant`, payload);
+                await axios.post(`${PRODUCT_BASE}/${organizationId}/product-variant`, payload);
             } else {
-                await axios.patch(`${PRODUCT_BASE}/product-variant/${productPayload._id}`, payload);
+                await axios.patch(`${PRODUCT_BASE}/${organizationId}/product-variant/${productPayload._id}`, payload);
             }
 
             setActiveProduct(null);

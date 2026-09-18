@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { Search, Plus, Layers, Package, Check } from "lucide-react";
+import { Search, Layers, Package, Plus, Check, PanelLeftClose, PanelLeftOpen, Percent } from "lucide-react";
 
 export default function ProductCatalog({
     products = [],
     categories = [],
     onSelectProduct,
+    selectedProductIds = [], // Array of selected product IDs/variants
     searchQuery: externalSearchQuery,
     setSearchQuery: externalSetSearchQuery,
     activeCategory: externalActiveCategory,
@@ -14,6 +15,7 @@ export default function ProductCatalog({
 }) {
     const [internalSearch, setInternalSearch] = useState("");
     const [internalCategory, setInternalCategory] = useState("All");
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearch;
     const setSearchQuery = externalSetSearchQuery || setInternalSearch;
@@ -21,11 +23,11 @@ export default function ProductCatalog({
     const activeCategory = externalActiveCategory !== undefined ? externalActiveCategory : internalCategory;
     const setActiveCategory = externalSetActiveCategory || setInternalCategory;
 
-    // Calculate product counts per category for better visual context
+    // Calculate product counts per category based on categoryId or category object
     const categoryCounts = useMemo(() => {
         const counts = { All: products.length };
         products.forEach(p => {
-            const pCatId = p.categoryId || p.category?._id || p.category;
+            const pCatId = p.categoryId || p.category?._id;
             if (pCatId) {
                 counts[pCatId] = (counts[pCatId] || 0) + 1;
             }
@@ -33,15 +35,18 @@ export default function ProductCatalog({
         return counts;
     }, [products]);
 
+    // Filter products strictly at the high-level product level
     const filteredProducts = useMemo(() => {
         return products.filter(p => {
             const search = searchQuery.toLowerCase();
             const matchesSearch =
                 p.name?.toLowerCase().includes(search) ||
                 p.sku?.toLowerCase().includes(search) ||
-                p.slug?.toLowerCase().includes(search);
+                p.slug?.toLowerCase().includes(search) ||
+                p.brand?.toLowerCase().includes(search) ||
+                p.categoryName?.toLowerCase().includes(search);
 
-            const pCatId = p.categoryId || p.category?._id || p.category;
+            const pCatId = p.categoryId || p.category?._id;
             const matchesCategory =
                 activeCategory === "All" ||
                 pCatId === activeCategory;
@@ -51,20 +56,50 @@ export default function ProductCatalog({
     }, [products, searchQuery, activeCategory]);
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-full p-2 overflow-hidden font-sans antialiased text-slate-900 bg-slate-100/50">
+        <div className="flex flex-col lg:flex-row gap-5 h-[calc(100vh-2rem)] max-h-[920px] p-3 overflow-hidden font-sans antialiased text-slate-900 bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/40">
+            {/* Custom Modern Scrollbar Styles */}
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(203, 213, 225, 0.8);
+                    border-radius: 9999px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: rgba(148, 163, 184, 1);
+                }
+            `}</style>
+
             {/* Sidebar / Categories */}
-            <aside className="w-full lg:w-72 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-3xl flex flex-col overflow-hidden shadow-xs shrink-0">
-                <div className="p-5 border-b border-slate-100/80 flex items-center gap-3 bg-slate-50/60">
-                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl shadow-2xs">
-                        <Layers size={20} />
+            <aside
+                className={`bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl flex flex-col overflow-hidden shadow-md shrink-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full lg:w-72 opacity-100' : 'w-0 lg:w-0 opacity-0 border-none p-0 overflow-hidden'
+                    }`}
+            >
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/80 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-indigo-100/70 text-indigo-700 rounded-2xl shadow-sm">
+                            <Layers size={18} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Catalog</p>
+                            <h3 className="text-sm font-bold text-slate-900 tracking-tight">Departments</h3>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Catalog</p>
-                        <h3 className="text-base font-bold text-slate-800 tracking-tight">Departments</h3>
-                    </div>
+                    <button
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-xl transition-colors"
+                        title="Collapse Sidebar"
+                    >
+                        <PanelLeftClose size={18} />
+                    </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3.5 space-y-1.5 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
                     <CategoryItem
                         label="All Products"
                         count={categoryCounts["All"]}
@@ -106,83 +141,165 @@ export default function ProductCatalog({
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 flex flex-col bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden">
+            <main className="flex-1 flex flex-col bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-3xl shadow-md overflow-hidden">
                 {/* Search Bar Header */}
-                <div className="p-5 border-b border-slate-100/80 bg-slate-50/40 flex items-center justify-between gap-4">
-                    <div className="relative group flex-1">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200/80 rounded-2xl font-normal text-base focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all outline-none shadow-2xs text-slate-800 placeholder:text-slate-400"
-                            placeholder="Search by SKU, Product Name, or Slug..."
-                        />
+                <div className="p-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-4 shrink-0">
+                    <div className="flex items-center gap-3 flex-1">
+                        {!isSidebarOpen && (
+                            <button
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-all shadow-sm shrink-0 flex items-center gap-2 text-xs font-semibold"
+                                title="Expand Sidebar"
+                            >
+                                <PanelLeftOpen size={18} />
+                                <span className="hidden sm:inline">Departments</span>
+                            </button>
+                        )}
+                        <div className="relative group flex-1">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl font-medium text-sm focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-600 transition-all outline-none shadow-sm text-slate-900 placeholder:text-slate-400"
+                                placeholder="Search products by Name, SKU, Category, Brand..."
+                            />
+                        </div>
                     </div>
-                    <div className="hidden sm:flex items-center gap-2 px-4 py-3.5 bg-slate-100/80 border border-slate-200/60 rounded-2xl text-xs font-semibold text-slate-600 shrink-0">
-                        <Package size={16} className="text-slate-400" />
+                    <div className="hidden sm:flex items-center gap-2 px-3.5 py-2.5 bg-slate-100/90 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-700 shrink-0 shadow-sm">
+                        <Package size={16} className="text-indigo-600" />
                         <span>{filteredProducts.length} items shown</span>
                     </div>
                 </div>
 
                 {/* Table Section */}
-                <div className="flex-1 overflow-y-auto px-5 pb-6 custom-scrollbar">
-                    <table className="w-full text-left border-separate border-spacing-y-3">
-                        <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10">
-                            <tr className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                                <th className="px-5 py-3">SKU / Ref</th>
-                                <th className="px-5 py-3">Product Description</th>
-                                <th className="px-5 py-3 text-right">Base Price</th>
-                                <th className="px-5 py-3 text-right">Stock</th>
-                                <th className="px-5 py-3 w-16 text-center">Action</th>
+                <div className="flex-1 overflow-y-auto px-4 pb-6 custom-scrollbar">
+                    <table className="w-full text-left border-separate border-spacing-y-2 table-fixed">
+                        <colgroup>
+                            <col className="w-[30%]" />
+                            <col className="w-[26%]" />
+                            <col className="w-[22%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[10%]" />
+                        </colgroup>
+                        <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 shadow-sm">
+                            <tr className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                                <th className="px-4 py-3">Product / SKU</th>
+                                <th className="px-4 py-3">Category & Attributes</th>
+                                <th className="px-4 py-3 text-right">Pricing & Offers</th>
+                                <th className="px-4 py-3 text-center">Status</th>
+                                <th className="px-4 py-3 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredProducts.map(p => {
-                                const variants = p.pricing?.base || [];
-                                const primaryVariant = variants[0];
-                                const displayPrice = primaryVariant?.basePrice ?? primaryVariant?.price ?? 0;
-                                const currency = primaryVariant?.currency || "GHS";
+                                const productId = p._id || p.id;
+                                const isSelected = selectedProductIds.includes(productId);
+
+                                const basePrice = p.price?.basePrice ?? p.basePrice;
+                                const currency = p.price?.currency ?? p.currency ?? 'GHS';
+                                const discount = p.price?.discount ?? p.discount;
+                                const attributes = p.attributes || {};
 
                                 return (
                                     <tr
-                                        key={p._id || p.id}
-                                        onClick={() => onSelectProduct(p)}
-                                        className="group cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
+                                        key={productId}
+                                        onClick={() => onSelectProduct?.(p)}
+                                        className={`group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${isSelected ? 'ring-2 ring-indigo-500/50 shadow-sm' : ''
+                                            }`}
                                     >
-                                        <td className="px-5 py-4 bg-slate-50/70 rounded-l-2xl border-y border-l border-slate-200/60 group-hover:bg-indigo-50/30 group-hover:border-indigo-200/60 transition-colors">
-                                            <span className="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50/80 border border-indigo-100 px-2.5 py-1 rounded-md shadow-2xs">
-                                                {p.sku || p.slug || (p._id || p.id).slice(-6).toUpperCase()}
-                                            </span>
+                                        {/* Product Name & SKU */}
+                                        <td className={`px-4 py-3.5 rounded-l-2xl border-y border-l transition-colors align-middle truncate ${isSelected
+                                            ? 'bg-indigo-50/70 border-indigo-300 group-hover:bg-indigo-100/60'
+                                            : 'bg-slate-50/80 border-slate-200 group-hover:bg-indigo-50/30 group-hover:border-indigo-300'
+                                            }`}>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-slate-900 tracking-tight truncate group-hover:text-indigo-950 transition-colors">
+                                                        {p.name}
+                                                    </p>
+                                                    {isSelected && (
+                                                        <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-600 text-white shadow-sm">
+                                                            <Check size={10} strokeWidth={3} />
+                                                            Selected
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="font-mono text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-1.5 py-0.5 rounded">
+                                                        {p.sku || 'No SKU'}
+                                                    </span>
+                                                    {p.unitOfMeasure && (
+                                                        <span className="text-[11px] text-slate-500 uppercase font-medium">({p.unitOfMeasure})</span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </td>
 
-                                        <td className="px-5 py-4 bg-slate-50/70 border-y border-slate-200/60 group-hover:bg-indigo-50/30 group-hover:border-indigo-200/60 transition-colors">
+                                        {/* Category & Attributes */}
+                                        <td className={`px-4 py-3.5 border-y transition-colors align-middle truncate ${isSelected
+                                            ? 'bg-indigo-50/70 border-indigo-300 group-hover:bg-indigo-100/60'
+                                            : 'bg-slate-50/80 border-slate-200 group-hover:bg-indigo-50/30 group-hover:border-indigo-300'
+                                            }`}>
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-semibold text-slate-800 truncate">{p.categoryName || 'Unassigned'}</p>
+                                                {Object.keys(attributes).length > 0 && (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {Object.entries(attributes).map(([key, val]) => (
+                                                            <span key={key} className="text-[10px] font-medium bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded-md">
+                                                                {key}: {val}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        {/* Pricing & Offers */}
+                                        <td className={`px-4 py-3.5 border-y transition-colors text-right align-middle ${isSelected
+                                            ? 'bg-indigo-50/70 border-indigo-300 group-hover:bg-indigo-100/60'
+                                            : 'bg-slate-50/80 border-slate-200 group-hover:bg-indigo-50/30 group-hover:border-indigo-300'
+                                            }`}>
                                             <div className="space-y-0.5">
-                                                <p className="text-base font-semibold text-slate-800 tracking-tight line-clamp-1 group-hover:text-indigo-950 transition-colors">{p.name}</p>
-                                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{p.brand || p.categoryName || 'General Stock'}</p>
+                                                <p className="text-sm font-bold text-slate-900 tracking-tight">
+                                                    {currency} {basePrice !== undefined ? basePrice.toLocaleString() : '—'}
+                                                </p>
+                                                {discount && discount.discountValue > 0 && (
+                                                    <div className="flex items-center justify-end gap-1 text-[11px] font-bold text-emerald-700">
+                                                        <Percent size={11} strokeWidth={2.5} />
+                                                        <span>{discount.discountValue}% OFF</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
 
-                                        <td className="px-5 py-4 bg-slate-50/70 border-y border-slate-200/60 group-hover:bg-indigo-50/30 group-hover:border-indigo-200/60 transition-colors text-right">
-                                            <p className="text-base font-bold text-slate-900 tabular-nums">
-                                                <span className="text-xs font-medium text-slate-400 mr-1">{currency}</span>
-                                                {displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </p>
-                                        </td>
-
-                                        <td className="px-5 py-4 bg-slate-50/70 border-y border-slate-200/60 group-hover:bg-indigo-50/30 group-hover:border-indigo-200/60 transition-colors text-right">
-                                            <span className={`text-sm font-semibold tabular-nums px-2.5 py-1 rounded-lg ${(p.stock ?? 0) < 10
-                                                ? 'bg-rose-50 text-rose-600 border border-rose-100'
-                                                : 'bg-slate-100 text-slate-600 border border-slate-200/60'
+                                        {/* Status */}
+                                        <td className={`px-4 py-3.5 border-y transition-colors text-center align-middle ${isSelected
+                                            ? 'bg-indigo-50/70 border-indigo-300 group-hover:bg-indigo-100/60'
+                                            : 'bg-slate-50/80 border-slate-200 group-hover:bg-indigo-50/30 group-hover:border-indigo-300'
+                                            }`}>
+                                            <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-lg ${p.isActive
+                                                ? 'bg-emerald-100/70 text-emerald-800 border border-emerald-200'
+                                                : 'bg-slate-200 text-slate-600'
                                                 }`}>
-                                                {p.stock !== undefined ? p.stock.toLocaleString() : "—"}
+                                                {p.isActive ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
 
-                                        <td className="px-5 py-4 bg-slate-50/70 border-y border-r border-slate-200/60 rounded-r-2xl group-hover:bg-indigo-50/30 group-hover:border-indigo-200/60 transition-colors text-center">
-                                            <div className="h-10 w-10 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all shadow-2xs mx-auto">
-                                                <Plus size={18} strokeWidth={2.5} />
-                                            </div>
+                                        {/* Action */}
+                                        <td className={`px-4 py-3.5 border-y border-r rounded-r-2xl transition-colors text-center align-middle ${isSelected
+                                            ? 'bg-indigo-50/70 border-indigo-300 group-hover:bg-indigo-100/60'
+                                            : 'bg-slate-50/80 border-slate-200 group-hover:bg-indigo-50/30 group-hover:border-indigo-300'
+                                            }`}>
+                                            {isSelected ? (
+                                                <div className="h-8 w-8 rounded-xl bg-indigo-600 border border-indigo-600 flex items-center justify-center text-white transition-all shadow-sm mx-auto">
+                                                    <Check size={16} strokeWidth={3} />
+                                                </div>
+                                            ) : (
+                                                <div className="h-8 w-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all shadow-sm mx-auto">
+                                                    <Plus size={14} strokeWidth={2.5} />
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -191,12 +308,12 @@ export default function ProductCatalog({
                     </table>
 
                     {filteredProducts.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-3 shadow-2xs">
-                                <Package size={36} className="text-slate-300" />
+                        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 mb-3 shadow-sm">
+                                <Package size={32} className="text-slate-400" />
                             </div>
-                            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">No matching products found</p>
-                            <p className="text-sm text-slate-400 mt-1">Try adjusting your search query or department filter.</p>
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-600">No matching products found</p>
+                            <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or department filter.</p>
                         </div>
                     )}
                 </div>
@@ -209,21 +326,21 @@ function CategoryItem({ label, count, active, onClick, isChild = false }) {
     return (
         <button
             onClick={onClick}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold tracking-tight transition-all duration-200 ${isChild ? "pl-7 text-slate-500 text-xs" : ""
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold tracking-tight transition-all duration-200 ${isChild ? "pl-7 text-slate-600 text-xs font-medium" : ""
                 } ${active
-                    ? "bg-slate-900 text-white shadow-xs font-bold scale-[1.01]"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-md font-bold scale-[1.01]"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                 }`}
         >
             <span className="truncate">{label}</span>
             <div className="flex items-center gap-2">
                 {count !== undefined && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${active ? "bg-slate-800 text-slate-300" : "bg-slate-200/60 text-slate-500"
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
                         }`}>
                         {count}
                     </span>
                 )}
-                {active && <Check size={14} className="text-indigo-400 shrink-0" />}
+                {active && <Check size={14} className="text-indigo-300 shrink-0" />}
             </div>
         </button>
     );

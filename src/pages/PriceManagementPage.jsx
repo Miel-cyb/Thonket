@@ -27,7 +27,6 @@ const PriceManagementPage = () => {
         try {
             const response = await axios.get(`${API_ENDPOINTS.CATEGORIES}/${organizationId}/hierarchy/all`);
             const resData = response.data;
-            console.log(resData)
             setCategories(Array.isArray(resData) ? resData : (resData?.data || []));
         } catch (err) {
             console.error("Category Fetch Error", err);
@@ -42,81 +41,53 @@ const PriceManagementPage = () => {
 
             let rawItems = [];
             const payload = resData?.data || resData;
-            console.log(payload);
 
             if (Array.isArray(payload)) {
-                const isVariantStructure = payload.some(item => item.productId && typeof item.productId === 'object');
-
-                if (isVariantStructure) {
-                    const productMap = {};
-                    payload.forEach(variant => {
-                        const prodInfo = variant.productId;
-                        const prodId = prodInfo?._id || 'unknown';
-
-                        if (!productMap[prodId]) {
-                            const rawCat = prodInfo?.categoryId;
-                            const catId = typeof rawCat === 'object' ? rawCat?._id : (rawCat || '');
-                            const catName = typeof rawCat === 'object' ? rawCat?.name : '';
-
-                            productMap[prodId] = {
-                                _id: prodId,
-                                name: prodInfo?.name || 'Unnamed Product',
-                                slug: prodInfo?.slug || '',
-                                description: prodInfo?.description || '',
-                                categoryId: catId,
-                                categoryName: catName,
-                                category: rawCat || null,
-                                brand: prodInfo?.brand || '',
-                                isActive: prodInfo?.isActive ?? true,
-                                organizationId: prodInfo?.organizationId || organizationId,
-                                createdAt: prodInfo?.createdAt || '',
-                                updatedAt: prodInfo?.updatedAt || '',
-                                __v: prodInfo?.__v ?? 0,
-                                variants: []
-                            };
-                        }
-                        productMap[prodId].variants.push(variant);
-                    });
-                    rawItems = Object.values(productMap);
-                } else {
-                    rawItems = payload;
-                }
+                rawItems = payload;
             } else if (Array.isArray(payload?.products)) {
                 rawItems = payload.products;
             } else if (Array.isArray(payload?.variants)) {
-                const productMap = {};
-                payload.variants.forEach(variant => {
-                    const prodInfo = variant.productId;
-                    const prodId = prodInfo?._id || 'unknown';
-
-                    if (!productMap[prodId]) {
-                        const rawCat = prodInfo?.categoryId;
-                        const catId = typeof rawCat === 'object' ? rawCat?._id : (rawCat || '');
-                        const catName = typeof rawCat === 'object' ? rawCat?.name : '';
-
-                        productMap[prodId] = {
-                            _id: prodId,
-                            name: prodInfo?.name || 'Unnamed Product',
-                            slug: prodInfo?.slug || '',
-                            description: prodInfo?.description || '',
-                            categoryId: catId,
-                            categoryName: catName,
-                            category: rawCat || null,
-                            brand: prodInfo?.brand || '',
-                            isActive: prodInfo?.isActive ?? true,
-                            organizationId: prodInfo?.organizationId || organizationId,
-                            createdAt: prodInfo?.createdAt || '',
-                            updatedAt: prodInfo?.updatedAt || '',
-                            __v: prodInfo?.__v ?? 0,
-                            variants: []
-                        };
-                    }
-                    productMap[prodId].variants.push(variant);
-                });
-                rawItems = Object.values(productMap);
+                rawItems = payload.variants;
             }
 
-            setAllProducts(rawItems);
+            const productMap = {};
+
+            rawItems.forEach(item => {
+                const isVariant = item.productId && typeof item.productId === 'object';
+                const prodInfo = isVariant ? item.productId : item;
+                const prodId = prodInfo?._id || 'unknown';
+
+                if (!productMap[prodId]) {
+                    const rawCat = prodInfo?.categoryId;
+
+                    productMap[prodId] = {
+                        _id: prodId,
+                        name: prodInfo?.name || 'Unnamed Product',
+                        slug: prodInfo?.slug || '',
+                        description: prodInfo?.description || '',
+                        category: rawCat || null,
+                        brand: prodInfo?.brand || '',
+                        isActive: prodInfo?.isActive ?? true,
+                        organizationId: prodInfo?.organizationId || organizationId,
+                        variants: []
+                    };
+                }
+
+                if (isVariant) {
+                    productMap[prodId].variants.push({
+                        _id: item._id,
+                        name: item.name || '',
+                        sku: item.sku || '',
+                        unitOfMeasure: item.unitOfMeasure || 'pcs',
+                        attributes: item.attributes || {},
+                        isActive: item.isActive ?? true,
+                        price: item.price || null,
+                        prices: item.price ? [item.price] : (item.prices || [])
+                    });
+                }
+            });
+
+            setAllProducts(Object.values(productMap));
         } catch (err) {
             console.error("Catalog Sync Error", err);
         } finally {
@@ -135,19 +106,17 @@ const PriceManagementPage = () => {
 
     const filteredProducts = useMemo(() => {
         return allProducts.filter(product => {
-            const productCatId = typeof product.categoryId === 'object' ? product.categoryId?._id : product.categoryId;
             const productCategoryObjId = typeof product.category === 'object' ? product.category?._id : product.category;
             const selectedCatId = selectedCategoryObj?._id;
 
             const matchesCategory = selectedCatId
-                ? productCatId === selectedCatId || productCategoryObjId === selectedCatId
+                ? productCategoryObjId === selectedCatId
                 : true;
 
             const cleanQuery = searchQuery.trim().toLowerCase();
             const matchesSearch = cleanQuery
                 ? product.name?.toLowerCase().includes(cleanQuery) ||
                 product.brand?.toLowerCase().includes(cleanQuery) ||
-                product.categoryName?.toLowerCase().includes(cleanQuery) ||
                 product.variants?.some(v => v.sku?.toLowerCase().includes(cleanQuery) || v.name?.toLowerCase().includes(cleanQuery))
                 : true;
 
@@ -190,8 +159,12 @@ const PriceManagementPage = () => {
                         productHasAllPricesConfigured = false;
                     }
 
-                    if (variant.pricing?.tiers) totalActiveTiers += variant.pricing.tiers.length;
-                    if (variant.pricing?.discounts) totalActiveDiscounts += variant.pricing.discounts.length;
+                    if (variant.price?.tiers) {
+                        totalActiveTiers += variant.price.tiers.length;
+                    }
+                    if (variant.price?.discount) {
+                        totalActiveDiscounts++;
+                    }
                 });
             } else {
                 totalSKUs++;

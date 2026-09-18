@@ -2,6 +2,7 @@ import React from 'react';
 import { Package, ArrowRight, Layers, Eye, Clock, AlertCircle, Coins, AlertTriangle } from 'lucide-react';
 
 export const ProductPriceCard = ({ product, onSelect }) => {
+    console.log(product)
     const variantList = product.variants || [];
     const maxVisibleVariants = 2;
     const visibleVariants = variantList.slice(0, maxVisibleVariants);

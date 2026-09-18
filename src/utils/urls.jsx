@@ -4,19 +4,21 @@
 //10.10.61.80
 //http://localhost:5004
 //http://192.168.193.143
-const CATEGORY_BASE_URL = 'http://192.168.250.143:5002/api/categories'; // Change this to your backend URL
+const CATEGORY_BASE_URL = 'http://192.168.82.143:5002/api/categories'; // Change this to your backend URL
 
-const PRODUCT_BASE_URL = 'http://192.168.250.143:5002/api/products'; // Change this to your backend URL
+const PRODUCT_BASE_URL = 'http://192.168.82.143:5002/api/products'; // Change this to your backend URL
 
-const PRICE_BASE_URL = 'http://192.168.250.143:5002/api/prices';
+const CATALOG_BASE_URL = 'http://192.168.82.143:5002/api/catalog';
 
-const SUPPLIER_BASE_URL = 'http://192.168.250.143:5004/api/supplier';
+const PRICE_BASE_URL = 'http://192.168.82.143:5002/api/prices';
 
-const PURCHASE_ORDER_BASE_URL = 'http://192.168.250.143:5004/api/purchase-order';
+const SUPPLIER_BASE_URL = 'http://192.168.82.143:5004/api/supplier';
 
-const WAREHOUSE_BASE_URL = 'http://192.168.250.143:5003/api/warehouse';
+const PURCHASE_ORDER_BASE_URL = 'http://192.168.82.143:5004/api/purchase-order';
 
-const INVENTORY_BASE_URL = 'http://192.168.250.143:5003/api/inventory';
+const WAREHOUSE_BASE_URL = 'http://192.168.82.143:5003/api/warehouse';
+
+const INVENTORY_BASE_URL = 'http://192.168.82.143:5003/api/inventory';
 
 export const API_ENDPOINTS = {
     CATEGORIES: CATEGORY_BASE_URL,
@@ -26,5 +28,6 @@ export const API_ENDPOINTS = {
     PURCHASE_ORDERS: PURCHASE_ORDER_BASE_URL,
     WAREHOUSES: WAREHOUSE_BASE_URL,
     INVENTORY: INVENTORY_BASE_URL,
+    CATALOG: CATALOG_BASE_URL
     // Add more endpoints as needed
 };

@@ -7,6 +7,8 @@ import { ProductContextCard } from '../components/ProductConfig/ProductContextCa
 import { VariantCard } from '../components/ProductConfig/VariantCard';
 import { LeavePromptModal, ActivateModal } from '../components/ProductConfig/PriceActionModal';
 
+
+//
 const PriceDetailPage = ({ onSyncSuccess }) => {
     const { id: productId } = useParams();
     const navigate = useNavigate();
@@ -30,33 +32,38 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
             _id: source._id || productId || '',
             name: source.name || '',
             slug: source.slug || '',
-            categoryId: source.categoryId || '',
-            categoryName: source.categoryName || source.category?.name || source.category || '',
+            categoryId: source.category?._id || source.categoryId || '',
+            categoryName: source.category?.name || source.categoryName || '',
             organizationId: source.organizationId || source.orgId || 'ORG-DEFAULT',
             brand: source.brand || '',
             isActive: source.isActive ?? true,
             currency: source.displayCurrency || source.currency || 'GHS',
             costBasis: source.costBasis || { type: 'Weighted Average', latestCost: 0, weightedAverage: 0, currentCost: source.currentCost || 0 },
-            variants: source.variants?.length ? source.variants.map(v => ({
-                ...v,
-                variantId: v._id || v.variantId || '',
-                variantName: v.variantName || v.name || 'Standard Variant',
-                basePrice: v.basePrice ?? 0,
-                currency: v.currency || source.displayCurrency || source.currency || 'GHS',
-                isActive: v.isActive ?? true,
-                validFrom: v.validFrom ? new Date(v.validFrom).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-                validTo: v.validTo ? new Date(v.validTo).toISOString().slice(0, 16) : '',
-                discountType: v.discount?.discountType || v.discountType || 'PERCENTAGE',
-                discountValue: v.discount?.discountValue ?? v.discountValue ?? 0,
-                discountValidFrom: v.discount?.validFrom ? new Date(v.discount.validFrom).toISOString().slice(0, 16) : '',
-                discountValidTo: v.discount?.validTo ? new Date(v.discount.validTo).toISOString().slice(0, 16) : '',
-                tiers: v.tiers?.length ? v.tiers : [
-                    { _id: `tier-${Date.now()}-1`, minRange: 1, maxRange: null, tierPrice: v.basePrice || 0 }
-                ]
-            })) : [
+            variants: source.variants?.length ? source.variants.map(v => {
+                const activePriceObj = v.price || (Array.isArray(v.prices) && v.prices[0]) || {};
+
+                return {
+                    ...v,
+                    _id: v._id || v.variantId || `var-${Math.random().toString(36).substring(2, 9)}`,
+                    variantId: v._id || v.variantId || '',
+                    variantName: v.name || v.variantName || 'Standard Variant',
+                    basePrice: activePriceObj.basePrice ?? v.basePrice ?? 0,
+                    currency: activePriceObj.currency || v.currency || source.currency || 'GHS',
+                    isActive: v.isActive ?? true,
+                    validFrom: activePriceObj.validFrom ? new Date(activePriceObj.validFrom).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+                    validTo: activePriceObj.validTo ? new Date(activePriceObj.validTo).toISOString().slice(0, 16) : '',
+                    discountType: activePriceObj.discount?.discountType || v.discountType || 'PERCENTAGE',
+                    discountValue: activePriceObj.discount?.discountValue ?? v.discountValue ?? 0,
+                    discountValidFrom: activePriceObj.discount?.validFrom ? new Date(activePriceObj.discount.validFrom).toISOString().slice(0, 16) : '',
+                    discountValidTo: activePriceObj.discount?.validTo ? new Date(activePriceObj.discount.validTo).toISOString().slice(0, 16) : '',
+                    tiers: activePriceObj.tiers?.length ? activePriceObj.tiers : (v.tiers?.length ? v.tiers : [
+                        { _id: `tier-${Date.now()}-1`, minRange: 1, maxRange: null, tierPrice: activePriceObj.basePrice || 0 }
+                    ])
+                };
+            }) : [
                 {
                     _id: 'var-1',
-                    variantId: productId || '6aa44a29707b2c4b1e31a450',
+                    variantId: productId || 'var-1',
                     variantName: 'Standard Variant',
                     name: source.name ? `${source.name} - Standard` : 'Standard Variant',
                     sku: source.sku || 'SKU-STD',
@@ -64,18 +71,17 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                     weightKg: source.weightKg || 0,
                     volumeM3: source.volumeM3 || 0,
                     attributes: {},
-                    basePrice: 1200,
+                    basePrice: 0,
                     currency: source.displayCurrency || source.currency || 'GHS',
                     isActive: true,
                     validFrom: new Date().toISOString().slice(0, 16),
                     validTo: '',
                     discountType: 'PERCENTAGE',
-                    discountValue: 5,
-                    discountValidFrom: new Date().toISOString().slice(0, 16),
-                    discountValidTo: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+                    discountValue: 0,
+                    discountValidFrom: '',
+                    discountValidTo: '',
                     tiers: [
-                        { _id: 'tier-1', minRange: 1, maxRange: 10, tierPrice: 1200 },
-                        { _id: 'tier-2', minRange: 11, maxRange: null, tierPrice: 1100 }
+                        { _id: 'tier-1', minRange: 1, maxRange: null, tierPrice: 0 }
                     ]
                 }
             ]
@@ -85,24 +91,27 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
     const [expandedVariants, setExpandedVariants] = useState(() => {
         const source = passedProduct || {};
         const vars = source.variants || [];
-        if (vars.length > 0 && vars[0]?._id) {
-            return { [vars[0]._id]: true };
+        if (vars.length > 0 && (vars[0]?._id || vars[0]?.variantId)) {
+            return { [vars[0]._id || vars[0].variantId]: true };
         }
         return { 'var-1': true };
     });
 
-    const toggleVariantAccordion = (variantId) => {
+    const toggleVariantAccordion = useCallback((variantId) => {
         setExpandedVariants(prev => ({ ...prev, [variantId]: !prev[variantId] }));
-    };
+    }, []);
 
-    const expandAllVariants = () => {
+    const expandAllVariants = useCallback(() => {
         if (!productState?.variants) return;
         const all = {};
-        productState.variants.forEach(v => { if (v?._id) all[v._id] = true; });
+        productState.variants.forEach(v => {
+            const identifier = v._id || v.variantId;
+            if (identifier) all[identifier] = true;
+        });
         setExpandedVariants(all);
-    };
+    }, [productState?.variants]);
 
-    const collapseAllVariants = () => setExpandedVariants({});
+    const collapseAllVariants = useCallback(() => setExpandedVariants({}), []);
 
     const fetchProductDetails = useCallback(async () => {
         if (!productId) return;
@@ -116,30 +125,35 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                     _id: targetProduct._id || productId,
                     name: targetProduct.name || prev.name,
                     slug: targetProduct.slug || prev.slug,
-                    categoryId: targetProduct.categoryId || prev.categoryId,
-                    categoryName: targetProduct.categoryName || targetProduct.category?.name || targetProduct.category || prev.categoryName,
+                    categoryId: targetProduct.categoryId || targetProduct.category?._id || prev.categoryId,
+                    categoryName: targetProduct.categoryName || targetProduct.category?.name || prev.categoryName,
                     organizationId: targetProduct.organizationId || prev.organizationId,
                     brand: targetProduct.brand || prev.brand,
                     isActive: targetProduct.isActive ?? prev.isActive,
                     currency: targetProduct.displayCurrency || targetProduct.currency || prev.currency,
                     costBasis: targetProduct.costBasis || prev.costBasis,
-                    variants: targetProduct.variants?.length ? targetProduct.variants.map(v => ({
-                        ...v,
-                        variantId: v._id || v.variantId || '',
-                        variantName: v.variantName || v.name || 'Standard Variant',
-                        basePrice: v.basePrice ?? 0,
-                        currency: v.currency || targetProduct.displayCurrency || targetProduct.currency || 'GHS',
-                        isActive: v.isActive ?? true,
-                        validFrom: v.validFrom ? new Date(v.validFrom).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-                        validTo: v.validTo ? new Date(v.validTo).toISOString().slice(0, 16) : '',
-                        discountType: v.discount?.discountType || v.discountType || 'PERCENTAGE',
-                        discountValue: v.discount?.discountValue ?? v.discountValue ?? 0,
-                        discountValidFrom: v.discount?.validFrom ? new Date(v.discount.validFrom).toISOString().slice(0, 16) : '',
-                        discountValidTo: v.discount?.validTo ? new Date(v.discount.validTo).toISOString().slice(0, 16) : '',
-                        tiers: v.tiers?.length ? v.tiers : [
-                            { _id: `tier-${Date.now()}-1`, minRange: 1, maxRange: null, tierPrice: v.basePrice || 0 }
-                        ]
-                    })) : prev.variants
+                    variants: targetProduct.variants?.length ? targetProduct.variants.map((v, idx) => {
+                        const activePriceObj = v.price || (Array.isArray(v.prices) && v.prices[0]) || {};
+                        const assignedId = v._id || v.variantId || `var-${idx}-${Date.now()}`;
+                        return {
+                            ...v,
+                            _id: assignedId,
+                            variantId: assignedId,
+                            variantName: v.variantName || v.name || 'Standard Variant',
+                            basePrice: activePriceObj.basePrice ?? v.basePrice ?? 0,
+                            currency: activePriceObj.currency || v.currency || targetProduct.displayCurrency || targetProduct.currency || 'GHS',
+                            isActive: v.isActive ?? true,
+                            validFrom: (activePriceObj.validFrom || v.validFrom) ? new Date(activePriceObj.validFrom || v.validFrom).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+                            validTo: (activePriceObj.validTo || v.validTo) ? new Date(activePriceObj.validTo || v.validTo).toISOString().slice(0, 16) : '',
+                            discountType: activePriceObj.discount?.discountType || v.discountType || 'PERCENTAGE',
+                            discountValue: activePriceObj.discount?.discountValue ?? v.discountValue ?? 0,
+                            discountValidFrom: activePriceObj.discount?.validFrom ? new Date(activePriceObj.discount.validFrom).toISOString().slice(0, 16) : '',
+                            discountValidTo: activePriceObj.discount?.validTo ? new Date(activePriceObj.discount.validTo).toISOString().slice(0, 16) : '',
+                            tiers: activePriceObj.tiers?.length ? activePriceObj.tiers : (v.tiers?.length ? v.tiers : [
+                                { _id: `tier-${Date.now()}-1`, minRange: 1, maxRange: null, tierPrice: activePriceObj.basePrice || v.basePrice || 0 }
+                            ])
+                        };
+                    }) : prev.variants
                 }));
             }
         } catch (err) {
@@ -176,25 +190,27 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
         return errors;
     }, [productState]);
 
-    const handleVariantChange = (variantIndex, field, value) => {
+    const handleVariantChange = useCallback((variantIndex, field, value) => {
         setHasUnsavedChanges(true);
         setProductState(prev => {
             const updated = [...prev.variants];
             updated[variantIndex] = { ...updated[variantIndex], [field]: value };
             return { ...prev, variants: updated };
         });
-    };
+    }, []);
 
-    const handleRemoveVariant = (variantIndex) => {
-        if (productState.variants.length <= 1) {
-            setFeedback({ type: 'error', message: 'You must maintain at least one variant configuration.' });
-            return;
-        }
-        setHasUnsavedChanges(true);
-        setProductState(prev => ({ ...prev, variants: prev.variants.filter((_, i) => i !== variantIndex) }));
-    };
+    const handleRemoveVariant = useCallback((variantIndex) => {
+        setProductState(prev => {
+            if (prev.variants.length <= 1) {
+                setFeedback({ type: 'error', message: 'You must maintain at least one variant configuration.' });
+                return prev;
+            }
+            setHasUnsavedChanges(true);
+            return { ...prev, variants: prev.variants.filter((_, i) => i !== variantIndex) };
+        });
+    }, []);
 
-    const handleTierChange = (variantIndex, tierIndex, field, value) => {
+    const handleTierChange = useCallback((variantIndex, tierIndex, field, value) => {
         setHasUnsavedChanges(true);
         setProductState(prev => {
             const updatedVariants = [...prev.variants];
@@ -207,9 +223,9 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
 
             return { ...prev, variants: updatedVariants };
         });
-    };
+    }, []);
 
-    const handleAddTier = (variantIndex) => {
+    const handleAddTier = useCallback((variantIndex) => {
         setHasUnsavedChanges(true);
         setProductState(prev => {
             const updatedVariants = [...prev.variants];
@@ -220,7 +236,7 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
             const nextMin = last && last.maxRange !== null ? Number(last.maxRange) + 1 : 100;
 
             currentTiers.push({
-                _id: `tier-${Date.now()}`,
+                _id: `tier-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
                 minRange: nextMin,
                 maxRange: null,
                 tierPrice: Number(currentTiers[currentTiers.length - 1]?.tierPrice || 50) * 0.95
@@ -231,10 +247,9 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
 
             return { ...prev, variants: updatedVariants };
         });
-    };
+    }, []);
 
-    const handleRemoveTier = (variantIndex, tierIndex) => {
-        setHasUnsavedChanges(true);
+    const handleRemoveTier = useCallback((variantIndex, tierIndex) => {
         setProductState(prev => {
             const updatedVariants = [...prev.variants];
             const targetVariant = { ...updatedVariants[variantIndex] };
@@ -242,41 +257,52 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
 
             if (currentTiers.length <= 1) return prev;
 
+            setHasUnsavedChanges(true);
             targetVariant.tiers = currentTiers.filter((_, i) => i !== tierIndex);
             updatedVariants[variantIndex] = targetVariant;
 
             return { ...prev, variants: updatedVariants };
         });
-    };
+    }, []);
 
-    const buildCommercialPayload = () => {
-        return productState.variants.map(variant => ({
-            variantId: variant.variantId || variant._id || "6aa44a29707b2c4b1e31a450",
-            categoryId: productState.categoryId || "6aa3c7c5321ed5b48bc70581",
-            organizationId: productState.organizationId || "ORG-DEFAULT",
-            basePrice: Number(variant.basePrice) || 1200,
-            currency: variant.currency || productState.currency || 'GHS',
-            isActive: variant.isActive ?? productState.isActive ?? true,
-            validFrom: variant.validFrom ? new Date(variant.validFrom).toISOString() : new Date().toISOString(),
-            validTo: variant.validTo ? new Date(variant.validTo).toISOString() : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-            tiers: (variant.tiers || []).map(t => ({
-                minRange: Number(t.minRange),
-                maxRange: t.maxRange === null || t.maxRange === '+' || t.maxRange === '' ? null : Number(t.maxRange),
-                tierPrice: Number(t.tierPrice)
-            })),
-            discount: {
-                discountType: variant.discountType || 'PERCENTAGE',
-                discountValue: Number(variant.discountValue) || 5,
-                validFrom: variant.discountValidFrom ? new Date(variant.discountValidFrom).toISOString() : new Date().toISOString(),
-                validTo: variant.discountValidTo ? new Date(variant.discountValidTo).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            createdBy: {
-                userId: "6a992b19707b2c4b1e31b111",
-                userName: "John Doe",
-                role: "COMMERCIAL_ADMIN"
+    const buildCommercialPayload = useCallback(() => {
+        return productState.variants.map(variant => {
+            const variantPayload = {
+                variantId: variant.variantId || variant._id,
+                categoryId: productState.categoryId,
+                categoryName: productState.categoryName,
+                organizationId: productState.organizationId,
+                basePrice: Number(variant.basePrice) || 0,
+                currency: variant.currency || productState.currency || 'GHS',
+                isActive: variant.isActive ?? productState.isActive ?? true,
+                validFrom: variant.validFrom ? new Date(variant.validFrom).toISOString() : new Date().toISOString(),
+                validTo: variant.validTo && variant.validTo.trim() !== '' ? new Date(variant.validTo).toISOString() : null,
+                tiers: (variant.tiers || []).map(t => ({
+                    minRange: Number(t.minRange),
+                    maxRange: t.maxRange === null || t.maxRange === '+' || t.maxRange === '' ? null : Number(t.maxRange),
+                    tierPrice: Number(t.tierPrice)
+                })),
+                createdBy: {
+                    userId: 'usr_commercial_admin_01',
+                    userName: 'Commercial Operations Admin',
+                    role: 'ADMIN'
+                }
+            };
+
+            // Only include discount if a valid discount value is provided and greater than 0
+            const discountNum = Number(variant.discountValue);
+            if (!isNaN(discountNum) && discountNum > 0) {
+                variantPayload.discount = {
+                    discountType: variant.discountType || 'PERCENTAGE',
+                    discountValue: discountNum,
+                    validFrom: variant.discountValidFrom ? new Date(variant.discountValidFrom).toISOString() : null,
+                    validTo: variant.discountValidTo && variant.discountValidTo.trim() !== '' ? new Date(variant.discountValidTo).toISOString() : null
+                };
             }
-        }));
-    };
+
+            return variantPayload;
+        });
+    }, [productState]);
 
     const handleSaveDraft = async () => {
         setSaving(true);
@@ -287,6 +313,9 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
             setHasUnsavedChanges(false);
             setFeedback({ type: 'success', message: 'Commercial pricing configurations successfully saved as Draft.' });
             if (onSyncSuccess) onSyncSuccess();
+            setTimeout(() => {
+                navigate('/products/pricing');
+            }, 1200);
         } catch (err) {
             console.error("Save Draft Error", err);
             setFeedback({ type: 'error', message: err?.response?.data?.message || 'Failed to save draft commercial pricing configuration.' });
@@ -304,13 +333,22 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
             setHasUnsavedChanges(false);
             setShowActivateModal(false);
             setProductState(prev => ({ ...prev, priceState: 'ACTIVE' }));
-            setFeedback({ type: 'success', message: 'Commercial price configurations successfully activated and published live.' });
+            setFeedback({ type: 'success', message: 'Commercial price configurations successfully activated and published live!' });
             if (onSyncSuccess) onSyncSuccess();
+            setTimeout(() => {
+                navigate('/products/pricing');
+            }, 1200);
         } catch (err) {
             console.error("Activation Error", err);
             setFeedback({ type: 'error', message: err?.response?.data?.message || 'Failed to activate commercial pricing configuration.' });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleRetireClick = () => {
+        if (window.confirm("Are you sure you want to retire this rule context?")) {
+            navigate('/products/pricing');
         }
     };
 
@@ -330,7 +368,7 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                     onStay={() => setShowLeavePrompt(false)}
                     onDiscard={() => {
                         setShowLeavePrompt(false);
-                        navigate(pendingNavigation ?? -1);
+                        navigate(pendingNavigation ?? '/products/pricing');
                     }}
                 />
             )}
@@ -344,7 +382,6 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                 />
             )}
 
-            {/* Commercial Feedback Banner / Toast Representation */}
             {feedback.message && (
                 <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm transition-all animate-fadeIn ${feedback.type === 'success'
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
@@ -373,10 +410,10 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                         type="button"
                         onClick={() => {
                             if (hasUnsavedChanges) {
-                                setPendingNavigation(-1);
+                                setPendingNavigation('/products/pricing');
                                 setShowLeavePrompt(true);
                             } else {
-                                navigate(-1);
+                                navigate('/products/pricing');
                             }
                         }}
                         className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-indigo-600 uppercase tracking-wider bg-slate-100 hover:bg-indigo-50/50 px-4 py-3 rounded-2xl transition-all"
@@ -400,9 +437,7 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                 <div className="flex items-center gap-3">
                     <button
                         type="button"
-                        onClick={() => {
-                            if (window.confirm("Retire rule context?")) navigate(-1);
-                        }}
+                        onClick={handleRetireClick}
                         className="flex items-center gap-2 border border-rose-200 bg-rose-50/50 hover:bg-rose-50 text-rose-600 px-4 py-3 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all"
                     >
                         <Trash2 size={16} /> Retire
@@ -461,22 +496,25 @@ const PriceDetailPage = ({ onSyncSuccess }) => {
                 </div>
 
                 <div className="space-y-4">
-                    {productState?.variants?.map((variant, vIdx) => (
-                        <VariantCard
-                            key={variant?._id || vIdx}
-                            variant={variant}
-                            vIdx={vIdx}
-                            currency={productState.currency}
-                            currentCost={currentCost}
-                            isExpanded={!!expandedVariants[variant?._id]}
-                            toggleAccordion={toggleVariantAccordion}
-                            onVariantChange={handleVariantChange}
-                            onRemoveVariant={handleRemoveVariant}
-                            onTierChange={handleTierChange}
-                            onAddTier={handleAddTier}
-                            onRemoveTier={handleRemoveTier}
-                        />
-                    ))}
+                    {productState?.variants?.map((variant, vIdx) => {
+                        const variantIdentifier = variant?._id || variant?.variantId || `var-${vIdx}`;
+                        return (
+                            <VariantCard
+                                key={variantIdentifier}
+                                variant={variant}
+                                vIdx={vIdx}
+                                currency={productState.currency}
+                                currentCost={currentCost}
+                                isExpanded={!!expandedVariants[variantIdentifier]}
+                                toggleAccordion={toggleVariantAccordion}
+                                onVariantChange={handleVariantChange}
+                                onRemoveVariant={handleRemoveVariant}
+                                onTierChange={handleTierChange}
+                                onAddTier={handleAddTier}
+                                onRemoveTier={handleRemoveTier}
+                            />
+                        );
+                    })}
                 </div>
             </div>
         </div>

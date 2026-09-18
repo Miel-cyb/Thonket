@@ -76,7 +76,7 @@ export default function SalesDashboardPage() {
             {/* HEADER STACK */}
             <header className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
               <DashboardHeader agent={activeAgent} />
-              <QuickActionBar onNavigate={(panel) => setActivePanel(panel)} />
+              {/* <QuickActionBar onNavigate={(panel) => setActivePanel(panel)} /> */}
               <KPISection />
             </header>
 
@@ -130,16 +130,17 @@ export default function SalesDashboardPage() {
                   </div>
 
                   {/* DYNAMIC CONTENT ENGINE */}
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden flex flex-col">
                     {!activePanel ? (
                       <div className="h-full overflow-y-auto animate-in fade-in zoom-in-95 duration-500 p-2">
                         <OrderPipeline />
                       </div>
                     ) : (
-                      <div className="h-full animate-in slide-in-from-right-10 fade-in duration-500">
+                      <div className="h-full flex flex-col animate-in slide-in-from-right-10 fade-in duration-500 overflow-hidden">
 
                         {/* 1. ORDERING VIEW */}
                         {activePanel === 'ordering' && (
+                          //  <div className="h-full flex flex-col overflow-hidden">
                           <OrderEntryForm
                             products={products}
                             categories={categories}
@@ -148,6 +149,7 @@ export default function SalesDashboardPage() {
                             onCancel={() => setActivePanel(null)}
                             onCreateOrder={handleOrderCreated}
                           />
+                          //  </div>
                         )}
 
                         {/* 2. PORTFOLIO VIEW */}

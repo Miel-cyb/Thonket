@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronUp, ChevronDown, Percent, Clock, Plus, Trash2, Tag, Layers, Calendar } from 'lucide-react';
+import { ChevronUp, ChevronDown, Percent, Plus, Trash2, Tag, Layers, Calendar } from 'lucide-react';
 
 // This component handles the variants of the products pricing with robust UI/UX enhancements.
 export const VariantCard = ({
@@ -19,6 +19,8 @@ export const VariantCard = ({
     const basePrice = Number(variant?.basePrice || 0);
     const discountVal = Number(variant?.discountValue || 0);
 
+    console.log('This is the variant of the code', variant);
+
     // Calculate effective promotional price
     let discountedPrice = basePrice;
     if (variant?.discountType === 'PERCENTAGE') {
@@ -34,6 +36,22 @@ export const VariantCard = ({
         : null;
 
     const variantId = variant?._id || `variant-${vIdx}`;
+
+    // Helper to format ISO date string (e.g., "2026-09-14T05:45:00.000Z") to HTML date input format ("YYYY-MM-DD")
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        // If it's already in YYYY-MM-DD format
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
+        try {
+            const date = new Date(dateString);
+            if (!isNaN(date.getTime())) {
+                return date.toISOString().split('T')[0];
+            }
+        } catch (e) {
+            // fallback
+        }
+        return '';
+    };
 
     // Helper to prevent leading zeros and clear '0' on focus for seamless typing
     const handleFocus = (e) => {
@@ -67,7 +85,7 @@ export const VariantCard = ({
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-black text-slate-900 truncate">{variant?.variantName || `Variant ${vIdx + 1}`}</span>
+                            <span className="text-sm font-black text-slate-900 truncate">{variant?.variantName || variant?.name || `Variant ${vIdx + 1}`}</span>
                             {variant?.isDefault && (
                                 <span className="text-xs font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-100 shrink-0">Default</span>
                             )}
@@ -85,7 +103,7 @@ export const VariantCard = ({
                         <div className="text-xs font-mono text-slate-400 mt-1 flex items-center gap-2">
                             <span>SKU: {variant?.sku || 'N/A'}</span>
                             <span aria-hidden="true">•</span>
-                            <span className="font-semibold text-slate-600">Base: {currency} {basePrice.toFixed(2)}</span>
+                            <span className="font-semibold text-slate-600">Base: {currency || variant?.currency || 'GHS'} {basePrice.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
@@ -119,7 +137,7 @@ export const VariantCard = ({
                                 <input
                                     id={`variant-name-${variantId}`}
                                     type="text"
-                                    value={variant?.variantName || ''}
+                                    value={variant?.variantName || variant?.name || ''}
                                     onChange={(e) => onVariantChange(vIdx, 'variantName', e.target.value)}
                                     placeholder="e.g. 25kg Standard Bag"
                                     className="w-full bg-slate-50/80 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 transition-all outline-hidden"
@@ -140,10 +158,10 @@ export const VariantCard = ({
                             </div>
                             <div className="space-y-1.5">
                                 <label htmlFor={`variant-base-price-${variantId}`} className="text-xs font-black text-slate-700 uppercase tracking-wider block">
-                                    Base Price ({currency})
+                                    Base Price ({currency || variant?.currency || 'GHS'})
                                 </label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-3 text-sm font-bold text-slate-400" aria-hidden="true">{currency}</span>
+                                    <span className="absolute left-4 top-3 text-sm font-bold text-slate-400" aria-hidden="true">{currency || variant?.currency || 'GHS'}</span>
                                     <input
                                         id={`variant-base-price-${variantId}`}
                                         type="number"
@@ -166,22 +184,30 @@ export const VariantCard = ({
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label htmlFor={`pricing-start-${variantId}`} className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Pricing Start Date</label>
+                                    <label htmlFor={`pricing-start-${variantId}`} className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Pricing Start Date (Valid From)</label>
                                     <input
                                         id={`pricing-start-${variantId}`}
                                         type="date"
-                                        value={variant?.pricingStartDate || ''}
-                                        onChange={(e) => onVariantChange(vIdx, 'pricingStartDate', e.target.value)}
+                                        value={formatDateForInput(variant?.pricingStartDate || variant?.validFrom)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            onVariantChange(vIdx, 'pricingStartDate', val);
+                                            onVariantChange(vIdx, 'validFrom', val);
+                                        }}
                                         className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition-all"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label htmlFor={`pricing-end-${variantId}`} className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Pricing End Date</label>
+                                    <label htmlFor={`pricing-end-${variantId}`} className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Pricing End Date (Valid To)</label>
                                     <input
                                         id={`pricing-end-${variantId}`}
                                         type="date"
-                                        value={variant?.pricingEndDate || ''}
-                                        onChange={(e) => onVariantChange(vIdx, 'pricingEndDate', e.target.value)}
+                                        value={formatDateForInput(variant?.pricingEndDate || variant?.validTo)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            onVariantChange(vIdx, 'pricingEndDate', val);
+                                            onVariantChange(vIdx, 'validTo', val);
+                                        }}
                                         className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition-all"
                                     />
                                 </div>
@@ -196,7 +222,7 @@ export const VariantCard = ({
                                 </h4>
                                 {discountVal > 0 && (
                                     <span className="text-xs font-bold text-emerald-800 bg-emerald-100/80 px-3 py-1.5 rounded-lg border border-emerald-200/50 self-start sm:self-auto">
-                                        Effective Promo Price: <span className="font-black">{currency} {discountedPrice.toFixed(2)}</span>
+                                        Effective Promo Price: <span className="font-black">{currency || variant?.currency || 'GHS'} {discountedPrice.toFixed(2)}</span>
                                     </span>
                                 )}
                             </div>
@@ -211,7 +237,7 @@ export const VariantCard = ({
                                         className="w-full bg-white border border-emerald-200 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 outline-hidden transition-all"
                                     >
                                         <option value="PERCENTAGE">Percentage (%)</option>
-                                        <option value="FIXED">Fixed Amount ({currency})</option>
+                                        <option value="FIXED">Fixed Amount ({currency || variant?.currency || 'GHS'})</option>
                                     </select>
                                 </div>
 
@@ -219,7 +245,7 @@ export const VariantCard = ({
                                     <label htmlFor={`discount-value-${variantId}`} className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Discount Value</label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-3 text-sm font-semibold text-slate-400" aria-hidden="true">
-                                            {variant?.discountType === 'PERCENTAGE' ? '%' : currency}
+                                            {variant?.discountType === 'PERCENTAGE' ? '%' : (currency || variant?.currency || 'GHS')}
                                         </span>
                                         <input
                                             id={`discount-value-${variantId}`}
@@ -243,7 +269,7 @@ export const VariantCard = ({
                                     <input
                                         id={`discount-start-${variantId}`}
                                         type="date"
-                                        value={variant?.discountStartDate || ''}
+                                        value={formatDateForInput(variant?.discountStartDate || variant?.discount?.validFrom)}
                                         onChange={(e) => onVariantChange(vIdx, 'discountStartDate', e.target.value)}
                                         className="w-full bg-white border border-emerald-200 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition-all"
                                     />
@@ -256,7 +282,7 @@ export const VariantCard = ({
                                     <input
                                         id={`discount-end-${variantId}`}
                                         type="date"
-                                        value={variant?.discountEndDate || ''}
+                                        value={formatDateForInput(variant?.discountEndDate || variant?.discount?.validTo)}
                                         onChange={(e) => onVariantChange(vIdx, 'discountEndDate', e.target.value)}
                                         className="w-full bg-white border border-emerald-200 focus:border-emerald-500 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-hidden transition-all"
                                     />
@@ -315,16 +341,16 @@ export const VariantCard = ({
                                                 <div className="flex items-center gap-2.5 flex-1 max-w-[280px] justify-end">
                                                     <span className="text-xs text-slate-500 shrink-0 font-medium">Tier Price:</span>
                                                     <div className="relative flex-1">
-                                                        <span className="absolute left-3.5 top-2.5 text-xs font-semibold text-slate-400" aria-hidden="true">{currency}</span>
+                                                        <span className="absolute left-3.5 top-2.5 text-xs font-semibold text-slate-400" aria-hidden="true">{currency || variant?.currency || 'GHS'}</span>
                                                         <label htmlFor={`tier-price-${tierId}`} className="sr-only">Tier Base Price</label>
                                                         <input
                                                             id={`tier-price-${tierId}`}
                                                             type="number"
                                                             step="0.01"
                                                             min="0"
-                                                            value={tier?.basePrice ?? ''}
+                                                            value={tier?.tierPrice ?? tier?.basePrice ?? ''}
                                                             onFocus={handleFocus}
-                                                            onChange={(e) => onTierChange(vIdx, tIdx, 'basePrice', e.target.value)}
+                                                            onChange={(e) => onTierChange(vIdx, tIdx, 'tierPrice', e.target.value)}
                                                             className="w-full bg-white border border-slate-200 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-slate-900 outline-hidden transition-all shadow-2xs"
                                                             placeholder="0.00"
                                                         />
